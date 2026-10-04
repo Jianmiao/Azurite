@@ -9,6 +9,9 @@ var tests = new (string Name, System.Action Run)[]
 {
     ("raw wheel protects a complete one-second settle period", RawWheelHold),
     ("NGUI wheel delivered after Update wakes in LateUpdate", LateDeliveredWheel),
+    ("Update phase avoids viewport scans while LateUpdate samples each viewport once", SplitFrameSampling),
+    ("continuous scrolling restores cadence only once per protected interval", WakeOnlyOnProtectionEntry),
+    ("inactive catalog viewports are pruned and a late wheel rediscovers the active view", ActiveCatalogViewsOnly),
     ("momentum, pending wheel, dragging and spring motion independently protect", NativeMotion),
     ("viewport clipping, position and panel replacement independently protect", ViewportChanges),
     ("focus loss does not retain foreground hold and focus regain wakes", FocusTransitions),
@@ -53,6 +56,58 @@ static void LateDeliveredWheel()
     Check(f.Wakes == wakes + 1, "LateUpdate issues one wake");
     Check(f.Guard.Observe(2.99, true), "delivered event keeps full hold");
     Check(!f.Guard.Observe(3.01, true), "event generation must not retrigger forever");
+}
+
+static void SplitFrameSampling()
+{
+    using var f = Fixture.Quiet();
+    var wakeBaseline = f.Wakes;
+    ScrollProbeCounters.Reset();
+    Check(!f.Guard.Observe(2, true, sampleViewportMotion: false), "input phase stays idle before input");
+    Check(ScrollProbeCounters.ViewSamples == 0, "input phase performs no viewport property reads");
+    f.View.panel!.clipOffset = new(0, 4);
+    Check(f.Guard.Observe(2, true, sampleViewportMotion: true), "LateUpdate catches viewport movement produced after Update");
+    var lateSamples = ScrollProbeCounters.ViewSamples;
+    Check(lateSamples > 0, "LateUpdate samples the tracked viewport");
+    Check(f.Wakes == wakeBaseline + 1, "late viewport change wakes exactly once");
+
+    ScrollProbeCounters.Reset();
+    Check(f.Guard.Observe(2.005, true, sampleViewportMotion: false), "next input phase retains active scroll protection");
+    Check(ScrollProbeCounters.ViewSamples == 0, "next input phase still avoids duplicate viewport scans");
+    Check(f.Guard.Observe(2.005, true, sampleViewportMotion: true), "next LateUpdate renews protection");
+    Check(ScrollProbeCounters.ViewSamples == lateSamples, "one full viewport scan is shared across the Update/LateUpdate pair");
+    Check(f.Wakes == wakeBaseline + 1, "continuous viewport motion does not reset cadence state each frame");
+}
+
+static void WakeOnlyOnProtectionEntry()
+{
+    using var f = Fixture.Quiet();
+    Input.MouseButtonDown = true;
+    Check(f.Guard.Observe(2, true, sampleViewportMotion: false), "drag input wakes before native scroll updates");
+    var wakes = f.Wakes;
+    for (int i = 1; i <= 20; i++)
+        Check(f.Guard.Observe(2 + i * 0.01, true, sampleViewportMotion: false), "held drag remains protected");
+    Check(f.Wakes == wakes, "held input does not repeatedly reset estimators and cadence state");
+    Input.MouseButtonDown = false;
+    Check(!f.Guard.Observe(3.21, true, sampleViewportMotion: false), "protection settles one second after drag ends");
+}
+
+static void ActiveCatalogViewsOnly()
+{
+    var profiles = new System.Collections.Generic.List<Catalog.UIProfile>();
+    for (int i = 0; i < 32; i++)
+        profiles.Add(new Catalog.UIProfile { scroll = new UIScrollView { isActiveAndEnabled = i == 31 } });
+    Singleton<Catalog>.Instance = new Catalog();
+    foreach (var profile in profiles) Singleton<Catalog>.Instance.uiProfiles!.Add(profile);
+    using var f = Fixture.Quiet();
+    var newlyActive = profiles[0].scroll!;
+    newlyActive.isActiveAndEnabled = true;
+    ScrollProbeCounters.Reset();
+    UICamera.onScroll!.Invoke(new GameObject(), 1);
+    Check(f.Guard.Observe(2, true, sampleViewportMotion: false), "late wheel generation re-discovers the newly active catalogue");
+    ScrollProbeCounters.Reset();
+    Check(f.Guard.Observe(2, true, sampleViewportMotion: true), "LateUpdate samples the event's active catalogue viewport");
+    Check(ScrollProbeCounters.ViewSamples < 24, "inactive catalogue viewports are not sampled every frame");
 }
 
 static void NativeMotion()
@@ -214,7 +269,7 @@ static void CorePolicyComposition()
 
 static void ResetHost()
 {
-    Input.Throw = false; Input.mouseScrollDelta = default; SceneManager.Handle = 1; UICamera.onScroll = null;
+    Input.Throw = false; Input.MouseButtonDown = false; Input.mouseScrollDelta = default; ScrollProbeCounters.Reset(); SceneManager.Handle = 1; UICamera.onScroll = null;
     ScriptNodeInspector.instance = null; Singleton<Catalog>.Instance = null;
     UI.UIPopupModManager.instance = null; Singleton<BackgroundExplorer>.Instance = null;
 }

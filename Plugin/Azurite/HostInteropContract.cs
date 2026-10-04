@@ -49,6 +49,7 @@ internal static class HostInteropContract
             using var plugin = AssemblyDefinition.ReadAssembly(pluginPath, new ReaderParameters
                 { AssemblyResolver = resolver, ReadingMode = ReadingMode.Deferred, ReadSymbols = false });
             var module = plugin.MainModule;
+            ValidateFrameRateLabelCallbacks(module, resolver);
             var typeCount = 0;
             var memberCount = 0;
             var validatedTypes = new HashSet<string>(StringComparer.Ordinal);
@@ -88,6 +89,49 @@ internal static class HostInteropContract
         {
             reason = "generated binding contract rejected: " + error.GetType().Name + "; " + error.Message;
             return false;
+        }
+    }
+
+    internal static bool IsFrameRateLabelCallback(MethodDefinition method) =>
+        !method.IsStatic && method.ReturnType.MetadataType == MetadataType.Void &&
+        method.Parameters.Count == 0 && method.GenericParameters.Count == 0;
+
+    internal static bool IsFrameRateLabelGetter(MethodDefinition method) =>
+        !method.IsStatic && method.Parameters.Count == 0 && method.GenericParameters.Count == 0 &&
+        method.ReturnType.FullName == "UILabel";
+
+    private static void ValidateFrameRateLabelCallbacks(ModuleDefinition plugin, ContractResolver resolver)
+    {
+        var hostReference = plugin.AssemblyReferences.SingleOrDefault(a => a.Name == "Assembly-CSharp")
+            ?? throw new InvalidDataException("AA assembly reference is missing.");
+        var host = resolver.Resolve(hostReference);
+        var panels = AllTypes(host.MainModule.Types).Where(t => t.FullName == "SettingPanel").ToArray();
+        if (panels.Length != 1) throw new InvalidDataException("SettingPanel type is missing or ambiguous.");
+        Require("UpdateWidgets");
+        Require("OnFpsSliderChanged");
+
+        var widgetTypes = panels[0].NestedTypes.Where(t => t.Name == "SettingWidgets").ToArray();
+        if (widgetTypes.Length != 1) throw new InvalidDataException("SettingPanel.SettingWidgets type is missing or ambiguous.");
+            var widgetsGetter = panels[0].Methods.Where(m => m.Name == "get_widgets").ToArray();
+            if (widgetsGetter.Length != 1 || widgetsGetter[0].IsStatic || widgetsGetter[0].Parameters.Count != 0 ||
+                widgetsGetter[0].ReturnType.FullName != widgetTypes[0].FullName)
+                throw new InvalidDataException("SettingPanel widgets property is missing or incompatible.");
+        RequireWidgetLabel(widgetTypes[0], "get_fps30Label");
+        RequireWidgetLabel(widgetTypes[0], "get_fps60Label");
+        RequireWidgetLabel(widgetTypes[0], "get_fpsInfLabel");
+
+        void Require(string name)
+        {
+            var matches = panels[0].Methods.Where(m => m.Name == name).ToArray();
+            if (matches.Length != 1 || !IsFrameRateLabelCallback(matches[0]))
+                throw new InvalidDataException("SettingPanel." + name + "() is missing, ambiguous, or has an unsupported signature.");
+        }
+
+        static void RequireWidgetLabel(TypeDefinition widgets, string name)
+        {
+            var matches = widgets.Methods.Where(m => m.Name == name).ToArray();
+            if (matches.Length != 1 || !IsFrameRateLabelGetter(matches[0]))
+                throw new InvalidDataException("SettingPanel.SettingWidgets." + name + "() is missing or incompatible.");
         }
     }
 

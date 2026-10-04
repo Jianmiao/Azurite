@@ -8,5 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Plugin/Azurite/HostProfile.cs" Link="HostProfile.cs" />
+    <Compile Include="../Plugin/Azurite/FpsLabelMapping.cs" Link="FpsLabelMapping.cs" />
   </ItemGroup>
 </Project>

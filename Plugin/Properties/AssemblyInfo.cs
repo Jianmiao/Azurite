@@ -5,8 +5,8 @@ using System.Runtime.Versioning;
 
 [assembly: AssemblyCompany("Azurite")]
 [assembly: AssemblyConfiguration("Release")]
-[assembly: AssemblyFileVersion("0.7.1.0")]
-[assembly: AssemblyInformationalVersion("0.7.1")]
+[assembly: AssemblyFileVersion("0.7.2.0")]
+[assembly: AssemblyInformationalVersion("0.7.2")]
 [assembly: AssemblyProduct("Azurite")]
 [assembly: AssemblyTitle("Azurite")]
-[assembly: AssemblyVersion("0.7.1.0")]
+[assembly: AssemblyVersion("0.7.2.0")]

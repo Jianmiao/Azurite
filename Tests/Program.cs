@@ -13,11 +13,11 @@ void Check(bool value, string message) {
 }
 HostProfile Resolve(string[] hashes) => HostProfile.Resolve(hashes[0], hashes[1], hashes[2]);
 var legacy = Resolve(oldHashes);
-Check(legacy.Supported && legacy.NativePatches && legacy.LegacyExporter &&
+Check(legacy.Supported && legacy.NativePatches && !legacy.FpsLabelPostfix && legacy.LegacyExporter &&
     legacy.PreviewOptimization && legacy.LegacyLoadingException, "existing verified host retains its capabilities");
 var current = HostProfile.ResolvePortable(game, metadata, true);
 Check(current.Supported, "AA 1.0.0-fix can activate basic scrolling and render scheduling");
-Check(current.Supported && !current.NativePatches && !current.LegacyExporter &&
+Check(current.Supported && !current.NativePatches && current.FpsLabelPostfix && !current.LegacyExporter &&
     !current.PreviewOptimization && !current.LegacyLoadingException,
     "AA 1.0.0-fix cannot inherit unverified native patches, preview ownership or loading exceptions");
 for (int i = 0; i < 3; i++) {
@@ -30,5 +30,10 @@ Check(!HostProfile.ResolvePortable(game, metadata, false).Supported, "reject mis
 Check(!HostProfile.Resolve(game, oldHashes[1], oldHashes[2]).Supported, "new host cannot skip structural verification using legacy hashes");
 Check(!HostProfile.Resolve("", "", "").Supported, "reject missing host identity");
 Check(HostProfile.ResolvePortable(game.ToLowerInvariant(), metadata.ToLowerInvariant(), true).Supported, "hash formatting does not change identity");
+var nativeLabels = new FpsLabelValues("160", "320", "∞");
+var mappedLabels = nativeLabels.Map(enabled: true);
+Check(mappedLabels == new FpsLabelValues("60", "120", "∞"), "frame-rate labels remap in the same callback after the host rewrites them");
+Check(mappedLabels.Map(enabled: true) == mappedLabels, "repeated label postfixes do not create further changes");
+Check(nativeLabels.Map(enabled: false) == nativeLabels, "labels restore to host values when mapping is disabled");
 Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
 return failed == 0 ? 0 : 1;

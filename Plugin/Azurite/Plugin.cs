@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using Azurite.Core;
 using BepInEx;
 using BepInEx.Configuration;
@@ -15,13 +16,13 @@ using UnityEngine.SceneManagement;
 
 namespace Azurite;
 
-[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "0.7.1")]
+[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "0.7.2")]
 [BepInProcess("AzureArchive.exe")]
 public sealed class Plugin : BasePlugin
 {
 	public const string Id = "halocue.azurite";
 
-	public const string Version = "0.7.1";
+	public const string Version = "0.7.2";
 
 	private static Plugin? _current;
 
@@ -154,6 +155,8 @@ public sealed class Plugin : BasePlugin
 	private bool _wasEnabled = true;
 
 	private bool _labelsMapped;
+
+	private bool _fpsLabelPostfixReady;
 
 	private double _nextLabelProbe;
 
@@ -309,7 +312,23 @@ public sealed class Plugin : BasePlugin
 			}
 			if (nativePatches)
 			{
-				_harmony.Patch(AccessTools.Method(typeof(SettingPanel), "UpdateWidgets"), null, new HarmonyMethod(typeof(Plugin), "AfterSettingsUpdated"));
+				MethodInfo updateWidgets = RequiredSettingsPostfixTarget("UpdateWidgets");
+				_harmony.Patch(updateWidgets, null, new HarmonyMethod(typeof(Plugin), nameof(AfterSettingsUpdated)));
+			}
+			else if (_host.Profile.FpsLabelPostfix)
+			{
+				try
+				{
+					MethodInfo updateWidgets = RequiredSettingsPostfixTarget("UpdateWidgets");
+					MethodInfo fpsChanged = RequiredSettingsPostfixTarget("OnFpsSliderChanged");
+					var postfix = new HarmonyMethod(typeof(Plugin), nameof(AfterSettingsUpdated));
+					_harmony.Patch(updateWidgets, null, postfix);
+					_harmony.Patch(fpsChanged, null, postfix);
+					_fpsLabelPostfixReady = HasOwnPostfix(updateWidgets) && HasOwnPostfix(fpsChanged);
+					if (!_fpsLabelPostfixReady)
+						base.Log.LogWarning("Frame-rate label callbacks were not registered; using the slower compatibility refresh.");
+				}
+				catch (Exception ex) { base.Log.LogWarning("Frame-rate label callbacks unavailable: " + ex.GetType().Name + "; using the slower compatibility refresh."); }
 			}
 			if (!ClassInjector.IsTypeRegisteredInIl2Cpp<AzuriteDriver>())
 			{
@@ -438,9 +457,9 @@ public sealed class Plugin : BasePlugin
 		}
 		_exportSuspended = false;
 		_rate.Observe(now);
-		_scrollProtected = _scrollActivity?.Observe(now, Application.isFocused) ?? false;
+		_scrollProtected = _scrollActivity?.Observe(now, Application.isFocused, sampleViewportMotion: false) ?? false;
 		bool allowPreviewOptimization = _host.Profile.PreviewOptimization;
-		HostActivitySnapshot hostActivitySnapshot = _activity.Observe(allowPreviewOptimization && _adaptivePreview.Value);
+		HostActivitySnapshot hostActivitySnapshot = _activity.Observe(allowPreviewOptimization && _adaptivePreview.Value, _scrollProtected);
 		_previewAllowed = hostActivitySnapshot.HasPreview;
 		_previewTarget?.Update(now, allowPreviewOptimization && _matchPreview.Value && _previewAllowed);
 		if (_repaintOnChange.Value && (hostActivitySnapshot.CanThrottle || _profileEditor.Value))
@@ -502,11 +521,7 @@ public sealed class Plugin : BasePlugin
 		}
 		if (_mappingAllowed && !_exportSuspended)
 		{
-			_scrollProtected = _scrollActivity?.Observe(now, Application.isFocused) ?? false;
-			if (_scrollProtected)
-			{
-				WakeForScroll();
-			}
+			_scrollProtected = _scrollActivity?.Observe(now, Application.isFocused, sampleViewportMotion: true) ?? false;
 		}
 		if (_mappingAllowed && !_exportSuspended && _repaintOnChange.Value)
 		{
@@ -554,7 +569,7 @@ public sealed class Plugin : BasePlugin
 			_labelsMapped = shouldMapLabels;
 			RefreshNativeLabels();
 		}
-		if (_host != null && _host.HostSupported && !_host.Profile.NativePatches && !_scrollProtected && now >= _nextLabelProbe)
+		if (_host != null && _host.HostSupported && _host.Profile.FpsLabelPostfix && !_fpsLabelPostfixReady && !_scrollProtected && now >= _nextLabelProbe)
 		{
 			_nextLabelProbe = now + 0.5;
 			if (ShouldMapLabels) RefreshNativeLabels();
@@ -766,26 +781,37 @@ public sealed class Plugin : BasePlugin
 		try
 		{
 			SettingPanel.SettingWidgets widgets = __instance.widgets;
-			if (!(widgets == null))
+			if (widgets != null)
 			{
-				if (widgets.fps30Label != null && widgets.fps30Label.text != "60")
-				{
-					widgets.fps30Label.text = "60";
-				}
-				if (widgets.fps60Label != null && widgets.fps60Label.text != "120")
-				{
-					widgets.fps60Label.text = "120";
-				}
-				if (widgets.fpsInfLabel != null && widgets.fpsInfLabel.text != "∞")
-				{
-					widgets.fpsInfLabel.text = "∞";
-				}
+				var mapped = new FpsLabelValues(widgets.fps30Label?.text,
+					widgets.fps60Label?.text, widgets.fpsInfLabel?.text).Map(current.ShouldMapLabels);
+				if (widgets.fps30Label != null && mapped.Thirty != widgets.fps30Label.text) widgets.fps30Label.text = mapped.Thirty;
+				if (widgets.fps60Label != null && mapped.Sixty != widgets.fps60Label.text) widgets.fps60Label.text = mapped.Sixty;
+				if (widgets.fpsInfLabel != null && mapped.Infinity != widgets.fpsInfLabel.text) widgets.fpsInfLabel.text = mapped.Infinity;
 			}
 		}
 		catch (Exception ex)
 		{
 			current.Log.LogWarning("FPS labels unavailable: " + ex.GetType().Name);
 		}
+	}
+
+	private static MethodInfo RequiredSettingsPostfixTarget(string name)
+	{
+		MethodInfo method = AccessTools.Method(typeof(SettingPanel), name, Type.EmptyTypes)
+			?? throw new MissingMethodException("SettingPanel." + name + "()");
+		if (method.IsStatic || method.ReturnType != typeof(void) || method.GetParameters().Length != 0)
+			throw new MissingMethodException("SettingPanel." + name + "() has an unsupported signature.");
+		return method;
+	}
+
+	private bool HasOwnPostfix(MethodInfo method)
+	{
+		Patches? patches = Harmony.GetPatchInfo(method);
+		if (patches == null || _harmony == null) return false;
+		foreach (Patch patch in patches.Postfixes)
+			if (patch.owner == _harmony.Id) return true;
+		return false;
 	}
 
 	private static void RefreshNativeLabels()
@@ -796,7 +822,7 @@ public sealed class Plugin : BasePlugin
 			{
 				if (item != null)
 				{
-					if (_current?.ShouldMapLabels == true && _current._host?.Profile.NativePatches == false)
+					if (_current?.ShouldMapLabels == true && _current._host?.Profile.NativePatches == false && !_current._fpsLabelPostfixReady)
 						AfterSettingsUpdated(item);
 					else
 						item.UpdateWidgets();

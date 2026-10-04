@@ -52,8 +52,12 @@ internal sealed class HostActivity
 		_report = report;
 	}
 
-	public HostActivitySnapshot Observe(bool allowPreviewIdle = false)
+	public HostActivitySnapshot Observe(bool allowPreviewIdle = false, bool scrollProtected = false)
 	{
+		if (scrollProtected)
+		{
+			return HostActivitySnapshot.Blocked("editor scroll protection is active", isEditor: true);
+		}
 		bool hasEmbeddedPreview = false;
 		try
 		{

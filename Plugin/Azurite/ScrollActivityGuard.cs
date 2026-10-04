@@ -102,6 +102,8 @@ internal sealed class ScrollActivityGuard : System.IDisposable
 
 	private bool _focused;
 
+	private bool _pointerButtonDown;
+
 	private bool _subscribed;
 
 	private bool _failed;
@@ -117,6 +119,11 @@ internal sealed class ScrollActivityGuard : System.IDisposable
 
 	public bool Observe(double now, bool focused)
 	{
+		return Observe(now, focused, sampleViewportMotion: true);
+	}
+
+	public bool Observe(double now, bool focused, bool sampleViewportMotion)
+	{
 		if (_disposed)
 		{
 			return false;
@@ -131,12 +138,14 @@ internal sealed class ScrollActivityGuard : System.IDisposable
 		}
 		try
 		{
+			bool wasProtected = now < _holdUntil;
 			bool flag = double.IsFinite(_lastNow) && now < _lastNow;
 			_lastNow = now;
 			if (flag)
 			{
 				_nextDiscovery = 0.0;
 				_holdUntil = now;
+				wasProtected = false;
 				foreach (ViewState value in _views.Values)
 				{
 					value.HasSample = false;
@@ -150,18 +159,13 @@ internal sealed class ScrollActivityGuard : System.IDisposable
 				_views.Clear();
 				_nextDiscovery = 0.0;
 			}
-			if (now >= _nextDiscovery)
-			{
-				_nextDiscovery = now + 1.0;
-				EnsureSubscription();
-				DiscoverViews();
-			}
 			long num = Interlocked.Read(ref _scrollGeneration);
 			bool flag3 = num != _consumedGeneration;
 			_consumedGeneration = num;
 			if (!focused)
 			{
 				_focused = false;
+				_pointerButtonDown = false;
 				_holdUntil = now;
 				foreach (ViewState value2 in _views.Values)
 				{
@@ -172,15 +176,36 @@ internal sealed class ScrollActivityGuard : System.IDisposable
 			bool flag4 = !_focused || flag2 || flag || flag3;
 			_focused = true;
 			Vector2 mouseScrollDelta = Input.mouseScrollDelta;
-			flag4 |= !float.IsFinite(mouseScrollDelta.x) || !float.IsFinite(mouseScrollDelta.y) || mouseScrollDelta.sqrMagnitude > 0f;
-			foreach (ViewState value3 in _views.Values)
+			bool rawScroll = !float.IsFinite(mouseScrollDelta.x) || !float.IsFinite(mouseScrollDelta.y) || mouseScrollDelta.sqrMagnitude > 0f;
+			bool pointerButtonStarted = false;
+			if (!sampleViewportMotion)
 			{
-				flag4 |= value3.ObserveMotion();
+				bool buttonDown = Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButton(2);
+				pointerButtonStarted = buttonDown && !_pointerButtonDown;
+				_pointerButtonDown = buttonDown;
+			}
+			bool pointerButton = _pointerButtonDown;
+			flag4 |= rawScroll || pointerButton;
+			if (flag2 || now >= _nextDiscovery || flag3 || rawScroll || pointerButtonStarted)
+			{
+				_nextDiscovery = now + 1.0;
+				EnsureSubscription();
+				DiscoverViews();
+			}
+			if (sampleViewportMotion)
+			{
+				foreach (ViewState value3 in _views.Values)
+				{
+					flag4 |= value3.ObserveMotion();
+				}
 			}
 			if (flag4)
 			{
 				_holdUntil = now + 1.0;
-				_wake();
+				if (!wasProtected)
+				{
+					_wake();
+				}
 			}
 			return now < _holdUntil;
 		}
@@ -290,7 +315,7 @@ internal sealed class ScrollActivityGuard : System.IDisposable
 
 	private void Track(UIScrollView? scroll, CenterableUIScrollView? centerable = null)
 	{
-		if (!(scroll == null) && _seen.Add(scroll.Pointer))
+		if (!(scroll == null) && scroll.isActiveAndEnabled && _seen.Add(scroll.Pointer))
 		{
 			if (_views.TryGetValue(scroll.Pointer, out ViewState value))
 			{

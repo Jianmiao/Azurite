@@ -25,7 +25,12 @@ var tests = new (string, Action<Fixture>, bool)[]
     ("referenced generic type arity cannot change", f => f.Generic.GenericParameters.Add(new GenericParameter("U", f.Generic)), false),
     ("required delegate Invoke signature cannot change", f => f.DelegateInvoke.Parameters.Add(new ParameterDefinition(f.Host.MainModule.TypeSystem.Int32)), false),
     ("duplicate method signature", f => { var m = new MethodDefinition("Read", MethodAttributes.Public, f.Host.MainModule.TypeSystem.Int32); m.Parameters.Add(new ParameterDefinition(f.Host.MainModule.TypeSystem.Int32)); m.Body.Instructions.Add(Instruction.Create(OpCodes.Ret)); f.Type.Methods.Add(m); }, false),
-    ("missing host assembly", f => f.DeleteHost = true, false)
+    ("missing host assembly", f => f.DeleteHost = true, false),
+    ("missing settings widget refresh method", f => f.SettingPanel.Methods.Remove(f.UpdateWidgets), false),
+    ("FPS tier change callback cannot become static", f => f.FpsChanged.IsStatic = true, false),
+    ("FPS slider callback cannot be missing", f => f.SettingPanel.Methods.Remove(f.FpsChanged), false),
+    ("FPS label accessor cannot change widget type", f => f.Fps30Label.ReturnType = f.Host.MainModule.TypeSystem.String, false),
+    ("setting labels cannot lose a generated getter", f => f.SettingWidgets.Methods.Remove(f.Fps30Label), false)
 };
 var failures = 0;
 foreach (var (name, mutate, expected) in tests)
@@ -37,6 +42,27 @@ foreach (var (name, mutate, expected) in tests)
     else { failures++; Console.WriteLine("FAIL " + name + ": " + reason); }
 }
 Console.WriteLine($"RESULT {tests.Length - failures}/{tests.Length}; Cecil metadata only, no AA/native code execution.");
+using (var signatureModule = ModuleDefinition.CreateModule("label-signature-fixture", ModuleKind.Dll))
+{
+    var validCallback = new MethodDefinition("UpdateWidgets", MethodAttributes.Public, signatureModule.TypeSystem.Void);
+    var staticCallback = new MethodDefinition("UpdateWidgets", MethodAttributes.Public | MethodAttributes.Static, signatureModule.TypeSystem.Void);
+    var argumentCallback = new MethodDefinition("UpdateWidgets", MethodAttributes.Public, signatureModule.TypeSystem.Void);
+    argumentCallback.Parameters.Add(new ParameterDefinition(signatureModule.TypeSystem.Int32));
+    var validGetter = new MethodDefinition("get_fps30Label", MethodAttributes.Public, new TypeReference("", "UILabel", signatureModule, signatureModule));
+    var wrongGetter = new MethodDefinition("get_fps30Label", MethodAttributes.Public | MethodAttributes.Static, signatureModule.TypeSystem.String);
+    foreach (var (name, actual, expected) in new[]
+    {
+        ("valid frame-rate callback shape", HostInteropContract.IsFrameRateLabelCallback(validCallback), true),
+        ("reject static frame-rate callback", HostInteropContract.IsFrameRateLabelCallback(staticCallback), false),
+        ("reject callback signature drift", HostInteropContract.IsFrameRateLabelCallback(argumentCallback), false),
+        ("valid frame-rate widget getter", HostInteropContract.IsFrameRateLabelGetter(validGetter), true),
+        ("reject static or wrong-type frame-rate getter", HostInteropContract.IsFrameRateLabelGetter(wrongGetter), false)
+    })
+    {
+        if (actual == expected) Console.WriteLine("PASS " + name);
+        else { failures++; Console.WriteLine("FAIL " + name); }
+    }
+}
 return failures == 0 ? 0 : 1;
 
 sealed class Fixture : IDisposable
@@ -51,6 +77,11 @@ sealed class Fixture : IDisposable
     public TypeDefinition Value { get; }
     public TypeDefinition Generic { get; }
     public MethodDefinition DelegateInvoke { get; }
+    public TypeDefinition SettingPanel { get; }
+    public TypeDefinition SettingWidgets { get; }
+    public MethodDefinition UpdateWidgets { get; }
+    public MethodDefinition FpsChanged { get; }
+    public MethodDefinition Fps30Label { get; }
     public bool DeleteHost;
     public Fixture()
     {
@@ -80,6 +111,18 @@ sealed class Fixture : IDisposable
         DelegateInvoke = new MethodDefinition("Invoke", MethodAttributes.Public, Host.MainModule.TypeSystem.Void);
         DelegateInvoke.Body.Instructions.Add(Instruction.Create(OpCodes.Ret)); geometry.Methods.Add(DelegateInvoke);
         var delegateField = new FieldDefinition("Geometry", FieldAttributes.Public, geometry); Type.Fields.Add(delegateField);
+        SettingPanel = new TypeDefinition("", "SettingPanel", TypeAttributes.Public | TypeAttributes.Class, Host.MainModule.TypeSystem.Object);
+        Host.MainModule.Types.Add(SettingPanel);
+        UpdateWidgets = AddMethod(SettingPanel, "UpdateWidgets", Host.MainModule.TypeSystem.Void);
+        FpsChanged = AddMethod(SettingPanel, "OnFpsSliderChanged", Host.MainModule.TypeSystem.Void);
+        SettingWidgets = new TypeDefinition("SettingPanel", "SettingWidgets", TypeAttributes.NestedPublic | TypeAttributes.Class, Host.MainModule.TypeSystem.Object);
+        SettingPanel.NestedTypes.Add(SettingWidgets);
+        AddMethod(SettingPanel, "get_widgets", SettingWidgets);
+        var label = new TypeDefinition("", "UILabel", TypeAttributes.Public | TypeAttributes.Class, Host.MainModule.TypeSystem.Object);
+        Host.MainModule.Types.Add(label);
+        Fps30Label = AddMethod(SettingWidgets, "get_fps30Label", label);
+        AddMethod(SettingWidgets, "get_fps60Label", label);
+        AddMethod(SettingWidgets, "get_fpsInfLabel", label);
         Plugin = AssemblyDefinition.CreateAssembly(new AssemblyNameDefinition("Azurite.Fixture", new Version(1, 0)), "Azurite.Fixture", ModuleKind.Dll);
         var main = new TypeDefinition("", "Consumer", TypeAttributes.Public | TypeAttributes.Class, Plugin.MainModule.TypeSystem.Object); Plugin.MainModule.Types.Add(main);
         var run = new MethodDefinition("Run", MethodAttributes.Public | MethodAttributes.Static, Plugin.MainModule.TypeSystem.Int32); main.Methods.Add(run);
@@ -99,6 +142,14 @@ sealed class Fixture : IDisposable
     {
         Plugin.Write(PluginPath);
         if (!DeleteHost) Host.Write(Path.Combine(Root, "BepInEx", "interop", "Assembly-CSharp.dll"));
+    }
+    private static MethodDefinition AddMethod(TypeDefinition type, string name, TypeReference result)
+    {
+        var method = new MethodDefinition(name, MethodAttributes.Public, result);
+        method.Body.Instructions.Add(Instruction.Create(OpCodes.Ldnull));
+        method.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
+        type.Methods.Add(method);
+        return method;
     }
     public void Dispose()
     {

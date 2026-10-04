@@ -2,12 +2,12 @@ using System;
 
 namespace Azurite;
 
-internal sealed record HostProfile(string Name, bool Supported, bool NativePatches,
+internal sealed record HostProfile(string Name, bool Supported, bool NativePatches, bool FpsLabelPostfix,
     bool LegacyExporter, bool PreviewOptimization, bool LegacyLoadingException)
 {
-    internal static readonly HostProfile Unsupported = new("unsupported", false, false, false, false, false);
-    private static readonly HostProfile Legacy = new("1.0-beta", true, true, true, true, true);
-    private static readonly HostProfile Fix = new("1.0.0-fix (basic rendering and scrolling)", true, false, false, false, false);
+    internal static readonly HostProfile Unsupported = new("unsupported", false, false, false, false, false, false);
+    private static readonly HostProfile Legacy = new("1.0-beta", true, true, false, true, true, true);
+    private static readonly HostProfile Fix = new("1.0.0-fix (basic rendering and scrolling)", true, false, true, false, false, false);
 
     internal static HostProfile Resolve(string game, string interop, string unity)
     {

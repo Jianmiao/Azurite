@@ -23,12 +23,19 @@ namespace UnityEngine
     public static class Input
     {
         public static bool Throw;
+        public static bool MouseButtonDown;
         private static Vector2 _wheel;
         public static Vector2 mouseScrollDelta
         {
             get => Throw ? throw new InvalidOperationException("input boundary unavailable") : _wheel;
             set => _wheel = value;
         }
+        public static bool GetMouseButton(int button) => Throw ? throw new InvalidOperationException("input boundary unavailable") : MouseButtonDown;
+    }
+    public static class ScrollProbeCounters
+    {
+        public static int ViewSamples;
+        public static void Reset() => ViewSamples = 0;
     }
 }
 namespace UnityEngine.SceneManagement
@@ -111,12 +118,18 @@ public static class UICamera
 public sealed class UIPanel : UnityEngine.Object { public UnityEngine.Vector2 clipOffset; }
 public class UIScrollView : UnityEngine.Object
 {
-    public bool isActiveAndEnabled = true;
-    public UIPanel? panel = new();
-    public UnityEngine.Transform? transform = new();
-    public UnityEngine.Vector3 currentMomentum;
-    public float mScroll;
-    public bool isDragging;
+    private bool _isActiveAndEnabled = true;
+    private UIPanel? _panel = new();
+    private UnityEngine.Transform? _transform = new();
+    private UnityEngine.Vector3 _currentMomentum;
+    private float _mScroll;
+    private bool _isDragging;
+    public bool isActiveAndEnabled { get { UnityEngine.ScrollProbeCounters.ViewSamples++; return _isActiveAndEnabled; } set => _isActiveAndEnabled = value; }
+    public UIPanel? panel { get { UnityEngine.ScrollProbeCounters.ViewSamples++; return _panel; } set => _panel = value; }
+    public UnityEngine.Transform? transform { get { UnityEngine.ScrollProbeCounters.ViewSamples++; return _transform; } set => _transform = value; }
+    public UnityEngine.Vector3 currentMomentum { get { UnityEngine.ScrollProbeCounters.ViewSamples++; return _currentMomentum; } set => _currentMomentum = value; }
+    public float mScroll { get { UnityEngine.ScrollProbeCounters.ViewSamples++; return _mScroll; } set => _mScroll = value; }
+    public bool isDragging { get { UnityEngine.ScrollProbeCounters.ViewSamples++; return _isDragging; } set => _isDragging = value; }
 }
 public sealed class SpringPanel { public bool isActiveAndEnabled; }
 public sealed class UITable { public UIScrollView? Parent; public T? GetComponentInParent<T>() where T : class => Parent as T; }
