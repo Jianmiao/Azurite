@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/ScrollActivityGuard.cs" Link="Production/ScrollActivityGuard.cs" />
+    <Reference Include="Azurite.Core">
+      <HintPath>../references/Azurite.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
