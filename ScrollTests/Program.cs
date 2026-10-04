@@ -48,11 +48,11 @@ static void RawWheelHold()
 static void LateDeliveredWheel()
 {
     using var f = Fixture.Quiet();
-    Check(!f.Guard.Observe(2, true), "initial Update is idle");
+    Check(!f.Guard.Observe(2, true, sampleViewportMotion: false), "initial Update is idle");
     var wakes = f.Wakes;
     UICamera.onScroll!.Invoke(new GameObject(), -0.5f);
     Check(f.Wakes == wakes, "native event callback itself cannot touch Unity/wake");
-    Check(f.Guard.Observe(2, true), "same-timestamp LateUpdate consumes event and wakes");
+    Check(f.Guard.Observe(2, true, sampleViewportMotion: true), "same-timestamp LateUpdate consumes event and wakes");
     Check(f.Wakes == wakes + 1, "LateUpdate issues one wake");
     Check(f.Guard.Observe(2.99, true), "delivered event keeps full hold");
     Check(!f.Guard.Observe(3.01, true), "event generation must not retrigger forever");
