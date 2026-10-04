@@ -1,7 +1,7 @@
 {
   "name": "Azurite",
-  "version_number": "0.7.3",
+  "version_number": "1.0.0",
   "website_url": "https://github.com/Jianmiao/Azurite",
-  "description": "蓝铜矿：动态屏幕刷新率档位、滚动保护和AA日常编辑优化。",
+  "description": "蓝铜矿：动态屏幕刷新率、静态场景按需绘制和大稿编辑保护。",
   "dependencies": []
 }

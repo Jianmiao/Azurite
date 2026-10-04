@@ -4,9 +4,9 @@ AA（AzureArchive）的日常编辑体验优化模组。提供滚轮调整、60 
 
 ## 下载和安装
 
-1. 退出 AA，在 [Releases](https://github.com/Jianmiao/Azurite/releases/latest) 下载 **Azurite-0.7.3.zip**。
+1. 退出 AA，在 [Releases](https://github.com/Jianmiao/Azurite/releases/latest) 下载 **Azurite-1.0.0.zip**。
 2. 将 ZIP 内容直接解压到 **AA 本体的 mods 文件夹**。
-3. 启动 AA，在模组管理器中选择 **Azurite 0.7.3** 并启用，按提示重启。
+3. 启动 AA，在模组管理器中选择 **Azurite 1.0.0** 并启用，按提示重启。
 
 解压后的路径应为：
 
@@ -14,7 +14,7 @@ AA（AzureArchive）的日常编辑体验优化模组。提供滚轮调整、60 
 AA 本体/
 └─ mods/
    └─ Azurite/
-      └─ 0.7.3/
+      └─ 1.0.0/
          ├─ manifest.json
          ├─ Azurite.dll
          ├─ Azurite.Core.dll
@@ -51,15 +51,15 @@ Azurite 不控制 GPU 频率。GPU 降频可能来自驱动调度或等待 CPU�
 
 新 AA 保留原生程序与元数据的版本检查，并核对实际使用的托管接口，不再要求其他电脑生成的 interop 文件与开发机逐字节相同。未知原生版本、缺失或不兼容接口仍会停用优化，日志给出原因。
 
-**AA 1.0.0-fix 暂不启用旧版专用的文字解析、布局缓存、屏外面板补丁，以及预览纹理和预览限频优化。** 这些限制不受旧配置中开关值影响。加载计数非零时保持正常绘制。旧版精确匹配的历史宿主保留原有能力，其版本绑定不代表广泛兼容承诺。
+**AA 1.0.0-fix 只启用经过接口验证的纯文本对白快速路径。** 布局缓存、屏外面板补丁、预览纹理和预览限频所有权仍关闭；这些限制不受旧配置中开关值影响。加载计数非零时保持正常绘制。旧版精确匹配的历史宿主保留原有能力，其版本绑定不代表广泛兼容承诺。
 
-## 0.7.2 的变更
+## 1.0.0 变更
 
 - 将滚动输入/唤醒检查与完整视口运动采样分到 `Update` 与 `LateUpdate`，每帧只扫描一次活跃滚动视图；新 wheel 事件会立即重新发现当前活跃视图。
 - 滚动保护期间跳过不影响安全判断的 HostActivity 状态遍历。活动滚动及结束后一秒仍保持 `renderFrameInterval=1`。
 - 在经校验的 `SettingPanel.UpdateWidgets` 和 `OnFpsSliderChanged` 回调后立即修正标签，消除半秒轮询造成的原生 160/320 暂态；方法/属性缺失时关闭立即回调并保留慢速兼容刷新。
 
-## 0.7.3 的帧率规则
+## 帧率规则
 
 - 将刷新率四舍五入为标称整数。显示器低于 120Hz 时，前两个档位按半速和全速显示；60Hz 对应 **30 / 60 / ∞**。
 - 显示器为 120Hz 或更高时，前两个档位固定 **60 / 120 / ∞**。
@@ -68,12 +68,14 @@ Azurite 不控制 GPU 频率。GPU 降频可能来自驱动调度或等待 CPU�
 - 每秒检测一次显示模式变化并重新计算当前档位；设置标签在 AA 更新设置或滑条后立即跟随显示器规则。
 - 静止的 script 编辑预览和已识别的背景/资源选择窗口不再仅因预览对象存在而强制全速；动画、自动播放、语音、加载、滚动或未知窗口仍保持每帧绘制。
 - Fix 宿主启用安全的纯文本对白快速路径，但不启用未经验证的预览纹理接管或相机所有权；新增/删除对话仍保持原生同步，不异步改数据。
+- 新增对白增删事务门：原生插入、删除和列表同步仍完整同步执行；事务期间与完成后的 settle 窗口禁止布局缓存/面板实验和静态降帧，避免半重排状态被优化逻辑读取。
+- 静态场景动态渲染只对已识别的编辑表面生效；未知窗口和无法确认的动态源保持全帧。
 
 ## 验证
 
 已完成源码构建、宿主接口静态检查、版本保护和滚动保护回归，以及安装 ZIP 的路径、程序集与校验和检查。持续集成在不依赖 AA 的环境中运行可移植测试；本版 46 项帧率/兼容、16 项滚动、26 项接口检查通过。
 
-本次 0.7.3 未启动 AA 做实机验收。上述回归不等于已证明 AA 整体主线程耗时、GPU 频率或大稿实际帧时间/流畅度改善，也不承诺具体性能倍数。刷新率规则依据 Unity 2023.2 的 [Screen.currentResolution](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/Screen-currentResolution.html)、[Application.targetFrameRate](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/Application-targetFrameRate.html) 和 [QualitySettings.vSyncCount](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/QualitySettings-vSyncCount.html)。静止场景放宽仍需 AA 实机确认。
+本次 1.0.0 的静态场景和大稿保护仍需 AA 实机确认。上述回归不等于已证明 AA 整体主线程耗时、GPU 频率或大稿实际帧时间/流畅度改善，也不承诺具体性能倍数。未知窗口、活动动画、加载、滚动和增删操作保持保守全帧。
 
 ## 开发
 

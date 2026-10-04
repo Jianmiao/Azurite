@@ -16,13 +16,13 @@ using UnityEngine.SceneManagement;
 
 namespace Azurite;
 
-[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "0.7.3")]
+[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "1.0.0")]
 [BepInProcess("AzureArchive.exe")]
 public sealed class Plugin : BasePlugin
 {
 	public const string Id = "halocue.azurite";
 
-	public const string Version = "0.7.3";
+	public const string Version = "1.0.0";
 
 	private static Plugin? _current;
 
@@ -234,7 +234,7 @@ public sealed class Plugin : BasePlugin
 		_profileEditor = base.Config.Bind("Diagnostics", "ProfileEditor", defaultValue: false, "Read-only editor load, Update-gap, list and preview render-target diagnostics. Does not change project data.");
 		_profileOperations = base.Config.Bind("Diagnostics", "ProfileOperations", defaultValue: false, "Opt-in native authoring method wall-time probes for a verified host. Diagnostic only; disabled by default.");
 		_profileListItems = base.Config.Bind("Diagnostics", "ProfileListItems", defaultValue: false, "Additional opt-in timings for list item initialization, refresh and ordering. Disabled by default.");
-		_plainTextDispatch = base.Config.Bind("Large Projects", "PlainTextDispatch", defaultValue: true, "Avoid size/ruby regex dispatch for plain dialogue-row text; native wrapping and text layout are preserved. Rich text uses the native parser.");
+		_plainTextDispatch = base.Config.Bind("Large Projects", "PlainTextDispatch", defaultValue: true, "Use the verified plain-text dialogue fast path on supported hosts; native wrapping and text layout are preserved. Rich text uses the native parser.");
 		_layoutCacheEnabled = base.Config.Bind("Large Projects", "ReuseUnchangedTextLayout", defaultValue: false, "Reuse an unchanged existing row layout only when all inputs, output objects and shared NGUI state match. Does not accelerate first layout.");
 		_panelWorkEnabled = base.Config.Bind("Large Projects", "OffscreenTextPanelWork", defaultValue: false, "Experimental scoped CPU update reduction for empty offscreen dialogue text panels. Requires verified host and uniform geometry.");
 		_panelWorkDryRun = base.Config.Bind("Large Projects", "OffscreenTextPanelDryRun", defaultValue: true, "Observe eligible text panel updates without skipping them. Use to verify the experiment before activation.");
