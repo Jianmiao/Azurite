@@ -10,6 +10,7 @@
     <Compile Include="../Plugin/Azurite/HostProfile.cs" Link="HostProfile.cs" />
     <Compile Include="../Plugin/Azurite/FpsLabelMapping.cs" Link="FpsLabelMapping.cs" />
     <Compile Include="../Plugin/Azurite/DisplayRatePolicy.cs" Link="DisplayRatePolicy.cs" />
+    <Compile Include="../Plugin/Azurite/DynamicProducerPolicy.cs" Link="DynamicProducerPolicy.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Azurite.Core"><HintPath>../references/Azurite.Core.dll</HintPath></Reference>

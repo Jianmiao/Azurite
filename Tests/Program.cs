@@ -15,12 +15,12 @@ void Check(bool value, string message) {
 HostProfile Resolve(string[] hashes) => HostProfile.Resolve(hashes[0], hashes[1], hashes[2]);
 var legacy = Resolve(oldHashes);
 Check(legacy.Supported && legacy.NativePatches && !legacy.FpsLabelPostfix && legacy.LegacyExporter &&
-    legacy.PreviewOptimization && legacy.LegacyLoadingException, "existing verified host retains its capabilities");
+    legacy.PlainTextPatch && legacy.PreviewOptimization && legacy.PreviewOwnership && legacy.LegacyLoadingException, "existing verified host retains its capabilities");
 var current = HostProfile.ResolvePortable(game, metadata, true);
 Check(current.Supported, "AA 1.0.0-fix can activate basic scrolling and render scheduling");
 Check(current.Supported && !current.NativePatches && current.FpsLabelPostfix && !current.LegacyExporter &&
-    !current.PreviewOptimization && !current.LegacyLoadingException,
-    "AA 1.0.0-fix cannot inherit unverified native patches, preview ownership or loading exceptions");
+    current.PlainTextPatch && current.PreviewOptimization && !current.PreviewOwnership && !current.LegacyLoadingException,
+    "AA 1.0.0-fix enables safe text and idle-surface paths but not unverified preview ownership");
 for (int i = 0; i < 3; i++) {
     var changed = (string[])oldHashes.Clone(); changed[i] = new string('0', 64);
     Check(!Resolve(changed).Supported, $"reject altered legacy identity component {i}");
@@ -54,6 +54,11 @@ Check(DisplayRatePolicy.ConservativeFallback(0) == new FpsPlan(30, 0) &&
       DisplayRatePolicy.ConservativeFallback(1) == new FpsPlan(60, 0) &&
       DisplayRatePolicy.ConservativeFallback(2) == new FpsPlan(-1, 1),
       "unknown refresh keeps finite tiers conservative and infinity display-synchronized");
+Check(!DynamicProducerPolicy.IsDynamic(true, true, false, 0, 0, 0, false, false, false), "static editor preview is throttleable");
+Check(DynamicProducerPolicy.IsDynamic(true, true, true, 0, 0, 0, false, false, false), "auto preview remains protected");
+Check(DynamicProducerPolicy.IsDynamic(true, true, false, 1, 0, 0, false, false, false), "scenario animation remains protected");
+Check(DynamicProducerPolicy.IsDynamic(true, false, false, 0, 0, 0, false, false, false), "non-preview test controller remains protected");
+Check(!DynamicProducerPolicy.IsDynamic(false, false, false, 0, 0, 0, false, false, false), "inactive test controller is not dynamic work");
 Check(DisplayRatePolicy.TryCreate(240, out var display240), "read 240 Hz profile for labels");
 var nativeLabels = new FpsLabelValues("160", "320", "∞");
 var mappedLabels = nativeLabels.Map(enabled: true, display240);

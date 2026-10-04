@@ -66,12 +66,14 @@ Azurite 不控制 GPU 频率。GPU 降频可能来自驱动调度或等待 CPU�
 - 所有刷新率下，∞ 使用 VSync 1 与当前显示器同步；60Hz 时 60 档与 ∞ 档都会封顶在 60Hz。
 - 对 60 / 120Hz 档位，若屏幕刷新率能以 VSync 的整数间隔精确得到目标帧率，则使用 VSync；否则使用 Unity 的目标帧率上限。比如 240Hz 可用 4/2 次 VSync 得到 60/120，320Hz 使用 60/120 软件上限，∞ 以 320Hz 同步。
 - 每秒检测一次显示模式变化并重新计算当前档位；设置标签在 AA 更新设置或滑条后立即跟随显示器规则。
+- 静止的 script 编辑预览和已识别的背景/资源选择窗口不再仅因预览对象存在而强制全速；动画、自动播放、语音、加载、滚动或未知窗口仍保持每帧绘制。
+- Fix 宿主启用安全的纯文本对白快速路径，但不启用未经验证的预览纹理接管或相机所有权；新增/删除对话仍保持原生同步，不异步改数据。
 
 ## 验证
 
-已完成源码构建、宿主接口静态检查、版本保护和滚动保护回归，以及安装 ZIP 的路径、程序集与校验和检查。持续集成在不依赖 AA 的环境中运行可移植测试；本版 40 项帧率/兼容、16 项滚动、26 项接口检查通过。
+已完成源码构建、宿主接口静态检查、版本保护和滚动保护回归，以及安装 ZIP 的路径、程序集与校验和检查。持续集成在不依赖 AA 的环境中运行可移植测试；本版 46 项帧率/兼容、16 项滚动、26 项接口检查通过。
 
-本次 0.7.3 未启动 AA 做实机验收。上述回归不等于已证明 AA 整体主线程耗时、GPU 频率或大稿实际帧时间/流畅度改善，也不承诺具体性能倍数。刷新率规则依据 Unity 2023.2 的 [Screen.currentResolution](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/Screen-currentResolution.html)、[Application.targetFrameRate](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/Application-targetFrameRate.html) 和 [QualitySettings.vSyncCount](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/QualitySettings-vSyncCount.html)。本版累计 83 项可移植测试通过。
+本次 0.7.3 未启动 AA 做实机验收。上述回归不等于已证明 AA 整体主线程耗时、GPU 频率或大稿实际帧时间/流畅度改善，也不承诺具体性能倍数。刷新率规则依据 Unity 2023.2 的 [Screen.currentResolution](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/Screen-currentResolution.html)、[Application.targetFrameRate](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/Application-targetFrameRate.html) 和 [QualitySettings.vSyncCount](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/QualitySettings-vSyncCount.html)。静止场景放宽仍需 AA 实机确认。
 
 ## 开发
 

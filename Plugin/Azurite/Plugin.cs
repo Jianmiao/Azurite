@@ -280,7 +280,8 @@ public sealed class Plugin : BasePlugin
 			bool num = _host.Initialize(_harmony);
 			_activity.AllowLegacyLoadingException = _host.Profile.LegacyLoadingException;
 			bool nativePatches = num && _host.Profile.NativePatches;
-			if (nativePatches && _plainTextDispatch.Value)
+			bool plainTextPatch = num && _host.Profile.PlainTextPatch;
+			if (plainTextPatch && _plainTextDispatch.Value)
 			{
 				_plainText = new PlainTextLayoutFastPath(delegate(string message)
 				{
@@ -434,7 +435,7 @@ public sealed class Plugin : BasePlugin
 		HostCompatibilitySnapshot hostCompatibilitySnapshot = _host.Probe();
 		if (_plainText != null)
 		{
-			_plainText.Enabled = _plainTextDispatch.Value && _host.Profile.NativePatches && !hostCompatibilitySnapshot.ExportActive;
+			_plainText.Enabled = _plainTextDispatch.Value && (_host.Profile.NativePatches || _host.Profile.PlainTextPatch) && !hostCompatibilitySnapshot.ExportActive;
 			_plainText.Update(now);
 		}
 		_layoutCache?.Update(now, _layoutCacheEnabled.Value && _host.Profile.NativePatches && !hostCompatibilitySnapshot.ExportActive);
@@ -463,13 +464,13 @@ public sealed class Plugin : BasePlugin
 		bool allowPreviewOptimization = _host.Profile.PreviewOptimization;
 		HostActivitySnapshot hostActivitySnapshot = _activity.Observe(allowPreviewOptimization && _adaptivePreview.Value, _scrollProtected);
 		_previewAllowed = hostActivitySnapshot.HasPreview;
-		_previewTarget?.Update(now, allowPreviewOptimization && _matchPreview.Value && _previewAllowed);
+		_previewTarget?.Update(now, _host.Profile.PreviewOwnership && _matchPreview.Value && _previewAllowed);
 		if (_repaintOnChange.Value && (hostActivitySnapshot.CanThrottle || _profileEditor.Value))
 		{
 			_repaint?.Update(now);
 		}
 		bool dirty = _repaintOnChange.Value && (_repaint?.ConsumeDirty() ?? false);
-		if (allowPreviewOptimization && _previewScale.Value < 0.999f && hostActivitySnapshot.HasPreview)
+		if (_host.Profile.PreviewOwnership && _previewScale.Value < 0.999f && hostActivitySnapshot.HasPreview)
 		{
 			_scaleLease?.TryApply(_previewScale.Value);
 		}
@@ -580,7 +581,7 @@ public sealed class Plugin : BasePlugin
 				RefreshNativeLabels();
 			}
 		}
-		_previewCadence?.Update(now, _host != null && _host.Profile.PreviewOptimization && _mappingAllowed && !_exportSuspended && !_scrollProtected && _limitPreview.Value, _previewFps.Value);
+		_previewCadence?.Update(now, _host != null && _host.Profile.PreviewOwnership && _mappingAllowed && !_exportSuspended && !_scrollProtected && _limitPreview.Value, _previewFps.Value);
 		RecordDiagnostics(now);
 	}
 

@@ -348,6 +348,11 @@ internal sealed class HostActivity
 			}
 			if (_windowManager.activeWindow != null)
 			{
+				if (IsKnownStaticEditorWindow(_windowManager.activeWindow))
+				{
+					reason = "known static editor window is active";
+					return false;
+				}
 				reason = "an editor window is active";
 				return true;
 			}
@@ -364,6 +369,19 @@ internal sealed class HostActivity
 			reason = "window state is unknown";
 			return true;
 		}
+	}
+
+	private static bool IsKnownStaticEditorWindow(IWindow window)
+	{
+		string name = window.GetType().FullName ?? string.Empty;
+		return name.Contains("BackgroundExplorer", StringComparison.Ordinal) ||
+			name.Contains("PopupImageExplorer", StringComparison.Ordinal) ||
+			name.Contains("SoundExplorer", StringComparison.Ordinal) ||
+			name.Contains("BGMExplorer", StringComparison.Ordinal) ||
+			name.Contains("EmotionExplorer", StringComparison.Ordinal) ||
+			name.Contains("CharacterExplorer", StringComparison.Ordinal) ||
+			name.Contains("AdditionalPromptCommandHelp", StringComparison.Ordinal) ||
+			name.Contains("UIPopupModManager", StringComparison.Ordinal);
 	}
 
 	private bool HasLoadingOrSaving(UITable? catalogTable, out string reason)
@@ -510,7 +528,31 @@ internal sealed class HostActivity
 				return false;
 			}
 			hasEmbeddedPreview = flag && test.previewMode && (_test == null || _test.Pointer == test.Pointer);
-			reason = (hasEmbeddedPreview ? "embedded editor preview is active" : "scenario playback controller is active");
+			int scenarioAnimations = 0;
+			int backgroundAnimations = 0;
+			int screenTextAnimations = 0;
+			bool autoAdvance = false;
+			bool hasVoice = false;
+			bool delayedAdvance = false;
+			bool backgroundEffectActive = false;
+			if (_test != null)
+			{
+				scenarioAnimations = _test.currentAnims?.Count ?? 0;
+				backgroundAnimations = _test.backgroundAnimations?.Count ?? 0;
+				screenTextAnimations = _test.currentSTs?.Count ?? 0;
+				autoAdvance = _test.auto;
+				hasVoice = _test.hasVoice;
+				delayedAdvance = _test.delayedAdvanceTask != null;
+				backgroundEffectActive = _test.currentBGEffectInstance != null || _test.customBGEffectInstance != null;
+			}
+			bool dynamic = DynamicProducerPolicy.IsDynamic(num || flag, hasEmbeddedPreview, autoAdvance,
+				scenarioAnimations, backgroundAnimations, screenTextAnimations, hasVoice, delayedAdvance, backgroundEffectActive);
+			if (!dynamic)
+			{
+				reason = hasEmbeddedPreview ? "static embedded editor preview" : "idle editor controller";
+				return false;
+			}
+			reason = (hasEmbeddedPreview ? "embedded editor preview has active producers" : "scenario playback controller is active");
 			return true;
 		}
 		catch (Exception error)
