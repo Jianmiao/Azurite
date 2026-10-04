@@ -1,4 +1,5 @@
 using Azurite;
+using Azurite.Core;
 
 var oldHashes = new[] {
     "BD45C2DFBA4EE59A3A3007E34B53B401985B838D66FFDEBAC863C8527948A80F",
@@ -30,10 +31,40 @@ Check(!HostProfile.ResolvePortable(game, metadata, false).Supported, "reject mis
 Check(!HostProfile.Resolve(game, oldHashes[1], oldHashes[2]).Supported, "new host cannot skip structural verification using legacy hashes");
 Check(!HostProfile.Resolve("", "", "").Supported, "reject missing host identity");
 Check(HostProfile.ResolvePortable(game.ToLowerInvariant(), metadata.ToLowerInvariant(), true).Supported, "hash formatting does not change identity");
+void CheckDisplay(double reported, int first, int second, int infinite,
+    FpsPlan firstPlan, FpsPlan secondPlan)
+{
+    Check(DisplayRatePolicy.TryCreate(reported, out var policy), $"accept monitor refresh {reported:F2} Hz");
+    Check(policy.FirstRate == first && policy.SecondRate == second && policy.RefreshRate == infinite,
+        $"labels for {reported:F2} Hz follow the monitor tier");
+    Check(policy.PlanForTier(0) == firstPlan && policy.PlanForTier(1) == secondPlan &&
+          policy.PlanForTier(2) == new FpsPlan(-1, 1),
+        $"tier caps for {reported:F2} Hz include a refresh-synchronized infinity tier");
+}
+CheckDisplay(60, 30, 60, 60, new FpsPlan(-1, 2), new FpsPlan(-1, 1));
+CheckDisplay(119.88, 60, 120, 120, new FpsPlan(-1, 2), new FpsPlan(-1, 1));
+CheckDisplay(120, 60, 120, 120, new FpsPlan(-1, 2), new FpsPlan(-1, 1));
+CheckDisplay(144, 60, 120, 144, new FpsPlan(60, 0), new FpsPlan(120, 0));
+CheckDisplay(240, 60, 120, 240, new FpsPlan(-1, 4), new FpsPlan(-1, 2));
+CheckDisplay(320, 60, 120, 320, new FpsPlan(60, 0), new FpsPlan(120, 0));
+CheckDisplay(75, 38, 75, 75, new FpsPlan(38, 0), new FpsPlan(-1, 1));
+Check(!DisplayRatePolicy.TryCreate(0, out _) && !DisplayRatePolicy.TryCreate(double.NaN, out _) &&
+      !DisplayRatePolicy.TryCreate(1500, out _), "reject unavailable or implausible display refresh rates");
+Check(DisplayRatePolicy.ConservativeFallback(0) == new FpsPlan(30, 0) &&
+      DisplayRatePolicy.ConservativeFallback(1) == new FpsPlan(60, 0) &&
+      DisplayRatePolicy.ConservativeFallback(2) == new FpsPlan(-1, 1),
+      "unknown refresh keeps finite tiers conservative and infinity display-synchronized");
+Check(DisplayRatePolicy.TryCreate(240, out var display240), "read 240 Hz profile for labels");
 var nativeLabels = new FpsLabelValues("160", "320", "∞");
-var mappedLabels = nativeLabels.Map(enabled: true);
-Check(mappedLabels == new FpsLabelValues("60", "120", "∞"), "frame-rate labels remap in the same callback after the host rewrites them");
-Check(mappedLabels.Map(enabled: true) == mappedLabels, "repeated label postfixes do not create further changes");
-Check(nativeLabels.Map(enabled: false) == nativeLabels, "labels restore to host values when mapping is disabled");
+var mappedLabels = nativeLabels.Map(enabled: true, display240);
+Check(mappedLabels == new FpsLabelValues("60", "120", "∞"), "frame-rate labels use the current monitor policy");
+Check(mappedLabels.Map(enabled: true, display240) == mappedLabels, "repeated label postfixes do not create further changes");
+Check(nativeLabels.Map(enabled: false, display240) == nativeLabels, "labels restore to host values when mapping is disabled");
+Check(DisplayRatePolicy.TryCreate(60, out var display60) &&
+      new FpsLabelValues("60", "120", "∞").Map(true, display60) == new FpsLabelValues("30", "60", "∞"),
+      "60 Hz labels are 30/60/infinity");
+Check(DisplayRatePolicy.TryCreate(320, out var display320) &&
+      new FpsLabelValues("160", "320", "∞").Map(true, display320) == new FpsLabelValues("60", "120", "∞"),
+      "320 Hz labels stay at 60/120/infinity");
 Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
 return failed == 0 ? 0 : 1;

@@ -16,13 +16,13 @@ using UnityEngine.SceneManagement;
 
 namespace Azurite;
 
-[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "0.7.2")]
+[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "0.7.3")]
 [BepInProcess("AzureArchive.exe")]
 public sealed class Plugin : BasePlugin
 {
 	public const string Id = "halocue.azurite";
 
-	public const string Version = "0.7.2";
+	public const string Version = "0.7.3";
 
 	private static Plugin? _current;
 
@@ -160,6 +160,8 @@ public sealed class Plugin : BasePlugin
 
 	private double _nextLabelProbe;
 
+	private int _mappedDisplayRefreshRate;
+
 	private bool _usingRepaint;
 
 	private double _nextPipelineProbe;
@@ -207,7 +209,7 @@ public sealed class Plugin : BasePlugin
 		_deepInterval = base.Config.Bind("Adaptive Rendering", "DeepIdleRenderInterval", 4, "Legacy manual deep interval, only used when UseMeasuredCadence=false.");
 		_idleDelay = base.Config.Bind("Adaptive Rendering", "IdleDelaySeconds", 2.0, "Seconds without input or protected work before idle drawing.");
 		_deepDelay = base.Config.Bind("Adaptive Rendering", "DeepIdleDelaySeconds", 8.0, "Seconds of confirmed static editing before deep idle.");
-		_fpsMapping = base.Config.Bind("Frame Rate", "MapNativeTiers", defaultValue: true, "AA maximum-FPS choices: 60 / 120 / unlimited. Does not change monitor Hz. Export retains control.");
+		_fpsMapping = base.Config.Bind("Frame Rate", "MapNativeTiers", defaultValue: true, "Below 120Hz, use half-rate/full-rate/unlimited; at 120Hz and above, use 60/120/unlimited. Unlimited synchronizes to the display refresh. Export retains control.");
 		_previewScale = base.Config.Bind("Preview", "RenderScale", 1f, "Optional experimental global URP quality reduction for embedded editor preview only. 1 preserves native quality. Restored before export.");
 		_matchPreview = base.Config.Bind("Preview", "MatchDisplayResolution", defaultValue: false, "Use a separately owned preview texture matching its screen area. Experimental; original texture and export restored.");
 		_limitPreview = base.Config.Bind("Preview", "LimitCameraCadence", defaultValue: false, "Reduce only embedded preview camera redraws. Editor UI and simulation retain normal updates; experimental until measured.");
@@ -353,7 +355,7 @@ public sealed class Plugin : BasePlugin
 				bepInExInfoLogInterpolatedStringHandler.AppendFormatted(Version);
 				bepInExInfoLogInterpolatedStringHandler.AppendLiteral(": measured cadence enabled=");
 				bepInExInfoLogInterpolatedStringHandler.AppendFormatted(_measuredCadence.Value);
-				bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; active 60/120/unlimited; on-change=");
+				bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; display-relative tiers; unlimited follows display refresh; on-change=");
 				bepInExInfoLogInterpolatedStringHandler.AppendFormatted(_repaintOnChange.Value);
 				bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; static safety redraw=");
 				bepInExInfoLogInterpolatedStringHandler.AppendFormatted(_safetyRepaintFps.Value);
@@ -569,10 +571,14 @@ public sealed class Plugin : BasePlugin
 			_labelsMapped = shouldMapLabels;
 			RefreshNativeLabels();
 		}
-		if (_host != null && _host.HostSupported && _host.Profile.FpsLabelPostfix && !_fpsLabelPostfixReady && !_scrollProtected && now >= _nextLabelProbe)
+		if (_host != null && _host.HostSupported && _host.Profile.FpsLabelPostfix && !_scrollProtected && now >= _nextLabelProbe)
 		{
-			_nextLabelProbe = now + 0.5;
-			if (ShouldMapLabels) RefreshNativeLabels();
+			_nextLabelProbe = now + 1.0;
+			if (CurrentDisplayRate.TryRead(out DisplayRatePolicy display) && ShouldMapLabels &&
+				(display.RefreshRate != _mappedDisplayRefreshRate || !_fpsLabelPostfixReady))
+			{
+				RefreshNativeLabels();
+			}
 		}
 		_previewCadence?.Update(now, _host != null && _host.Profile.PreviewOptimization && _mappingAllowed && !_exportSuspended && !_scrollProtected && _limitPreview.Value, _previewFps.Value);
 		RecordDiagnostics(now);
@@ -780,14 +786,16 @@ public sealed class Plugin : BasePlugin
 		}
 		try
 		{
+			if (!CurrentDisplayRate.TryRead(out DisplayRatePolicy display)) return;
 			SettingPanel.SettingWidgets widgets = __instance.widgets;
 			if (widgets != null)
 			{
 				var mapped = new FpsLabelValues(widgets.fps30Label?.text,
-					widgets.fps60Label?.text, widgets.fpsInfLabel?.text).Map(current.ShouldMapLabels);
+					widgets.fps60Label?.text, widgets.fpsInfLabel?.text).Map(current.ShouldMapLabels, display);
 				if (widgets.fps30Label != null && mapped.Thirty != widgets.fps30Label.text) widgets.fps30Label.text = mapped.Thirty;
 				if (widgets.fps60Label != null && mapped.Sixty != widgets.fps60Label.text) widgets.fps60Label.text = mapped.Sixty;
 				if (widgets.fpsInfLabel != null && mapped.Infinity != widgets.fpsInfLabel.text) widgets.fpsInfLabel.text = mapped.Infinity;
+				if (current.ShouldMapLabels) current._mappedDisplayRefreshRate = display.RefreshRate;
 			}
 		}
 		catch (Exception ex)

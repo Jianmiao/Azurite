@@ -43,6 +43,10 @@ internal sealed class FpsController : System.IDisposable
 
 	private double _nextProbe;
 
+	private int _displayRefreshRate;
+
+	private bool _displayRateWarningLogged;
+
 	private bool _allowed;
 
 	private bool _disposed;
@@ -150,6 +154,7 @@ internal sealed class FpsController : System.IDisposable
 			{
 				_nextProbe = now + 1.0;
 				ProbeSettings(now);
+				ProbeDisplayRate(now);
 			}
 			if (_settings == null || _resumePending)
 			{
@@ -177,7 +182,7 @@ internal sealed class FpsController : System.IDisposable
 				int pendingTier = _pendingTier;
 				bool pendingIsTierChange = _pendingIsTierChange;
 				_pendingTier = int.MinValue;
-				Apply(pendingTier, pendingIsTierChange);
+				Apply(pendingTier, pendingIsTierChange, now);
 			}
 		}
 		catch (System.Exception ex)
@@ -309,6 +314,25 @@ internal sealed class FpsController : System.IDisposable
 		}
 	}
 
+	private void ProbeDisplayRate(double now)
+	{
+		if (!CurrentDisplayRate.TryRead(out DisplayRatePolicy display))
+		{
+			if (!_displayRateWarningLogged)
+			{
+				_displayRateWarningLogged = true;
+				_log.LogWarning("Display refresh rate is unavailable; preserving the current frame cap until it can be measured.");
+			}
+			return;
+		}
+		bool rateNeedsReapply = _displayRefreshRate == 0 || _displayRefreshRate != display.RefreshRate || _displayRateWarningLogged;
+		_displayRateWarningLogged = false;
+		_displayRefreshRate = display.RefreshRate;
+		if (rateNeedsReapply && _owned && _allowed && !_exportSuspended && _settings != null && _pendingTier == int.MinValue &&
+			display.PlanForTier(_settings.fpsTier) != _lastWritten)
+			Queue(_settings.fpsTier, changedTier: false, now, deferOneUpdate: true);
+	}
+
 	private void Queue(int tier, bool changedTier, double time, bool deferOneUpdate)
 	{
 		if ((tier >= 0 && tier <= 2) || 1 == 0)
@@ -325,7 +349,7 @@ internal sealed class FpsController : System.IDisposable
 		Interlocked.Exchange(ref _eventTier, tier);
 	}
 
-	private void Apply(int tier, bool changedTier)
+	private void Apply(int tier, bool changedTier, double now)
 	{
 		_pendingIsTierChange = false;
 		bool isEnabled = _blocked;
@@ -337,6 +361,25 @@ internal sealed class FpsController : System.IDisposable
 		if (isEnabled)
 		{
 			return;
+		}
+		bool hasDisplayRate = CurrentDisplayRate.TryRead(out DisplayRatePolicy display);
+		if (!hasDisplayRate && tier != 2)
+		{
+			if (!_displayRateWarningLogged)
+			{
+				_displayRateWarningLogged = true;
+				_log.LogWarning("Display refresh rate is unavailable; preserving the current frame cap until it can be measured.");
+			}
+			_pendingTier = tier;
+			_pendingIsTierChange |= changedTier;
+			_applyAfterUpdate = _update + 1;
+			_applyAfterTime = System.Math.Max(_applyAfterTime, now + 1.0);
+			return;
+		}
+		if (hasDisplayRate)
+		{
+			_displayRateWarningLogged = false;
+			_displayRefreshRate = display.RefreshRate;
 		}
 		FpsPlan fpsPlan = Read();
 		bool flag2 = _resumePairAuthorized && fpsPlan == _resumeExpected;
@@ -352,7 +395,7 @@ internal sealed class FpsController : System.IDisposable
 			int vSyncCount = ((_owned && changedTier && fpsPlan == _lastWritten) ? (2 - tier) : fpsPlan.VSyncCount);
 			_beforeOverride = new FpsPlan(targetFrameRate, vSyncCount);
 		}
-		FpsPlan fpsPlan2 = FpsPolicy.FromTier(tier, fpsPlan.TargetFrameRate, fpsPlan.VSyncCount);
+		FpsPlan fpsPlan2 = hasDisplayRate ? display.PlanForTier(tier) : DisplayRatePolicy.ConservativeFallback(tier);
 		_wake();
 		if (fpsPlan != fpsPlan2)
 		{
@@ -366,7 +409,7 @@ internal sealed class FpsController : System.IDisposable
 		_owned = true;
 		_lastWritten = fpsPlan2;
 		ManualLogSource log = _log;
-		BepInExInfoLogInterpolatedStringHandler bepInExInfoLogInterpolatedStringHandler = new BepInExInfoLogInterpolatedStringHandler(77, 6, out isEnabled);
+		BepInExInfoLogInterpolatedStringHandler bepInExInfoLogInterpolatedStringHandler = new BepInExInfoLogInterpolatedStringHandler(92, 7, out isEnabled);
 		if (isEnabled)
 		{
 			bepInExInfoLogInterpolatedStringHandler.AppendLiteral("Azurite FPS tier=");
@@ -375,6 +418,8 @@ internal sealed class FpsController : System.IDisposable
 			bepInExInfoLogInterpolatedStringHandler.AppendFormatted(fpsPlan2.TargetFrameRate);
 			bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; vSync=");
 			bepInExInfoLogInterpolatedStringHandler.AppendFormatted(fpsPlan2.VSyncCount);
+			bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; displayHz=");
+			bepInExInfoLogInterpolatedStringHandler.AppendFormatted(hasDisplayRate ? display.RefreshRate : _displayRefreshRate);
 			bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; previousTarget=");
 			bepInExInfoLogInterpolatedStringHandler.AppendFormatted(_beforeOverride.TargetFrameRate);
 			bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; previousVSync=");
@@ -410,15 +455,9 @@ internal sealed class FpsController : System.IDisposable
 
 	private static bool IsKnownTierPair(int tier, FpsPlan pair)
 	{
-		if (!IsNativeTierPair(tier, pair))
-		{
-			if (tier >= 0 && tier <= 2)
-			{
-				return pair == FpsPolicy.FromTier(tier, -1, 0);
-			}
-			return false;
-		}
-		return true;
+		if (IsNativeTierPair(tier, pair)) return true;
+		return tier >= 0 && tier <= 2 && CurrentDisplayRate.TryRead(out DisplayRatePolicy display) &&
+			pair == display.PlanForTier(tier);
 	}
 
 	private static FpsPlan Read()

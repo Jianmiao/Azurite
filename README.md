@@ -4,9 +4,9 @@ AA（AzureArchive）的日常编辑体验优化模组。提供滚轮调整、60 
 
 ## 下载和安装
 
-1. 退出 AA，在 [Releases](https://github.com/Jianmiao/Azurite/releases/latest) 下载 **Azurite-0.7.2.zip**。
+1. 退出 AA，在 [Releases](https://github.com/Jianmiao/Azurite/releases/latest) 下载 **Azurite-0.7.3.zip**。
 2. 将 ZIP 内容直接解压到 **AA 本体的 mods 文件夹**。
-3. 启动 AA，在模组管理器中选择 **Azurite 0.7.2** 并启用，按提示重启。
+3. 启动 AA，在模组管理器中选择 **Azurite 0.7.3** 并启用，按提示重启。
 
 解压后的路径应为：
 
@@ -14,7 +14,7 @@ AA（AzureArchive）的日常编辑体验优化模组。提供滚轮调整、60 
 AA 本体/
 └─ mods/
    └─ Azurite/
-      └─ 0.7.2/
+      └─ 0.7.3/
          ├─ manifest.json
          ├─ Azurite.dll
          ├─ Azurite.Core.dll
@@ -34,7 +34,7 @@ AA 本体/
 
 | 项目 | 行为 |
 |---|---|
-| 帧率选择 | 将 AA 的三个档位与设置页标签立即映射为 60 / 120 / ∞；不修改显示器刷新率 |
+| 帧率选择 | 低于 120Hz 使用半速/全速/∞；120Hz 及以上使用 60 / 120 / ∞；∞ 与当前显示刷新率同步 |
 | 编辑滚轮 | 对话列表、背景图库、目录、属性和模组列表可分别调整；不改变鼠标拖动距离 |
 | 滚动保护 | 滚轮、拖动、惯性、视口移动及结束后一秒保持正常绘制 |
 | 静态页面 | 仅在活动状态可确认且没有预览、加载或导出工作时减少绘制；保留安全重绘 |
@@ -59,11 +59,19 @@ Azurite 不控制 GPU 频率。GPU 降频可能来自驱动调度或等待 CPU�
 - 滚动保护期间跳过不影响安全判断的 HostActivity 状态遍历。活动滚动及结束后一秒仍保持 `renderFrameInterval=1`。
 - 在经校验的 `SettingPanel.UpdateWidgets` 和 `OnFpsSliderChanged` 回调后立即修正标签，消除半秒轮询造成的原生 160/320 暂态；方法/属性缺失时关闭立即回调并保留慢速兼容刷新。
 
+## 0.7.3 的帧率规则
+
+- 将刷新率四舍五入为标称整数。显示器低于 120Hz 时，前两个档位按半速和全速显示；60Hz 对应 **30 / 60 / ∞**。
+- 显示器为 120Hz 或更高时，前两个档位固定 **60 / 120 / ∞**。
+- 所有刷新率下，∞ 使用 VSync 1 与当前显示器同步；60Hz 时 60 档与 ∞ 档都会封顶在 60Hz。
+- 对 60 / 120Hz 档位，若屏幕刷新率能以 VSync 的整数间隔精确得到目标帧率，则使用 VSync；否则使用 Unity 的目标帧率上限。比如 240Hz 可用 4/2 次 VSync 得到 60/120，320Hz 使用 60/120 软件上限，∞ 以 320Hz 同步。
+- 每秒检测一次显示模式变化并重新计算当前档位；设置标签在 AA 更新设置或滑条后立即跟随显示器规则。
+
 ## 验证
 
-已完成源码构建、宿主接口静态检查、版本保护和滚动保护回归，以及安装 ZIP 的路径、程序集与校验和检查。持续集成在不依赖 AA 的环境中运行可移植测试；本版的兼容、滚动、标签和元数据变异检查共 57 项通过。
+已完成源码构建、宿主接口静态检查、版本保护和滚动保护回归，以及安装 ZIP 的路径、程序集与校验和检查。持续集成在不依赖 AA 的环境中运行可移植测试；本版 40 项帧率/兼容、16 项滚动、26 项接口检查通过。
 
-本次 0.7.2 未启动 AA 做实机验收。上述回归确认 Azurite 每帧少做一轮视口扫描、滚动时继续全帧绘制，并在兼容回调后同步修正标签；它们不等于已证明 AA 整体主线程耗时、GPU 频率或大稿实际帧时间/流畅度改善，也不承诺具体性能倍数。
+本次 0.7.3 未启动 AA 做实机验收。上述回归不等于已证明 AA 整体主线程耗时、GPU 频率或大稿实际帧时间/流畅度改善，也不承诺具体性能倍数。刷新率规则依据 Unity 2023.2 的 [Screen.currentResolution](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/Screen-currentResolution.html)、[Application.targetFrameRate](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/Application-targetFrameRate.html) 和 [QualitySettings.vSyncCount](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/QualitySettings-vSyncCount.html)。本版累计 83 项可移植测试通过。
 
 ## 开发
 

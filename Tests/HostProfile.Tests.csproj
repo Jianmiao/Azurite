@@ -9,5 +9,9 @@
   <ItemGroup>
     <Compile Include="../Plugin/Azurite/HostProfile.cs" Link="HostProfile.cs" />
     <Compile Include="../Plugin/Azurite/FpsLabelMapping.cs" Link="FpsLabelMapping.cs" />
+    <Compile Include="../Plugin/Azurite/DisplayRatePolicy.cs" Link="DisplayRatePolicy.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Azurite.Core"><HintPath>../references/Azurite.Core.dll</HintPath></Reference>
   </ItemGroup>
 </Project>
