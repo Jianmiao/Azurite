@@ -64,17 +64,17 @@ internal sealed class HostActivity
 			string reason;
 			bool flag = HasRawInputOrSurfaceChange(out reason);
 			RefreshReferencesAtMostOncePerSecond();
-			if (HasPreviewOrAnimation(out string reason2, out hasEmbeddedPreview) && (!allowPreviewIdle || !hasEmbeddedPreview))
+			if (!TryIdentifyStaticSurface(out string reason3, out UIScrollView catalogScroll, out UITable catalogTable, out bool editorSurface))
+			{
+				return HostActivitySnapshot.Unknown(reason3, hasEmbeddedPreview);
+			}
+			if (HasPreviewOrAnimation(editorSurface, out string reason2, out hasEmbeddedPreview) && (!allowPreviewIdle || !hasEmbeddedPreview))
 			{
 				return HostActivitySnapshot.Blocked(reason2, isEditor: true, hasEmbeddedPreview);
 			}
 			if (hasEmbeddedPreview && (_studio == null || !_studio.isActiveAndEnabled || _studio.entryNode == null || !_studio.entryNode.gameObject.activeInHierarchy || _inspector == null || _inspector.preview == null || !_inspector.preview.ready))
 			{
 				return HostActivitySnapshot.Blocked("embedded preview editor is not ready", isEditor: true, hasPreview: true);
-			}
-			if (!TryIdentifyStaticSurface(out string reason3, out UIScrollView catalogScroll, out UITable catalogTable))
-			{
-				return HostActivitySnapshot.Unknown(reason3, hasEmbeddedPreview);
 			}
 			if (flag)
 			{
@@ -169,10 +169,11 @@ internal sealed class HostActivity
 		}
 	}
 
-	private bool TryIdentifyStaticSurface(out string reason, out UIScrollView? catalogScroll, out UITable? catalogTable)
+	private bool TryIdentifyStaticSurface(out string reason, out UIScrollView? catalogScroll, out UITable? catalogTable, out bool editorSurface)
 	{
 		catalogScroll = null;
 		catalogTable = null;
+		editorSurface = false;
 		if (_studio != null && _studio.isActiveAndEnabled)
 		{
 			if (_studio.entryNode == null || !string.IsNullOrEmpty(_studio.sessionInitializationError))
@@ -181,6 +182,13 @@ internal sealed class HostActivity
 				return false;
 			}
 			reason = "static node editor surface observed";
+			editorSurface = true;
+			return true;
+		}
+		if (HasKnownStaticEditorWindow())
+		{
+			reason = "known static editor window observed";
+			editorSurface = true;
 			return true;
 		}
 		if (_catalog == null)
@@ -246,6 +254,7 @@ internal sealed class HostActivity
 			return false;
 		}
 		reason = "static catalog surface observed";
+		editorSurface = true;
 		return true;
 	}
 
@@ -371,17 +380,22 @@ internal sealed class HostActivity
 		}
 	}
 
+	private bool HasKnownStaticEditorWindow()
+	{
+		try
+		{
+			return _windowManager?.activeWindow != null &&
+				DynamicProducerPolicy.IsKnownStaticWindowName(_windowManager.activeWindow.GetType().FullName);
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
 	private static bool IsKnownStaticEditorWindow(IWindow window)
 	{
-		string name = window.GetType().FullName ?? string.Empty;
-		return name.Contains("BackgroundExplorer", StringComparison.Ordinal) ||
-			name.Contains("PopupImageExplorer", StringComparison.Ordinal) ||
-			name.Contains("SoundExplorer", StringComparison.Ordinal) ||
-			name.Contains("BGMExplorer", StringComparison.Ordinal) ||
-			name.Contains("EmotionExplorer", StringComparison.Ordinal) ||
-			name.Contains("CharacterExplorer", StringComparison.Ordinal) ||
-			name.Contains("AdditionalPromptCommandHelp", StringComparison.Ordinal) ||
-			name.Contains("UIPopupModManager", StringComparison.Ordinal);
+		return DynamicProducerPolicy.IsKnownStaticWindowName(window.GetType().FullName);
 	}
 
 	private bool HasLoadingOrSaving(UITable? catalogTable, out string reason)
@@ -513,7 +527,7 @@ internal sealed class HostActivity
 		return false;
 	}
 
-	private bool HasPreviewOrAnimation(out string reason, out bool hasEmbeddedPreview)
+	private bool HasPreviewOrAnimation(bool editorSurface, out string reason, out bool hasEmbeddedPreview)
 	{
 		reason = string.Empty;
 		hasEmbeddedPreview = false;
@@ -545,7 +559,7 @@ internal sealed class HostActivity
 				delayedAdvance = _test.delayedAdvanceTask != null;
 				backgroundEffectActive = _test.currentBGEffectInstance != null || _test.customBGEffectInstance != null;
 			}
-			bool dynamic = DynamicProducerPolicy.IsDynamic(num || flag, hasEmbeddedPreview, autoAdvance,
+			bool dynamic = DynamicProducerPolicy.IsDynamicForSurface(num || flag, hasEmbeddedPreview, editorSurface, autoAdvance,
 				scenarioAnimations, backgroundAnimations, screenTextAnimations, hasVoice, delayedAdvance, backgroundEffectActive);
 			if (!dynamic)
 			{

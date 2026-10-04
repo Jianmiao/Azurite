@@ -59,6 +59,13 @@ Check(DynamicProducerPolicy.IsDynamic(true, true, true, 0, 0, 0, false, false, f
 Check(DynamicProducerPolicy.IsDynamic(true, true, false, 1, 0, 0, false, false, false), "scenario animation remains protected");
 Check(DynamicProducerPolicy.IsDynamic(true, false, false, 0, 0, 0, false, false, false), "non-preview test controller remains protected");
 Check(!DynamicProducerPolicy.IsDynamic(false, false, false, 0, 0, 0, false, false, false), "inactive test controller is not dynamic work");
+Check(!DynamicProducerPolicy.IsDynamicForSurface(true, false, true, false, 0, 0, 0, false, false, false), "idle authoring surface ignores a resident non-preview controller");
+Check(DynamicProducerPolicy.IsDynamicForSurface(true, false, true, false, 1, 0, 0, false, false, false), "authoring surface keeps an active scenario animation protected");
+Check(DynamicProducerPolicy.IsDynamicForSurface(true, true, true, true, 0, 0, 0, false, false, false), "embedded preview remains protected when an active producer is present");
+Check(DynamicProducerPolicy.IsDynamicForSurface(true, false, false, false, 0, 0, 0, false, false, false), "appreciation controller remains protected outside authoring surfaces");
+Check(DynamicProducerPolicy.IsKnownStaticWindowName("Studio.Scripts.Window.BackgroundExplorer.BackgroundExplorer"), "background explorer is recognized as a static editor window");
+Check(DynamicProducerPolicy.IsKnownStaticWindowName("UI.UIPopupModManager"), "mod manager is recognized as a static editor window");
+Check(!DynamicProducerPolicy.IsKnownStaticWindowName("UnknownWindow"), "unknown editor windows remain conservative");
 Check(DisplayRatePolicy.TryCreate(240, out var display240), "read 240 Hz profile for labels");
 var nativeLabels = new FpsLabelValues("160", "320", "∞");
 var mappedLabels = nativeLabels.Map(enabled: true, display240);
