@@ -4,7 +4,6 @@
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <TargetFramework>netcoreapp6.0</TargetFramework>
     <Nullable>annotations</Nullable>
-    <AAInstallPath Condition="'$(AAInstallPath)' == ''">F:\AzureArchive_100_fix</AAInstallPath>
   </PropertyGroup>
   <PropertyGroup>
     <LangVersion>12.0</LangVersion>

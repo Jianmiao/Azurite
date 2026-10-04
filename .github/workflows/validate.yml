@@ -1,0 +1,41 @@
+name: Validate portable source
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  portable-checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+      - name: Build recovered Core source
+        run: dotnet build Core/Azurite.Core.csproj --configuration Release
+      - name: Check host profile decisions
+        run: dotnet run --project Tests/HostProfile.Tests.csproj --configuration Release
+      - name: Check scrolling guard behavior
+        run: dotnet run --project ScrollTests/ScrollTests.csproj --configuration Release
+      - name: Check interop contracts
+        run: dotnet run --project InteropTests/InteropTests.csproj --configuration Release
+      - name: Parse release scripts
+        shell: pwsh
+        run: |
+          foreach ($path in @('tools/Package-Release.ps1', 'tools/Test-ReleaseArchive.ps1')) {
+            $tokens = $null
+            $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD $path), [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) { throw ($errors | Out-String) }
+          }

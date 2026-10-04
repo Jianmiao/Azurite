@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><OutputType>Exe</OutputType><LangVersion>latest</LangVersion><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><CheckEolTargetFramework>false</CheckEolTargetFramework></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/HostInteropContract.cs" Link="Production/HostInteropContract.cs" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.4" />
+  </ItemGroup>
+</Project>

@@ -15,12 +15,15 @@ internal sealed record HostProfile(string Name, bool Supported, bool NativePatch
             Same(interop, "AFA74D22354E75803E63E8D39F48C4FDE4F13379BA4400BC12C0E880EAEBB11C") &&
             Same(unity, "86FE750B9E5F0B5E5A9FB8E699671036E8EFB8BB05B613AFB4B9BA2DB197B927"))
             return Legacy;
-        if (Same(game, "2B8C36F681A3932071D4E609BB034034B087D4D87DFA88A7FFC1A4A206169528") &&
-            Same(interop, "94CB91F26C01DFD92222BB6F70DA4C951707063C8B5D7D4507EDB9B4304920AC") &&
-            Same(unity, "26E26B2E4BD944F06EF8AD13C0C9C3BB69C1E70109600894178BC835CEDEBA22"))
-            return Fix;
         return Unsupported;
     }
+
+    internal static bool IsPortableCandidate(string game, string metadata) =>
+        Same(game, "2B8C36F681A3932071D4E609BB034034B087D4D87DFA88A7FFC1A4A206169528") &&
+        Same(metadata, "107C1E0F80C1C6A87CA7239C803DF711ED1DD1F9D2BBAAE0EBF5C9EA9F6078A9");
+
+    internal static HostProfile ResolvePortable(string game, string metadata, bool bindingsVerified) =>
+        bindingsVerified && IsPortableCandidate(game, metadata) ? Fix : Unsupported;
 
     private static bool Same(string actual, string expected) =>
         string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);

@@ -2,3 +2,7 @@
 **/obj/
 *.user
 *.log
+dist/
+artifacts/
+*.zip
+*.partial

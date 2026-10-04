@@ -1,7 +1,7 @@
 {
   "name": "Azurite",
   "version_number": "0.7.1",
-  "website_url": "",
+  "website_url": "https://github.com/Jianmiao/Azurite",
   "description": "蓝铜矿：AA 1.0.0-fix 滚动保护、60/120/无限帧率及保守静态绘制适配。",
   "dependencies": []
 }

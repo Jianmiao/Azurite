@@ -208,10 +208,29 @@ internal sealed class HostCompatibility : IDisposable
 				return;
 			}
 			_gameRoot = ((!string.IsNullOrWhiteSpace(Paths.GameRootPath)) ? Paths.GameRootPath : (Path.GetDirectoryName(path) ?? string.Empty));
-			Profile = _gameRoot.Length == 0 ? HostProfile.Unsupported : HostProfile.Resolve(
-				ReadIdentityHash(Path.Combine(_gameRoot, "GameAssembly.dll")),
-				ReadIdentityHash(Path.Combine(_gameRoot, "BepInEx", "interop", "Assembly-CSharp.dll")),
-				ReadIdentityHash(Path.Combine(_gameRoot, "BepInEx", "interop", "UnityEngine.CoreModule.dll")));
+			if (_gameRoot.Length == 0)
+			{
+				_hostReason = "AA installation directory is unavailable";
+				return;
+			}
+			string gameHash = ReadIdentityHash(Path.Combine(_gameRoot, "GameAssembly.dll"));
+			string metadataHash = ReadIdentityHash(Path.Combine(_gameRoot, "AzureArchive_Data", "il2cpp_data", "Metadata", "global-metadata.dat"));
+			if (HostProfile.IsPortableCandidate(gameHash, metadataHash))
+			{
+				if (!HostInteropContract.TryVerify(typeof(Plugin).Assembly.Location, _gameRoot, out string bindingReason))
+				{
+					_hostReason = "AA binding verification failed: " + bindingReason;
+					return;
+				}
+				Profile = HostProfile.ResolvePortable(gameHash, metadataHash, bindingsVerified: true);
+				_log.LogInfo("Azurite " + bindingReason + "; generated binding file hashes are not used for this host.");
+			}
+			else
+			{
+				Profile = HostProfile.Resolve(gameHash,
+					ReadIdentityHash(Path.Combine(_gameRoot, "BepInEx", "interop", "Assembly-CSharp.dll")),
+					ReadIdentityHash(Path.Combine(_gameRoot, "BepInEx", "interop", "UnityEngine.CoreModule.dll")));
+			}
 			if (!Profile.Supported)
 			{
 				_hostReason = "unsupported AA host identity";
