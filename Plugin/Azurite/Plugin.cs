@@ -88,6 +88,8 @@ public sealed class Plugin : BasePlugin
 
 	private ConfigEntry<double> _repaintSettleSeconds;
 
+	private ConfigEntry<double> _mutationSettleSeconds;
+
 	private ConfigEntry<double> _idleAnimationFps;
 
 	private Harmony? _harmony;
@@ -121,6 +123,8 @@ public sealed class Plugin : BasePlugin
 	private DialogueTextLayoutCache? _layoutCache;
 
 	private DialoguePanelWorkCulling? _panelWork;
+
+	private DialogueMutationCoordinator? _mutation;
 
 	private PreviewTargetLease? _previewTarget;
 
@@ -220,6 +224,7 @@ public sealed class Plugin : BasePlugin
 		_safetyRepaintFps = base.Config.Bind("On Change Rendering", "SafetyRepaintFps", 1.0, "Safety redraw rate for static surfaces: 1..15. Retained because custom shaders/textures do not expose complete invalidation. This is not zero rendering.");
 		_idleAnimationFps = base.Config.Bind("On Change Rendering", "IdleAnimationFps", 30.0, "Draw FPS for changing UI while the user is idle. 15..60. Active input and protected previews retain selected 60/120/unlimited cadence.");
 		_repaintSettleSeconds = base.Config.Bind("On Change Rendering", "SettleSeconds", 0.35, "Keep normal rendering briefly after visual changes so UI transitions finish. Range 0.1..5 seconds.");
+		_mutationSettleSeconds = base.Config.Bind("Large Projects", "DialogueMutationSettleSeconds", 0.35, "Keep normal rendering after native dialogue add/delete/sync completes so list layout and selection settle. Native operations remain synchronous.");
 		_wheelMultiplier = base.Config.Bind("Editor Scrolling", "WheelMultiplier", 3f, "Wheel travel multiplier for catalog and property tabs. 1 restores native behavior; capped at 6. Does not alter drag distance.");
 		_dialogueWheelMultiplier = base.Config.Bind("Editor Scrolling", "DialogueWheelMultiplier", 4.5f, "Independent wheel travel multiplier for the left dialogue list. 1 restores native behavior; capped at 6.");
 		_modManagerWheelMultiplier = base.Config.Bind("Editor Scrolling", "ModManagerWheelMultiplier", 4.5f, "Independent wheel travel multiplier for the Mod manager list. 1 restores native behavior; capped at 6.");
@@ -279,6 +284,14 @@ public sealed class Plugin : BasePlugin
 			});
 			bool num = _host.Initialize(_harmony);
 			_activity.AllowLegacyLoadingException = _host.Profile.LegacyLoadingException;
+			if (num)
+			{
+				_mutation = new DialogueMutationCoordinator(delegate(string message)
+				{
+					base.Log.LogInfo(message);
+				}, Wake);
+				_mutation.Install();
+			}
 			bool nativePatches = num && _host.Profile.NativePatches;
 			bool plainTextPatch = num && _host.Profile.PlainTextPatch;
 			if (plainTextPatch && _plainTextDispatch.Value)
@@ -433,17 +446,18 @@ public sealed class Plugin : BasePlugin
 			RefreshNativeLabels();
 		}
 		HostCompatibilitySnapshot hostCompatibilitySnapshot = _host.Probe();
+		bool mutationProtected = _mutation?.IsBlocking(now, Math.Clamp(_mutationSettleSeconds.Value, 0.1, 5.0)) ?? false;
 		if (_plainText != null)
 		{
 			_plainText.Enabled = _plainTextDispatch.Value && (_host.Profile.NativePatches || _host.Profile.PlainTextPatch) && !hostCompatibilitySnapshot.ExportActive;
 			_plainText.Update(now);
 		}
-		_layoutCache?.Update(now, _layoutCacheEnabled.Value && _host.Profile.NativePatches && !hostCompatibilitySnapshot.ExportActive);
+		_layoutCache?.Update(now, _layoutCacheEnabled.Value && _host.Profile.NativePatches && !hostCompatibilitySnapshot.ExportActive && !mutationProtected);
 		if (_panelWork != null)
 		{
 			_panelWork.Enabled = _panelWorkEnabled.Value;
 			_panelWork.DryRun = _panelWorkDryRun.Value;
-			_panelWork.Update(now, _host.Profile.NativePatches && hostCompatibilitySnapshot.ProbeHealthy && !hostCompatibilitySnapshot.ExportActive);
+			_panelWork.Update(now, _host.Profile.NativePatches && hostCompatibilitySnapshot.ProbeHealthy && !hostCompatibilitySnapshot.ExportActive && !mutationProtected);
 		}
 		_scroll?.Update(now, _host.HostSupported, _wheelMultiplier.Value, _dialogueWheelMultiplier.Value, _modManagerWheelMultiplier.Value, _backgroundWheelMultiplier.Value);
 		_mappingAllowed = hostCompatibilitySnapshot.Supported && hostCompatibilitySnapshot.ProbeHealthy && !hostCompatibilitySnapshot.ExportActive;
@@ -497,10 +511,10 @@ public sealed class Plugin : BasePlugin
 		_usingRepaint = (byte)usingRepaint != 0;
 		bool flag = allowPreviewOptimization && _adaptivePreview.Value && hostActivitySnapshot.HasPreview && hostActivitySnapshot.CanThrottle && double.IsFinite(_previewIdleFps.Value) && _previewIdleFps.Value >= 30.0 && _previewIdleFps.Value <= 120.0;
 		CadencePlan cadencePlan = (flag ? CadenceResolver.Resolve(_rate.IsReady ? _rate.FramesPerSecond : double.NaN, _previewIdleFps.Value, _previewIdleFps.Value, 4096) : (_usingRepaint ? CadenceResolver.Resolve(_rate.IsReady ? _rate.FramesPerSecond : double.NaN, visualCadencePlan.RenderFps, visualCadencePlan.RenderFps, 4096) : (_measuredCadence.Value ? CadenceResolver.Resolve(_rate.IsReady ? _rate.FramesPerSecond : double.NaN, _idleFps.Value, _deepFps.Value) : new CadencePlan(_idleInterval.Value >= 1 && _deepInterval.Value >= _idleInterval.Value, _idleInterval.Value, _deepInterval.Value, "manual-intervals"))));
-		bool flag2 = _scrollProtected || !hostActivitySnapshot.IsEditor || !hostActivitySnapshot.CanThrottle || !cadencePlan.Valid;
+		bool flag2 = _scrollProtected || mutationProtected || !hostActivitySnapshot.IsEditor || !hostActivitySnapshot.CanThrottle || !cadencePlan.Valid;
 		RenderDecision renderDecision = _policy.Update(now, enabled: true, compatible: true, flag2, hostActivitySnapshot.HasInteraction, Application.isFocused, (!cadencePlan.Valid) ? 1 : cadencePlan.IdleInterval, (!cadencePlan.Valid) ? 1 : cadencePlan.DeepInterval, _usingRepaint ? value2 : _idleDelay.Value, _usingRepaint ? value2 : _deepDelay.Value);
 		_mode = renderDecision.Mode;
-		_reason = (_scrollProtected ? "scroll input, viewport motion or settle hold" : ((!cadencePlan.Valid) ? cadencePlan.Reason : (flag2 ? hostActivitySnapshot.Reason : ((flag && renderDecision.Interval > 1) ? "idle embedded editor preview" : ((_usingRepaint && renderDecision.Interval > 1) ? visualCadencePlan.Reason : renderDecision.Reason)))));
+		_reason = (_scrollProtected ? "scroll input, viewport motion or settle hold" : (mutationProtected ? "dialogue mutation or layout settle" : ((!cadencePlan.Valid) ? cadencePlan.Reason : (flag2 ? hostActivitySnapshot.Reason : ((flag && renderDecision.Interval > 1) ? "idle embedded editor preview" : ((_usingRepaint && renderDecision.Interval > 1) ? visualCadencePlan.Reason : renderDecision.Reason))))));
 		if (renderDecision.Interval <= 1)
 		{
 			_intervalLease.Restore();
@@ -864,6 +878,8 @@ public sealed class Plugin : BasePlugin
 			_layoutCache = null;
 			_panelWork?.Dispose();
 			_panelWork = null;
+			_mutation?.Dispose();
+			_mutation = null;
 			_previewCadence?.Dispose();
 			_previewCadence = null;
 			_previewTarget?.Dispose();

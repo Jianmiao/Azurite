@@ -78,5 +78,31 @@ Check(DisplayRatePolicy.TryCreate(60, out var display60) &&
 Check(DisplayRatePolicy.TryCreate(320, out var display320) &&
       new FpsLabelValues("160", "320", "∞").Map(true, display320) == new FpsLabelValues("60", "120", "∞"),
       "320 Hz labels stay at 60/120/infinity");
+
+var mutation = new DialogueMutationState();
+Check(!mutation.IsActive && !mutation.IsBlocking(1.0, 0.35),
+    "mutation gate is idle before the first native operation");
+var outerMutation = mutation.Enter();
+Check(mutation.IsActive && mutation.Depth == 1 && mutation.IsBlocking(1.0, 0.35),
+    "outer dialogue mutation protects the list while native work is running");
+var innerMutation = mutation.Enter();
+Check(mutation.Depth == 2 && mutation.Generation == 1,
+    "nested sync call shares one mutation generation");
+innerMutation.Complete(2.0);
+Check(mutation.IsActive && mutation.Depth == 1,
+    "nested sync completion does not release the outer mutation");
+outerMutation.Complete(2.0);
+Check(!mutation.IsActive && mutation.IsBlocking(2.2, 0.35) && !mutation.IsBlocking(2.36, 0.35),
+    "completed mutation keeps a bounded settle hold then releases");
+outerMutation.Complete(2.4);
+Check(mutation.Depth == 0 && mutation.Generation == 1,
+    "repeated finalizer completion is idempotent");
+var failedMutation = mutation.Enter();
+failedMutation.Complete(double.NaN);
+Check(mutation.IsBlocking(3.0, 0.35),
+    "invalid native completion time fails closed for the current session");
+mutation.Reset(4.0);
+Check(!mutation.IsActive && mutation.IsBlocking(4.1, 0.2) && !mutation.IsBlocking(4.21, 0.2),
+    "reset clears depth while retaining a short protective settle window");
 Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
 return failed == 0 ? 0 : 1;
