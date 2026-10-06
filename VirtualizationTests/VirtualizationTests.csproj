@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework><NoWarn>CS8600;CS8602;CS8603;CS8625</NoWarn></PropertyGroup>
+ <ItemGroup><Compile Include="../Plugin/Azurite/DialogueVirtualization.cs" Link="DialogueVirtualization.cs"/><Compile Include="../Plugin/Azurite/DialogueVirtualizationWindow.cs" Link="DialogueVirtualizationWindow.cs"/></ItemGroup>
+</Project>

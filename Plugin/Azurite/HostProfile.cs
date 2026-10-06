@@ -3,11 +3,14 @@ using System;
 namespace Azurite;
 
 internal sealed record HostProfile(string Name, bool Supported, bool NativePatches, bool FpsLabelPostfix,
-    bool PlainTextPatch, bool LegacyExporter, bool PreviewOptimization, bool PreviewOwnership, bool LegacyLoadingException)
+    bool PlainTextPatch, bool LegacyExporter, bool PreviewOptimization, bool PreviewOwnership,
+    bool LegacyLoadingException, bool ProgressiveEditorLoading)
 {
-    internal static readonly HostProfile Unsupported = new("unsupported", false, false, false, false, false, false, false, false);
-    private static readonly HostProfile Legacy = new("1.0-beta", true, true, false, true, true, true, true, true);
-    private static readonly HostProfile Fix = new("1.0.0-fix (safe idle surfaces and scrolling)", true, false, true, true, false, true, false, false);
+    internal static readonly HostProfile Unsupported = new("unsupported", false, false, false, false, false, false, false, false, false);
+    private static readonly HostProfile Legacy = new("1.0-beta", true, true, false, true, true, true, true, true, false);
+    // The portable candidate is the only host for which the progressive editor
+    // state-machine ABI was inspected. This remains an opt-in feature in Plugin.
+    private static readonly HostProfile Fix = new("1.0.0-fix (safe idle surfaces and scrolling)", true, false, true, true, false, true, false, false, true);
 
     internal static HostProfile Resolve(string game, string interop, string unity)
     {

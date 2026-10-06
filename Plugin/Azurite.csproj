@@ -10,8 +10,19 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup />
-  <ItemGroup />
   <ItemGroup>
+    <!-- Historical test fixtures still exercise the retired model; it must not
+         ship in the plugin after the native/managed iterator fault. -->
+    <Compile Remove="Azurite/ProgressivePreloadEnumerator.cs" />
+    <Compile Remove="Azurite/ProgressivePreloadBudget.cs" />
+    <Compile Remove="Azurite/ProgressiveEditorGate.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\Newtonsoft.Json.dll</HintPath></Reference>
+    <Reference Include="UniTask" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\UniTask.dll</HintPath></Reference>
+    <Reference Include="spine-unity" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\spine-unity.dll</HintPath></Reference>
+    <Reference Include="spine-csharp" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\spine-csharp.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.AnimationModule" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\UnityEngine.AnimationModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.CoreModule" Private="false">
       <HintPath>$(AAInstallPath)\BepInEx\interop\UnityEngine.CoreModule.dll</HintPath>
     </Reference>

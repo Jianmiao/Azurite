@@ -81,6 +81,15 @@ internal sealed class FpsController : System.IDisposable
 
 	private FpsPlan _resumeExpected;
 
+	private FpsPlan _normalPlan;
+
+	private bool _idleOwned;
+	private bool _idleWritePending;
+	private FpsPlan _idleWriteBefore;
+	private FpsPlan _idleWriteMiddle;
+
+	internal int IdleFrameRate => _idleOwned ? _lastWritten.TargetFrameRate : 0;
+
 	public bool IsOperational
 	{
 		get
@@ -134,6 +143,7 @@ internal sealed class FpsController : System.IDisposable
 		_update++;
 		if (!allowed)
 		{
+			RestoreIdleFrameRate();
 			if (_allowed && !_exportSuspended)
 			{
 				_resumePending = true;
@@ -162,6 +172,7 @@ internal sealed class FpsController : System.IDisposable
 			}
 			if (Interlocked.Exchange(ref _eventTier, int.MinValue) != int.MinValue)
 			{
+				RestoreIdleFrameRate(allowNativeWrite: true);
 				if (!_settings.isReady)
 				{
 					Unsubscribe();
@@ -208,6 +219,7 @@ internal sealed class FpsController : System.IDisposable
 		{
 			return _exportHandoffSucceeded;
 		}
+		bool idleRestored = RestoreIdleFrameRate();
 		_exportSuspended = true;
 		_allowed = false;
 		_resumePending = _everBound;
@@ -215,10 +227,10 @@ internal sealed class FpsController : System.IDisposable
 		_resumePairAuthorized = false;
 		_pendingTier = int.MinValue;
 		Interlocked.Exchange(ref _eventTier, int.MinValue);
-		_exportHandoffSucceeded = !_owned;
+		_exportHandoffSucceeded = !_owned && !_idleOwned;
 		try
 		{
-			if (_owned && ReleaseOwned())
+			if (idleRestored && _owned && ReleaseOwned())
 			{
 				_resumeExpected = Read();
 				_resumeExpectedValid = true;
@@ -329,7 +341,7 @@ internal sealed class FpsController : System.IDisposable
 		_displayRateWarningLogged = false;
 		_displayRefreshRate = display.RefreshRate;
 		if (rateNeedsReapply && _owned && _allowed && !_exportSuspended && _settings != null && _pendingTier == int.MinValue &&
-			display.PlanForTier(_settings.fpsTier) != _lastWritten)
+				display.PlanForTier(_settings.fpsTier) != (_idleOwned ? _normalPlan : _lastWritten))
 			Queue(_settings.fpsTier, changedTier: false, now, deferOneUpdate: true);
 	}
 
@@ -351,6 +363,7 @@ internal sealed class FpsController : System.IDisposable
 
 	private void Apply(int tier, bool changedTier, double now)
 	{
+		if (!RestoreIdleFrameRate(allowNativeWrite: true)) return;
 		_pendingIsTierChange = false;
 		bool isEnabled = _blocked;
 		if (!isEnabled)
@@ -465,6 +478,71 @@ internal sealed class FpsController : System.IDisposable
 		return new FpsPlan(Application.targetFrameRate, QualitySettings.vSyncCount);
 	}
 
+	internal void SetIdleFrameRate(int requestedFps)
+	{
+		if (requestedFps == 0 || !_allowed || _exportSuspended || !_owned || !IsOperational || _pendingTier != NoTier)
+		{
+			RestoreIdleFrameRate();
+			return;
+		}
+		try
+		{
+			if (requestedFps < 10 || requestedFps > 60) { RestoreIdleFrameRate(); return; }
+			FpsPlan current = Read();
+			if (current != _lastWritten) { _idleOwned = false; Relinquish("another writer changed the idle frame cap"); return; }
+			FpsPlan normal = _idleOwned ? _normalPlan : _lastWritten;
+			double normalFps = normal.VSyncCount > 0 ?
+				(CurrentDisplayRate.TryRead(out DisplayRatePolicy display) ? display.ReportedRate / normal.VSyncCount : double.NaN) : normal.TargetFrameRate;
+			if (!double.IsFinite(normalFps) || normalFps <= 0 || requestedFps >= normalFps) { RestoreIdleFrameRate(); return; }
+			FpsPlan desired = new(requestedFps, 0);
+			if (desired == current) return;
+			_normalPlan = normal;
+			_idleOwned = true;
+			WriteIdle(desired);
+			if (Read() != desired) { Relinquish("idle frame-cap write did not remain in effect"); }
+			else _idleWritePending = false;
+		}
+		catch (System.Exception error)
+		{
+			_failed = true;
+			RestoreIdleFrameRate();
+			_log.LogWarning("Azurite idle frame cap failed: " + error.GetType().Name);
+		}
+	}
+
+	internal bool RestoreIdleFrameRate(bool allowNativeWrite = false)
+	{
+		if (!_idleOwned) return true;
+		try
+		{
+			FpsPlan current = Read();
+			if (current != _lastWritten && !(_idleWritePending && (current == _idleWriteBefore || current == _idleWriteMiddle)))
+			{
+				_idleOwned = false;
+				if (allowNativeWrite && _settings != null && IsNativeWrite(_settings.fpsTier, current)) return true;
+				Relinquish("another writer owns the idle frame cap at restore");
+				return false;
+			}
+			WriteIdle(_normalPlan);
+			if (Read() != _normalPlan) return false;
+			_lastWritten = _normalPlan;
+			_idleOwned = false;
+			_idleWritePending = false;
+			return true;
+		}
+		catch (System.Exception error) { _failed = true; _log.LogWarning("Azurite idle frame-cap restore failed: " + error.GetType().Name); return false; }
+	}
+
+	private void WriteIdle(FpsPlan pair)
+	{
+		_idleWriteBefore = Read();
+		_idleWriteMiddle = new FpsPlan(_idleWriteBefore.TargetFrameRate, pair.VSyncCount);
+		_idleWritePending = true;
+		_lastWritten = pair;
+		QualitySettings.vSyncCount = pair.VSyncCount;
+		Application.targetFrameRate = pair.TargetFrameRate;
+	}
+
 	private static void Write(FpsPlan pair)
 	{
 		QualitySettings.vSyncCount = pair.VSyncCount;
@@ -492,6 +570,8 @@ internal sealed class FpsController : System.IDisposable
 
 	private void Relinquish(string reason)
 	{
+		_idleOwned = false;
+		_idleWritePending = false;
 		_owned = false;
 		_pendingTier = int.MinValue;
 		if (!_blocked)
@@ -529,6 +609,7 @@ internal sealed class FpsController : System.IDisposable
 		Unsubscribe();
 		try
 		{
+			RestoreIdleFrameRate();
 			ReleaseOwned();
 		}
 		catch (System.Exception ex)

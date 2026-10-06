@@ -28,6 +28,18 @@ jobs:
         run: dotnet run --project Tests/HostProfile.Tests.csproj --configuration Release
       - name: Check scrolling guard behavior
         run: dotnet run --project ScrollTests/ScrollTests.csproj --configuration Release
+      - name: Check scoped preview policies and scheduling
+        run: dotnet run --project PreviewTests/PreviewTests.csproj --configuration Release
+      - name: Check preview texture ownership and export restoration
+        run: dotnet run --project PreviewLeaseTests/PreviewLeaseTests.csproj --configuration Release
+      - name: Check large panel observation
+        run: dotnet run --project ObserverTests/ObserverTests.csproj --configuration Release
+      - name: Check completed animation observation
+        run: dotnet run --project AnimationTests/AnimationTests.csproj --configuration Release
+      - name: Check native dialogue rebuild boundary
+        run: dotnet run --project RowReuseTests/RowReuseTests.csproj --configuration Release
+      - name: Check optional editor bloom restoration
+        run: dotnet run --project BloomTests/BloomTests.csproj --configuration Release
       - name: Check interop contracts
         run: dotnet run --project InteropTests/InteropTests.csproj --configuration Release
       - name: Parse release scripts

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <NoWarn>CS8632</NoWarn>
+    <ProgressiveControllerSource Condition="'$(ProgressiveControllerSource)' == ''">../Plugin/Azurite/ProgressiveEditorLoading.cs</ProgressiveControllerSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(ProgressiveControllerSource)" Link="Production/ProgressiveEditorLoading.cs" />
+    <Compile Include="../Plugin/Azurite/ProgressivePreloadBudget.cs" Link="Production/ProgressivePreloadBudget.cs" />
+    <Compile Include="../Plugin/Azurite/ProgressivePreloadEnumerator.cs" Link="Production/ProgressivePreloadEnumerator.cs" />
+    <Compile Include="../Plugin/Azurite/ProgressiveEditorGate.cs" Link="Production/ProgressiveEditorGate.cs" />
+    <Compile Include="../Plugin/Azurite/ProgressiveResourceRequest.cs" Link="Production/ProgressiveResourceRequest.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <AAInstallPath Condition="'$(AAInstallPath)' == ''">F:\AzureArchive_100_fix</AAInstallPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/AzuriteDriver.cs" Link="Production/AzuriteDriver.cs" />
+    <Reference Include="Mono.Cecil"><HintPath>$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll</HintPath></Reference>
+    <AssemblyMetadata Include="AAInstallPath" Value="$(AAInstallPath)" />
+  </ItemGroup>
+</Project>

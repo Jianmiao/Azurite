@@ -54,6 +54,7 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 	private readonly Harmony _harmony = new Harmony("halocue.azurite.dialogue-panel-work");
 
 	private readonly System.Action<string> _log;
+	private readonly UiRepaintObserver? _repaint;
 
 	private readonly System.Collections.Generic.Dictionary<System.IntPtr, Entry> _panels = new System.Collections.Generic.Dictionary<System.IntPtr, Entry>();
 
@@ -109,11 +110,28 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 
 	private Vector4 _clip;
 
+	// Classification is derived from these transforms.  Keeping the previous
+	// sample avoids walking every row on every driver tick while the editor is
+	// static; UIPanel.UpdateSelf itself remains fully native and unchanged.
+	private bool _hasClassification;
+
+	private long _classificationScans;
+
+	private long _classificationReuses;
+
 	private float _pitch;
 
 	private long _eligible;
 
 	private long _skipped;
+
+	private long _scopeProtected;
+
+	private long _dirtyProtected;
+
+	private long _callbackProtected;
+
+	private long _drawCallProtected;
 
 	private double _updateMilliseconds;
 
@@ -131,9 +149,14 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 
 	public long SkippedCalls => _skipped;
 
-	public DialoguePanelWorkCulling(System.Action<string> log)
+	public long ClassificationScans => _classificationScans;
+
+	public long ClassificationReuses => _classificationReuses;
+
+	public DialoguePanelWorkCulling(System.Action<string> log, UiRepaintObserver? repaint = null)
 	{
 		_log = log ?? throw new System.ArgumentNullException("log");
+		_repaint = repaint;
 	}
 
 	public bool Install()
@@ -271,17 +294,30 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 					}
 				}
 			}
-			_contentMatrix = _content.localToWorldMatrix;
-			_viewportMatrix = uIPanel.worldToLocal;
-			_clip = uIPanel.finalClipRegion;
-			if (!Finite(_clip.x) || !Finite(_clip.y) || !Finite(_clip.z) || !Finite(_clip.w) || _clip.z <= 0f || _clip.w <= 0f)
+			Matrix4x4 contentMatrix = _content.localToWorldMatrix;
+			Matrix4x4 viewportMatrix = uIPanel.worldToLocal;
+			Vector4 clip = uIPanel.finalClipRegion;
+			if (!Finite(clip.x) || !Finite(clip.y) || !Finite(clip.z) || !Finite(clip.w) || clip.z <= 0f || clip.w <= 0f)
 			{
 				Reason = "viewport bounds invalid";
 				return;
 			}
-			foreach (Entry row2 in _rows)
+			bool classificationChanged = !_hasClassification || contentMatrix != _contentMatrix || viewportMatrix != _viewportMatrix || clip != _clip;
+			_contentMatrix = contentMatrix;
+			_viewportMatrix = viewportMatrix;
+			_clip = clip;
+			if (classificationChanged)
 			{
-				row2.Outside = IsOutside(row2.Bounds, _contentMatrix, _viewportMatrix, _clip, _pitch * 2f);
+				foreach (Entry row2 in _rows)
+				{
+					row2.Outside = IsOutside(row2.Bounds, _contentMatrix, _viewportMatrix, _clip, _pitch * 2f);
+				}
+				_hasClassification = true;
+				_classificationScans++;
+			}
+			else
+			{
+				_classificationReuses++;
 			}
 			_frame = Time.frameCount;
 			_checkedFrame = -1;
@@ -300,7 +336,7 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 			if (now >= _nextLog)
 			{
 				_nextLog = now + 5.0;
-				_log($"dialogue-panel-work registered={_panels.Count} building={_nextRow}/{_rowCount} eligible={_eligible} skipped={_skipped} dryRun={DryRun} observerMs={_updateMilliseconds:F2} reason={Reason}.");
+				_log($"dialogue-panel-work registered={_panels.Count} building={_nextRow}/{_rowCount} eligible={_eligible} skipped={_skipped} scans={_classificationScans} reuses={_classificationReuses} scopeProtected={_scopeProtected} dirtyProtected={_dirtyProtected} callbackProtected={_callbackProtected} drawCallProtected={_drawCallProtected} dryRun={DryRun} observerMs={_updateMilliseconds:F2} reason={Reason}.");
 				_updateMilliseconds = 0.0;
 			}
 		}
@@ -373,7 +409,7 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 	private static bool BeforeUpdate(UIPanel __instance)
 	{
 		DialoguePanelWorkCulling active = _active;
-		if (active == null || !active._allowed || !active.Enabled || !active._ready || active._frame != Time.frameCount || !active._panels.TryGetValue(__instance.Pointer, out Entry value) || !value.Outside)
+		if (active == null || !active._allowed || !active.Enabled || !active._ready || __instance == null || active._frame != Time.frameCount || !active._panels.TryGetValue(__instance.Pointer, out Entry value) || !value.Outside)
 		{
 			return true;
 		}
@@ -384,8 +420,24 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 				active._checkedFrame = active._frame;
 				active._matrixMatches = active._content != null && active._viewport != null && active._content.localToWorldMatrix == active._contentMatrix && active._viewport.worldToLocal == active._viewportMatrix && active._viewport.finalClipRegion == active._clip;
 			}
-			if (!active._matrixMatches || active._builtRevision != active._layoutRevision || __instance.mRebuild || __instance.mUpdateScroll || __instance.onGeometryUpdated != null || __instance.drawCalls == null || __instance.drawCalls.Count != 0)
+			if (!active._matrixMatches || active._builtRevision != active._layoutRevision)
 			{
+				active._scopeProtected++;
+				return true;
+			}
+			if (__instance.mRebuild || __instance.mUpdateScroll)
+			{
+				active._dirtyProtected++;
+				return true;
+			}
+			if (__instance.onGeometryUpdated != null && active._repaint?.HasOnlyOwnGeometryCallback(__instance) != true)
+			{
+				active._callbackProtected++;
+				return true;
+			}
+			if (__instance.drawCalls == null || __instance.drawCalls.Count != 0)
+			{
+				active._drawCallProtected++;
 				return true;
 			}
 			active._eligible++;
@@ -405,7 +457,9 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 	private static void BeforeRefresh(ScriptListItem __instance)
 	{
 		DialoguePanelWorkCulling active = _active;
-		if (active == null || !active._allowed || __instance == null)
+		// Refreshes can happen while a modal or a native edit temporarily prevents
+		// culling.  Those edits must invalidate the registry before it is reused.
+		if (active == null || active._disposed || __instance == null)
 		{
 			return;
 		}
@@ -432,6 +486,7 @@ internal sealed class DialoguePanelWorkCulling : System.IDisposable
 	private void ResetRegistry()
 	{
 		_ready = false;
+		_hasClassification = false;
 		_frame = -1;
 		_nextRow = 0;
 		_panels.Clear();

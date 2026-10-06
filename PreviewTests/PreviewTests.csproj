@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/HostProfile.cs" Link="HostProfile.cs" />
+    <Compile Include="../Plugin/Azurite/PreviewOptimizationPolicy.cs" Link="PreviewOptimizationPolicy.cs" />
+    <Compile Include="../Plugin/Azurite/PreviewResolutionPlan.cs" Link="PreviewResolutionPlan.cs" />
+    <Compile Include="../Plugin/Azurite/PreviewCadenceSchedule.cs" Link="PreviewCadenceSchedule.cs" />
+    <Compile Include="../Plugin/Azurite/HostActivitySnapshot.cs" Link="HostActivitySnapshot.cs" />
+    <Compile Include="../Plugin/Azurite/EditorCadencePolicy.cs" Link="EditorCadencePolicy.cs" />
+    <Reference Include="Azurite.Core"><HintPath>../references/Azurite.Core.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

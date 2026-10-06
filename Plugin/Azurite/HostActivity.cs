@@ -4,6 +4,12 @@ using AzureArchive.Automation;
 using Il2CppSystem.Collections.Generic;
 using Studio.Scripts;
 using Studio.Scripts.Window;
+using BackgroundExplorerWindow = Studio.Scripts.Window.BackgroundExplorer.BackgroundExplorer;
+using BgmExplorerWindow = Studio.Scripts.Window.BGMExplorer.BGMExplorer;
+using CharacterExplorerWindow = Studio.Scripts.Window.CharacterExplorer.CharacterExplorer;
+using EmotionExplorerWindow = Studio.Scripts.Window.EmotionExplorer.EmotionExplorer;
+using PopupImageExplorerWindow = Studio.Scripts.Window.PopupImageExplorer.PopupImageExplorer;
+using SoundExplorerWindow = Studio.Scripts.Window.SoundExplorer.SoundExplorer;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -16,6 +22,10 @@ internal sealed class HostActivity
 	private long _lastDiscoveryTicks;
 
 	private long _lastFailureReportTicks;
+
+	private long _inactiveLoadingSinceTicks;
+
+	private int _inactiveLoadingCount = -1;
 
 	private StudioCommon? _studio;
 
@@ -52,12 +62,8 @@ internal sealed class HostActivity
 		_report = report;
 	}
 
-	public HostActivitySnapshot Observe(bool allowPreviewIdle = false, bool scrollProtected = false)
+	public HostActivitySnapshot Observe(bool allowPreviewIdle = false, bool scrollProtected = false, bool allowAmbientPreview = false)
 	{
-		if (scrollProtected)
-		{
-			return HostActivitySnapshot.Blocked("editor scroll protection is active", isEditor: true);
-		}
 		bool hasEmbeddedPreview = false;
 		try
 		{
@@ -68,21 +74,17 @@ internal sealed class HostActivity
 			{
 				return HostActivitySnapshot.Unknown(reason3, hasEmbeddedPreview);
 			}
-			if (HasPreviewOrAnimation(editorSurface, out string reason2, out hasEmbeddedPreview) && (!allowPreviewIdle || !hasEmbeddedPreview))
+			if (HasPreviewOrAnimation(editorSurface, allowAmbientPreview, out string reason2, out hasEmbeddedPreview, out bool ambientPreview))
 			{
-				return HostActivitySnapshot.Blocked(reason2, isEditor: true, hasEmbeddedPreview);
+				return HostActivitySnapshot.Blocked(reason2, isEditor: true, hasPreview: hasEmbeddedPreview, hasDynamicPreview: hasEmbeddedPreview);
 			}
-			if (hasEmbeddedPreview && (_studio == null || !_studio.isActiveAndEnabled || _studio.entryNode == null || !_studio.entryNode.gameObject.activeInHierarchy || _inspector == null || _inspector.preview == null || !_inspector.preview.ready))
+			if (hasEmbeddedPreview && (_studio == null || !_studio.isActiveAndEnabled || _studio.entryNode == null))
 			{
-				return HostActivitySnapshot.Blocked("embedded preview editor is not ready", isEditor: true, hasPreview: true);
+				return HostActivitySnapshot.Blocked("embedded preview studio or entry node is unavailable", isEditor: true, hasPreview: true);
 			}
-			if (flag)
+			if (hasEmbeddedPreview && (_inspector == null || !_inspector.isActiveAndEnabled || _inspector.preview == null))
 			{
-				return HostActivitySnapshot.Blocked(reason, isEditor: true, hasEmbeddedPreview);
-			}
-			if (HasInputOrIme(out string reason4))
-			{
-				return HostActivitySnapshot.Blocked(reason4, isEditor: true, hasEmbeddedPreview);
+				return HostActivitySnapshot.Blocked("embedded preview inspector is unavailable", isEditor: true, hasPreview: true);
 			}
 			if (HasBlockingWindow(out string reason5))
 			{
@@ -92,10 +94,20 @@ internal sealed class HostActivity
 			{
 				return HostActivitySnapshot.Blocked(reason6, isEditor: true, hasEmbeddedPreview);
 			}
+			if (flag)
+			{
+				return new HostActivitySnapshot(true, false, true, reason, hasEmbeddedPreview, ambientPreview, hasEmbeddedPreview && !ambientPreview);
+			}
+			if (HasInputOrIme(out string reason4))
+			{
+				return HostActivitySnapshot.Blocked(reason4, isEditor: true, hasEmbeddedPreview);
+			}
+			if (scrollProtected) return new HostActivitySnapshot(true, false, true, "editor scroll protection is active", hasEmbeddedPreview, ambientPreview, hasEmbeddedPreview && !ambientPreview);
 			if (HasScrollMotion(catalogScroll, out string reason7))
 			{
-				return HostActivitySnapshot.Blocked(reason7, isEditor: true, hasEmbeddedPreview);
+				return new HostActivitySnapshot(true, false, true, reason7, hasEmbeddedPreview, ambientPreview, hasEmbeddedPreview && !ambientPreview);
 			}
+			if (ambientPreview) return HostActivitySnapshot.Ambient("embedded preview ambient character animation");
 			return HostActivitySnapshot.Safe(hasEmbeddedPreview ? "idle embedded editor preview observed" : reason3, hasEmbeddedPreview);
 		}
 		catch (Exception error)
@@ -385,7 +397,7 @@ internal sealed class HostActivity
 		try
 		{
 			return _windowManager?.activeWindow != null &&
-				DynamicProducerPolicy.IsKnownStaticWindowName(_windowManager.activeWindow.GetType().FullName);
+				IsKnownStaticEditorWindow(_windowManager.activeWindow);
 		}
 		catch
 		{
@@ -395,7 +407,25 @@ internal sealed class HostActivity
 
 	private static bool IsKnownStaticEditorWindow(IWindow window)
 	{
-		return DynamicProducerPolicy.IsKnownStaticWindowName(window.GetType().FullName);
+		// IWindow is an IL2CPP interface wrapper. GetType() reports the managed
+		// wrapper type, so name matching can miss the concrete active window.
+		IntPtr pointer = window.Pointer;
+		if (pointer == IntPtr.Zero)
+		{
+			return false;
+		}
+		return Matches(pointer, Singleton<BackgroundExplorerWindow>.Instance) ||
+			Matches(pointer, Singleton<PopupImageExplorerWindow>.Instance) ||
+			Matches(pointer, Singleton<SoundExplorerWindow>.Instance) ||
+			Matches(pointer, Singleton<BgmExplorerWindow>.Instance) ||
+			Matches(pointer, Singleton<EmotionExplorerWindow>.Instance) ||
+			Matches(pointer, Singleton<CharacterExplorerWindow>.Instance);
+	}
+
+	private static bool Matches(IntPtr pointer, Component? window)
+	{
+		return pointer != IntPtr.Zero && window != null && window.Pointer == pointer &&
+			window.gameObject.activeInHierarchy;
 	}
 
 	private bool HasLoadingOrSaving(UITable? catalogTable, out string reason)
@@ -412,24 +442,32 @@ internal sealed class HostActivity
 			List<string> loadingTags = Loading.LoadingTags;
 			if (loadingTags == null || loadingTags.Count != 0)
 			{
+				ResetInactiveLoadingObservation();
 				reason = "global loading tags are active or unknown";
 				return true;
 			}
 			if (loadingCount != 0)
 			{
-				if (!AllowLegacyLoadingException)
+				GameObject loadingObject = _loading.gameObject;
+				bool loadingComponentActive = _loading.isActiveAndEnabled;
+				bool loadingObjectActive = loadingObject != null && loadingObject.activeInHierarchy;
+				bool inactiveCounterStale = IsInactiveLoadingCounterStale(loadingCount, loadingComponentActive, loadingObjectActive);
+				if (!AllowLegacyLoadingException && !inactiveCounterStale)
 				{
-					reason = "global loading is active or unknown";
+					reason = $"global loading count={loadingCount}; componentActive={loadingComponentActive}; objectActive={loadingObjectActive}";
 					return true;
 				}
-				GameObject gameObject = _loading.gameObject;
-				if (loadingCount != 1 || !(catalogTable != null) || (!(_studio == null) && _studio.isActiveAndEnabled) || _loading.isActiveAndEnabled || !(gameObject != null) || gameObject.activeInHierarchy || loadingTags == null || loadingTags.Count != 0)
+				if (AllowLegacyLoadingException && !inactiveCounterStale && (loadingCount != 1 || !(catalogTable != null) || (!(_studio == null) && _studio.isActiveAndEnabled) || loadingComponentActive || loadingObject == null || loadingObjectActive))
 				{
-					reason = "global loading is active or unknown";
+					reason = $"global loading count={loadingCount}; componentActive={loadingComponentActive}; objectActive={loadingObjectActive}";
 					return true;
 				}
 			}
-			if (_catalog != null && _catalog.isActiveAndEnabled && (_catalog.searchPending || (catalogTable != null && catalogTable.mReposition)))
+			else
+			{
+				ResetInactiveLoadingObservation();
+			}
+			if (_catalog != null && _catalog.isActiveAndEnabled && (OptionalHostActivity.SearchPending(_catalog) || (catalogTable != null && catalogTable.mReposition)))
 			{
 				reason = "catalog search or layout is pending";
 				return true;
@@ -467,6 +505,29 @@ internal sealed class HostActivity
 			reason = "loading or save state is unknown";
 			return true;
 		}
+	}
+
+	private bool IsInactiveLoadingCounterStale(int loadingCount, bool loadingComponentActive, bool loadingObjectActive)
+	{
+		if (loadingCount != 1 || loadingComponentActive || loadingObjectActive || _resources == null || _resources.Preloading || !_resources.AreDbsLoaded)
+		{
+			ResetInactiveLoadingObservation();
+			return false;
+		}
+		long timestamp = Stopwatch.GetTimestamp();
+		if (_inactiveLoadingCount != loadingCount || _inactiveLoadingSinceTicks == 0L)
+		{
+			_inactiveLoadingCount = loadingCount;
+			_inactiveLoadingSinceTicks = timestamp;
+			return false;
+		}
+		return timestamp - _inactiveLoadingSinceTicks >= Stopwatch.Frequency;
+	}
+
+	private void ResetInactiveLoadingObservation()
+	{
+		_inactiveLoadingCount = -1;
+		_inactiveLoadingSinceTicks = 0L;
 	}
 
 	private bool HasScrollMotion(UIScrollView? catalogScroll, out string reason)
@@ -527,10 +588,11 @@ internal sealed class HostActivity
 		return false;
 	}
 
-	private bool HasPreviewOrAnimation(bool editorSurface, out string reason, out bool hasEmbeddedPreview)
+	private bool HasPreviewOrAnimation(bool editorSurface, bool allowAmbient, out string reason, out bool hasEmbeddedPreview, out bool ambientPreview)
 	{
 		reason = string.Empty;
 		hasEmbeddedPreview = false;
+		ambientPreview = false;
 		try
 		{
 			_test = Singleton<Test>.Instance;
@@ -541,27 +603,17 @@ internal sealed class HostActivity
 			{
 				return false;
 			}
-			hasEmbeddedPreview = flag && test.previewMode && (_test == null || _test.Pointer == test.Pointer);
-			int scenarioAnimations = 0;
-			int backgroundAnimations = 0;
-			int screenTextAnimations = 0;
-			bool autoAdvance = false;
-			bool hasVoice = false;
-			bool delayedAdvance = false;
-			bool backgroundEffectActive = false;
-			if (_test != null)
+			hasEmbeddedPreview = flag && test.previewMode;
+			// The singleton and inspector preview can be different native instances.
+			// Inspect both; a resident idle singleton cannot hide a playing preview.
+			var activity = num ? ObserveProducers(_test, editorSurface, allowAmbient && hasEmbeddedPreview && _test.Pointer == test.Pointer) : CharacterAnimationActivity.Static;
+			if (flag && (!num || _test.Pointer != test.Pointer))
 			{
-				scenarioAnimations = _test.currentAnims?.Count ?? 0;
-				backgroundAnimations = _test.backgroundAnimations?.Count ?? 0;
-				screenTextAnimations = _test.currentSTs?.Count ?? 0;
-				autoAdvance = _test.auto;
-				hasVoice = _test.hasVoice;
-				delayedAdvance = _test.delayedAdvanceTask != null;
-				backgroundEffectActive = _test.currentBGEffectInstance != null || _test.customBGEffectInstance != null;
+				var previewActivity = ObserveProducers(test, editorSurface, allowAmbient && hasEmbeddedPreview);
+				if ((int)previewActivity > (int)activity) activity = previewActivity;
 			}
-			bool dynamic = DynamicProducerPolicy.IsDynamicForSurface(num || flag, hasEmbeddedPreview, editorSurface, autoAdvance,
-				scenarioAnimations, backgroundAnimations, screenTextAnimations, hasVoice, delayedAdvance, backgroundEffectActive);
-			if (!dynamic)
+			ambientPreview = hasEmbeddedPreview && activity == CharacterAnimationActivity.Ambient;
+			if (activity != CharacterAnimationActivity.Protected)
 			{
 				reason = hasEmbeddedPreview ? "static embedded editor preview" : "idle editor controller";
 				return false;
@@ -572,14 +624,26 @@ internal sealed class HostActivity
 		catch (Exception error)
 		{
 			hasEmbeddedPreview = false;
+			ambientPreview = false;
 			ReportFailure("preview", error);
 			reason = "preview or animation state is unknown";
 			return true;
 		}
 	}
 
+	private static CharacterAnimationActivity ObserveProducers(Test controller, bool editorSurface, bool allowAmbient)
+	{
+		// Read cheap active flags before walking resident native animation lists.
+		if ((!editorSurface && !controller.previewMode) || controller.auto || controller.hasVoice ||
+			controller.delayedAdvanceTask != null || OptionalHostActivity.CurrentEffectActive(controller) || OptionalHostActivity.CustomEffectActive(controller)) return CharacterAnimationActivity.Protected;
+		if (AnimationActivity.CountPending(controller.currentAnims) != 0 ||
+			AnimationActivity.CountPending(controller.backgroundAnimations) != 0 || AnimationActivity.CountPending(controller.currentSTs) != 0) return CharacterAnimationActivity.Protected;
+		return CharacterActivity.Observe(controller, allowAmbient);
+	}
+
 	private void InvalidateReferences()
 	{
+		ResetInactiveLoadingObservation();
 		_lastDiscoveryTicks = 0L;
 		_studio = null;
 		_test = null;

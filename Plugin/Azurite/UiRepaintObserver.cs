@@ -41,6 +41,11 @@ internal sealed class UiRepaintObserver : System.IDisposable
 
 		public long ReportedClip;
 
+		public System.IntPtr GeometrySubscription;
+
+		public System.IntPtr ClipSubscription;
+		public readonly bool PreviewScene;
+
 		public PanelBinding(UIPanel panel, Transform transform, UiRepaintObserver observer)
 		{
 			PanelBinding panelBinding = this;
@@ -49,16 +54,19 @@ internal sealed class UiRepaintObserver : System.IDisposable
 			Transform = transform;
 			Matrix = transform.localToWorldMatrix;
 			ClipOffset = panel.clipOffset;
+			PreviewScene = panel.gameObject != null && string.Equals(panel.gameObject.scene.name, "PreviewScene", System.StringComparison.Ordinal);
 			GeometryHandler = delegate
 			{
 				Interlocked.Increment(ref panelBinding.GeometryEvents);
 				Interlocked.Increment(ref observer._geometryEvents);
+				if (panelBinding.PreviewScene) Interlocked.Increment(ref observer._previewGeneration);
 				observer.MarkDirty(UiDirtyKind.Geometry);
 			};
 			ClipHandler = delegate
 			{
 				Interlocked.Increment(ref panelBinding.ClipEvents);
 				Interlocked.Increment(ref observer._clipEvents);
+				if (panelBinding.PreviewScene) Interlocked.Increment(ref observer._previewGeneration);
 				observer.MarkDirty(UiDirtyKind.ClipEvent);
 			};
 			NativeGeometry = DelegateSupport.ConvertDelegate<UIPanel.OnGeometryUpdated>(GeometryHandler) ?? throw new System.InvalidOperationException("NGUI geometry delegate conversion returned null");
@@ -66,7 +74,11 @@ internal sealed class UiRepaintObserver : System.IDisposable
 		}
 	}
 
-	private const int MaximumPanels = 256;
+	private const int MaximumPanels = 4096;
+
+	private const int RegistryBatchSize = 32;
+
+	private const int TransformBatchSize = 32;
 
 	private const double TransformPollSeconds = 1.0 / 60.0;
 
@@ -78,6 +90,8 @@ internal sealed class UiRepaintObserver : System.IDisposable
 
 	private readonly System.Collections.Generic.List<System.IntPtr> _removed = new System.Collections.Generic.List<System.IntPtr>();
 
+	private readonly System.Collections.Generic.List<System.IntPtr> _panelOrder = new System.Collections.Generic.List<System.IntPtr>();
+
 	private bool _healthy = true;
 
 	private bool _disposed;
@@ -88,6 +102,18 @@ internal sealed class UiRepaintObserver : System.IDisposable
 
 	private int _registryCount = -1;
 
+	private int _syncExpectedCount = -1;
+
+	private int _syncCursor;
+
+	private int _transformCursor;
+
+	private bool _syncInProgress;
+
+	private bool _panelOrderDirty;
+
+	private bool _capacityBlocked;
+
 	private double _nextRegistryScan;
 
 	private double _nextTransformPoll;
@@ -97,6 +123,7 @@ internal sealed class UiRepaintObserver : System.IDisposable
 	private long _consumedGeneration;
 
 	private long _geometryEvents;
+	private long _previewGeneration;
 
 	private long _clipEvents;
 
@@ -105,6 +132,8 @@ internal sealed class UiRepaintObserver : System.IDisposable
 	private long _registryChanges;
 
 	private long _sceneChanges;
+
+	private long _callbackReplacements;
 
 	private int _lastDirtyKind;
 
@@ -133,10 +162,21 @@ internal sealed class UiRepaintObserver : System.IDisposable
 	}
 
 	public long Generation => Interlocked.Read(ref _generation);
+	internal long PreviewGeneration => Interlocked.Read(ref _previewGeneration);
 
 	public UiDirtyKind LastDirtyKind => (UiDirtyKind)Volatile.Read(ref _lastDirtyKind);
 
 	public UiRepaintMetrics Metrics => new UiRepaintMetrics(Generation, Interlocked.Read(ref _geometryEvents), Interlocked.Read(ref _clipEvents), Interlocked.Read(ref _transformChanges), Interlocked.Read(ref _registryChanges), Interlocked.Read(ref _sceneChanges), _panels.Count, LastDirtyKind);
+
+	public bool CapacityBlocked => _capacityBlocked;
+
+	public int SynchronizationCursor => _syncCursor;
+
+	public long CallbackReplacements => Interlocked.Read(ref _callbackReplacements);
+
+	internal bool HasOnlyOwnGeometryCallback(UIPanel panel) => panel != null &&
+		_panels.TryGetValue(panel.Pointer, out PanelBinding binding) &&
+		panel.onGeometryUpdated?.Pointer == binding.NativeGeometry.Pointer;
 
 	public UiRepaintObserver(System.Action<string>? report = null)
 	{
@@ -223,6 +263,10 @@ internal sealed class UiRepaintObserver : System.IDisposable
 				RemoveAllBindings();
 				_sceneHandle = handle;
 				_registryCount = -1;
+				_syncExpectedCount = -1;
+				_syncCursor = 0;
+				_transformCursor = 0;
+				_syncInProgress = false;
 				_ready = false;
 				_nextRegistryScan = now;
 				_nextTransformPoll = now;
@@ -235,35 +279,76 @@ internal sealed class UiRepaintObserver : System.IDisposable
 				throw new System.InvalidOperationException("NGUI panel registry unavailable");
 			}
 			int count = list.Count;
-			if (count > 256)
+			if (count > MaximumPanels)
 			{
-				throw new System.InvalidOperationException("NGUI panel observation limit exceeded");
-			}
-			if (count != _registryCount && _ready)
-			{
+				if (!_capacityBlocked)
+				{
+					_report?.Invoke("NGUI repaint observation paused: panel registry exceeds " + MaximumPanels + " entries.");
+				}
+				_capacityBlocked = true;
+				_syncInProgress = false;
+				_syncExpectedCount = count;
+				_syncCursor = 0;
+				_registryCount = -1;
+				_transformCursor = 0;
 				_ready = false;
+				return;
+			}
+			if (_capacityBlocked)
+			{
+				_capacityBlocked = false;
+				_syncInProgress = false;
+				_syncExpectedCount = -1;
+				_syncCursor = 0;
+				_registryCount = -1;
+				_transformCursor = 0;
+				_ready = false;
+				_nextRegistryScan = now;
 				MarkRegistryDirty();
 			}
-			if (now >= _nextRegistryScan)
+			if (_syncInProgress && count != _syncExpectedCount)
 			{
-				_nextRegistryScan = now + 1.0;
-				Synchronize(list, count);
-				_registryCount = count;
-				_ready = _panels.Count > 0;
+				RestartSynchronization(count, now);
 			}
-			if (now < _nextTransformPoll)
+			else if (!_syncInProgress && count != _registryCount)
+			{
+				RestartSynchronization(count, now);
+			}
+			if (!_syncInProgress && now >= _nextRegistryScan)
+			{
+				StartSynchronization(count);
+			}
+			if (_syncInProgress)
+			{
+				// Established bindings remain valid during a routine registry audit.
+				// Poll their transforms as well, so a long registry cannot starve its tail.
+				SynchronizeBatch(list, count, now);
+			}
+			if (!_ready || now < _nextTransformPoll)
 			{
 				return;
 			}
 			_nextTransformPoll = now + 1.0 / 60.0;
-			foreach (PanelBinding value in _panels.Values)
+			int polled = 0;
+			int budget = System.Math.Min(TransformBatchSize, _panelOrder.Count);
+			while (polled++ < budget)
 			{
+				if (_transformCursor >= _panelOrder.Count)
+				{
+					_transformCursor = 0;
+				}
+				System.IntPtr pointer = _panelOrder[_transformCursor++];
+				if (!_panels.TryGetValue(pointer, out PanelBinding value))
+				{
+					continue;
+				}
 				UIPanel panel = value.Panel;
 				if (panel == null || !panel.isActiveAndEnabled || value.Transform == null)
 				{
 					if (_ready)
 					{
 						_ready = false;
+						_nextRegistryScan = now;
 						MarkRegistryDirty();
 					}
 					continue;
@@ -275,6 +360,7 @@ internal sealed class UiRepaintObserver : System.IDisposable
 					value.Matrix = localToWorldMatrix;
 					value.ClipOffset = clipOffset;
 					Interlocked.Increment(ref _transformChanges);
+					if (value.PreviewScene) Interlocked.Increment(ref _previewGeneration);
 					MarkDirty(UiDirtyKind.TransformOrClipOffset);
 				}
 			}
@@ -285,10 +371,37 @@ internal sealed class UiRepaintObserver : System.IDisposable
 		}
 	}
 
-	private void Synchronize(Il2CppSystem.Collections.Generic.List<UIPanel> registry, int count)
+	private void StartSynchronization(int count)
 	{
+		_syncExpectedCount = count;
+		_syncCursor = 0;
+		_syncInProgress = true;
 		_seen.Clear();
-		for (int i = 0; i < count; i++)
+		// Merely checking an unchanged registry is not a UI mutation. Initial and
+		// invalidated coverage already has Ready=false; keep steady coverage intact.
+	}
+
+	private void RestartSynchronization(int count, double now)
+	{
+		_syncInProgress = false;
+		_syncExpectedCount = -1;
+		_syncCursor = 0;
+		_registryCount = -1;
+		_ready = false;
+		_nextRegistryScan = now;
+		_seen.Clear();
+		MarkRegistryDirty();
+	}
+
+	private bool SynchronizeBatch(Il2CppSystem.Collections.Generic.List<UIPanel> registry, int count, double now)
+	{
+		if (count != _syncExpectedCount || registry.Count != _syncExpectedCount)
+		{
+			RestartSynchronization(registry.Count, now);
+			return false;
+		}
+		int end = System.Math.Min(count, _syncCursor + RegistryBatchSize);
+		for (int i = _syncCursor; i < end; i++)
 		{
 			UIPanel uIPanel = registry[i];
 			if (uIPanel == null || !uIPanel.isActiveAndEnabled)
@@ -302,9 +415,10 @@ internal sealed class UiRepaintObserver : System.IDisposable
 			}
 			if (_panels.TryGetValue(pointer, out PanelBinding value))
 			{
-				if (!Contains(uIPanel.onGeometryUpdated, value.NativeGeometry) || !Contains(uIPanel.onClipMove, value.NativeClip))
+				if (EnsureSubscriptions(uIPanel, value, previouslyObserved: true))
 				{
-					throw new System.InvalidOperationException("NGUI repaint callback was replaced");
+					_ready = false;
+					MarkRegistryDirty();
 				}
 				value.Panel = uIPanel;
 				continue;
@@ -312,23 +426,24 @@ internal sealed class UiRepaintObserver : System.IDisposable
 			Transform transform = uIPanel.transform;
 			if (transform == null)
 			{
-				throw new System.InvalidOperationException("NGUI panel transform unavailable");
+				continue;
 			}
 			PanelBinding panelBinding = new PanelBinding(uIPanel, transform, this);
 			_panels.Add(pointer, panelBinding);
-			Il2CppSystem.Delegate obj = Il2CppSystem.Delegate.Combine(uIPanel.onGeometryUpdated, panelBinding.NativeGeometry) ?? throw new System.InvalidOperationException("NGUI geometry delegate combination failed");
-			uIPanel.onGeometryUpdated = obj.Cast<UIPanel.OnGeometryUpdated>();
-			Il2CppSystem.Delegate obj2 = Il2CppSystem.Delegate.Combine(uIPanel.onClipMove, panelBinding.NativeClip) ?? throw new System.InvalidOperationException("NGUI clip delegate combination failed");
-			uIPanel.onClipMove = obj2.Cast<UIPanel.OnClippingMoved>();
-			if (!Contains(uIPanel.onGeometryUpdated, panelBinding.NativeGeometry) || !Contains(uIPanel.onClipMove, panelBinding.NativeClip))
-			{
-				throw new System.InvalidOperationException("NGUI repaint subscription readback failed");
-			}
+			EnsureSubscriptions(uIPanel, panelBinding, previouslyObserved: false);
+			_panelOrderDirty = true;
+			_ready = false;
 			MarkRegistryDirty();
+		}
+		_syncCursor = end;
+		if (_syncCursor < count)
+		{
+			return false;
 		}
 		if (registry.Count != count)
 		{
-			throw new System.InvalidOperationException("NGUI panel registry changed during observation");
+			RestartSynchronization(registry.Count, now);
+			return false;
 		}
 		_removed.Clear();
 		foreach (System.IntPtr key in _panels.Keys)
@@ -342,8 +457,65 @@ internal sealed class UiRepaintObserver : System.IDisposable
 		{
 			RemoveBinding(_panels[item]);
 			_panels.Remove(item);
+		}
+		if (_removed.Count > 0)
+		{
+			_panelOrderDirty = true;
 			MarkRegistryDirty();
 		}
+		if (_panelOrderDirty)
+		{
+			_panelOrder.Clear();
+			_panelOrder.AddRange(_panels.Keys);
+			_panelOrderDirty = false;
+			// Keep progress across registry scans. Resetting every second prevents
+			// large registries from ever checking the last panels' matrices/clip offsets.
+			if (_transformCursor >= _panelOrder.Count)
+			{
+				_transformCursor = 0;
+			}
+		}
+		_registryCount = count;
+		_syncExpectedCount = -1;
+		_syncCursor = 0;
+		_syncInProgress = false;
+		_ready = _panels.Count > 0;
+		_nextRegistryScan = now + 1.0;
+		return true;
+	}
+
+	private bool EnsureSubscriptions(UIPanel panel, PanelBinding binding, bool previouslyObserved)
+	{
+		bool changed = false;
+		UIPanel.OnGeometryUpdated? geometry = panel.onGeometryUpdated;
+		if (geometry == null || geometry.Pointer != binding.GeometrySubscription)
+		{
+			if (!Contains(geometry, binding.NativeGeometry))
+			{
+				if (previouslyObserved) Interlocked.Increment(ref _callbackReplacements);
+				changed = true;
+				Il2CppSystem.Delegate combined = Il2CppSystem.Delegate.Combine(geometry, binding.NativeGeometry) ?? throw new System.InvalidOperationException("NGUI geometry delegate combination failed");
+				panel.onGeometryUpdated = combined.Cast<UIPanel.OnGeometryUpdated>();
+				geometry = panel.onGeometryUpdated;
+				if (!Contains(geometry, binding.NativeGeometry)) throw new System.InvalidOperationException("NGUI geometry callback re-subscription failed");
+			}
+			binding.GeometrySubscription = geometry!.Pointer;
+		}
+		UIPanel.OnClippingMoved? clip = panel.onClipMove;
+		if (clip == null || clip.Pointer != binding.ClipSubscription)
+		{
+			if (!Contains(clip, binding.NativeClip))
+			{
+				if (previouslyObserved) Interlocked.Increment(ref _callbackReplacements);
+				changed = true;
+				Il2CppSystem.Delegate combined = Il2CppSystem.Delegate.Combine(clip, binding.NativeClip) ?? throw new System.InvalidOperationException("NGUI clip delegate combination failed");
+				panel.onClipMove = combined.Cast<UIPanel.OnClippingMoved>();
+				clip = panel.onClipMove;
+				if (!Contains(clip, binding.NativeClip)) throw new System.InvalidOperationException("NGUI clip callback re-subscription failed");
+			}
+			binding.ClipSubscription = clip!.Pointer;
+		}
+		return changed;
 	}
 
 	private static bool Contains(Il2CppSystem.Delegate? combined, Il2CppSystem.Delegate own)
@@ -429,8 +601,15 @@ internal sealed class UiRepaintObserver : System.IDisposable
 			}
 		}
 		_panels.Clear();
+		_panelOrder.Clear();
+		_panelOrderDirty = false;
 		_seen.Clear();
 		_removed.Clear();
+		_syncExpectedCount = -1;
+		_syncCursor = 0;
+		_transformCursor = 0;
+		_syncInProgress = false;
+		_ready = false;
 		if (ex != null)
 		{
 			throw ex;
@@ -439,6 +618,7 @@ internal sealed class UiRepaintObserver : System.IDisposable
 
 	private void MarkRegistryDirty()
 	{
+		Interlocked.Increment(ref _previewGeneration);
 		Interlocked.Increment(ref _registryChanges);
 		MarkDirty(UiDirtyKind.Registry);
 	}

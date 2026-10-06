@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/UiDirtyKind.cs" Link="Production/UiDirtyKind.cs" />
+    <Compile Include="../Plugin/Azurite/UiRepaintMetrics.cs" Link="Production/UiRepaintMetrics.cs" />
+    <Compile Include="../Plugin/Azurite/UiRepaintObserver.cs" Link="Production/UiRepaintObserver.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,18 @@
+{
+  "source": "F:/AzureArchive_100_fix/AzureArchive_Data/level2",
+  "inspectorPathID": 1979,
+  "gridPathID": 1526,
+  "scriptClass": "UIGrid",
+  "arrangement": 1,
+  "sorting": 0,
+  "inverted": false,
+  "pivot": 1,
+  "expansionStyle": 0,
+  "maxPerLine": 0,
+  "cellWidth": 400.0,
+  "cellHeight": 175.0,
+  "animateSmoothly": false,
+  "animateFadeIn": false,
+  "hideInactive": false,
+  "keepWithinPanel": false
+}

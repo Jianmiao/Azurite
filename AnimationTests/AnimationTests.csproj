@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/AnimationActivity.cs" Link="Production/AnimationActivity.cs" />
+    <Compile Include="../Plugin/Azurite/DynamicProducerPolicy.cs" Link="Production/DynamicProducerPolicy.cs" />
+  </ItemGroup>
+</Project>

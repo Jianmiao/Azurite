@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/PreviewCameraCadence.cs" Link="Production/PreviewCameraCadence.cs" />
+    <Compile Include="../Plugin/Azurite/PreviewCadenceSchedule.cs" Link="Production/PreviewCadenceSchedule.cs" />
+    <Compile Include="../Plugin/Azurite/PreviewTextureRegistry.cs" Link="Production/PreviewTextureRegistry.cs" />
+    <Compile Include="../PreviewLeaseTests/HostStubs.cs" Link="HostStubs.cs" />
+    <Compile Include="../PreviewLeaseTests/DelegateStubs.cs" Link="DelegateStubs.cs" />
+  </ItemGroup>
+</Project>

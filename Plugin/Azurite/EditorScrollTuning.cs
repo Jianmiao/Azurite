@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppSystem.Collections.Generic;
 using Studio.Scripts;
 using Studio.Scripts.Window.BackgroundExplorer;
+using CharacterExplorerWindow = Studio.Scripts.Window.CharacterExplorer.CharacterExplorer;
+using EmotionExplorerWindow = Studio.Scripts.Window.EmotionExplorer.EmotionExplorer;
 using UI;
 
 namespace Azurite;
@@ -25,14 +28,17 @@ internal sealed class EditorScrollTuning : IDisposable
 
 		public bool Blocked { get; set; }
 
-		public Lease(UIScrollView view, string scope)
+		public float Direction { get; }
+
+		public Lease(UIScrollView view, string scope, float direction)
 		{
 			View = view;
 			Scope = scope;
+			Direction = direction;
 		}
 	}
 
-	private const float MaximumMultiplier = 6f;
+	private const float MaximumMultiplier = 12f;
 
 	private const int MaximumCatalogProfiles = 32;
 
@@ -69,10 +75,20 @@ internal sealed class EditorScrollTuning : IDisposable
 
 	public void Update(double now, bool allowed, float multiplier, float dialogueMultiplier, float modManagerMultiplier)
 	{
-		Update(now, allowed, multiplier, dialogueMultiplier, modManagerMultiplier, 1f);
+		Update(now, allowed, multiplier, dialogueMultiplier, modManagerMultiplier, 1f, 1f);
 	}
 
 	public void Update(double now, bool allowed, float multiplier, float dialogueMultiplier, float modManagerMultiplier, float backgroundMultiplier)
+	{
+		Update(now, allowed, multiplier, dialogueMultiplier, modManagerMultiplier, backgroundMultiplier, 1f);
+	}
+
+	public void Update(double now, bool allowed, float multiplier, float dialogueMultiplier, float modManagerMultiplier, float backgroundMultiplier, float settingsMultiplier)
+	{
+		Update(now, allowed, multiplier, dialogueMultiplier, modManagerMultiplier, backgroundMultiplier, settingsMultiplier, 1f, 1f);
+	}
+
+	public void Update(double now, bool allowed, float multiplier, float dialogueMultiplier, float modManagerMultiplier, float backgroundMultiplier, float settingsMultiplier, float characterMultiplier, float emotionMultiplier)
 	{
 		if (_disposed || _failed)
 		{
@@ -82,7 +98,10 @@ internal sealed class EditorScrollTuning : IDisposable
 		dialogueMultiplier = NormalizeMultiplier(dialogueMultiplier);
 		modManagerMultiplier = NormalizeMultiplier(modManagerMultiplier);
 		backgroundMultiplier = NormalizeMultiplier(backgroundMultiplier);
-		if (!allowed || (multiplier <= 1f && dialogueMultiplier <= 1f && modManagerMultiplier <= 1f && backgroundMultiplier <= 1f))
+		settingsMultiplier = NormalizeMultiplier(settingsMultiplier);
+		characterMultiplier = NormalizeMultiplier(characterMultiplier);
+		emotionMultiplier = NormalizeMultiplier(emotionMultiplier);
+		if (!allowed || (multiplier <= 1f && dialogueMultiplier <= 1f && modManagerMultiplier <= 1f && backgroundMultiplier <= 1f && settingsMultiplier <= 1f && characterMultiplier <= 1f && emotionMultiplier <= 1f))
 		{
 			Restore();
 		}
@@ -138,6 +157,38 @@ internal sealed class EditorScrollTuning : IDisposable
 						Touch(componentInParent, "background categories", backgroundMultiplier);
 					}
 				}
+				SettingPanel[] settingPanels = UnityEngine.Object.FindObjectsOfType<SettingPanel>();
+				if (settingPanels != null)
+				{
+					foreach (SettingPanel settingPanel in settingPanels)
+					{
+						if (settingPanel == null)
+						{
+							continue;
+						}
+						Il2CppArrayBase<UIScrollView> discovered = settingPanel.GetComponentsInChildren<UIScrollView>(includeInactive: true);
+						if (discovered == null)
+						{
+							continue;
+						}
+						foreach (UIScrollView scroll in discovered)
+						{
+							Touch(scroll, "settings", settingsMultiplier);
+						}
+					}
+				}
+				CharacterExplorerWindow characterExplorer = Singleton<CharacterExplorerWindow>.Instance;
+				if (characterExplorer != null)
+				{
+					TouchDescendantScrolls(characterExplorer, "character chooser", characterMultiplier, 1f);
+				}
+				EmotionExplorerWindow emotionExplorer = Singleton<EmotionExplorerWindow>.Instance;
+				if (emotionExplorer != null)
+				{
+					// EmotionExplorer's horizontal layout has the opposite native
+					// coordinate convention from CharacterExplorer.
+					TouchDescendantScrolls(emotionExplorer, "emotion chooser", emotionMultiplier, -1f);
+				}
 				_retired.Clear();
 				foreach (System.Collections.Generic.KeyValuePair<IntPtr, Lease> view in _views)
 				{
@@ -170,10 +221,23 @@ internal sealed class EditorScrollTuning : IDisposable
 		{
 			return 1f;
 		}
-		return Math.Min(multiplier, 6f);
+		return Math.Min(multiplier, MaximumMultiplier);
 	}
 
-	private void Touch(UIScrollView? view, string scope, float multiplier)
+	private void TouchDescendantScrolls(UnityEngine.Component owner, string scope, float multiplier, float direction)
+	{
+		Il2CppArrayBase<CenterableUIScrollView> discovered = owner.GetComponentsInChildren<CenterableUIScrollView>(includeInactive: true);
+		if (discovered == null)
+		{
+			return;
+		}
+		foreach (CenterableUIScrollView view in discovered)
+		{
+			Touch(view, scope, multiplier, direction);
+		}
+	}
+
+	private void Touch(UIScrollView? view, string scope, float multiplier, float direction = 1f)
 	{
 		if (view == null)
 		{
@@ -190,7 +254,7 @@ internal sealed class EditorScrollTuning : IDisposable
 			{
 				return;
 			}
-			value = new Lease(view, scope);
+			value = new Lease(view, scope, direction);
 			_views.Add(pointer, value);
 		}
 		if (multiplier <= 1f)
@@ -219,7 +283,7 @@ internal sealed class EditorScrollTuning : IDisposable
 					value.Original = scrollWheelFactor;
 					value.HasBaseline = true;
 				}
-				float num = value.Original * multiplier;
+				float num = value.Original * multiplier * value.Direction;
 				if (!float.IsFinite(num))
 				{
 					return;

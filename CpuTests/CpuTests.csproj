@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>annotations</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/CpuIdlePolicy.cs" />
+    <Compile Include="../Plugin/Azurite/FpsController.cs" />
+    <Compile Include="../Plugin/Azurite/DisplayRatePolicy.cs" />
+    <Reference Include="Azurite.Core"><HintPath>../references/Azurite.Core.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

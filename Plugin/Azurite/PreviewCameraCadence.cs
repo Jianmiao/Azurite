@@ -1,7 +1,9 @@
 using System;
+using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Studio.Scripts;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace Azurite;
@@ -11,6 +13,16 @@ internal sealed class PreviewCameraCadence : IDisposable
 	private const int MaximumInspectorTextures = 8192;
 
 	private readonly Action<string>? _report;
+	private readonly PreviewTextureRegistry _textures;
+	private double _observationTime;
+	private UIPanel? _contentPanel;
+	private System.Action? _managedGeometry;
+	private System.Action<UIPanel>? _managedClip;
+	private UIPanel.OnGeometryUpdated? _nativeGeometry;
+	private UIPanel.OnClippingMoved? _nativeClip;
+	private bool _cacheMode;
+	private bool _hasCameraMatrix;
+	private Matrix4x4 _cameraMatrix;
 
 	private Camera? _camera;
 
@@ -24,11 +36,7 @@ internal sealed class PreviewCameraCadence : IDisposable
 
 	private double _nextDiscovery;
 
-	private double _nextRender;
-
-	private double _lastNow = double.NaN;
-
-	private double _lastRate;
+	private readonly PreviewCadenceSchedule _schedule = new PreviewCadenceSchedule();
 
 	private bool _ready;
 
@@ -54,23 +62,29 @@ internal sealed class PreviewCameraCadence : IDisposable
 
 	public int TextureCount { get; private set; } = -1;
 
-	public PreviewCameraCadence(Action<string>? report = null)
+	// The target lease may inspect this exact camera while cadence intentionally
+	// disables it between draws. It must not accept an unrelated disabled camera.
+	internal Camera? SuspendedCamera => _owned && !_lastWritten && _camera != null && !_camera.enabled ? _camera : null;
+
+	public PreviewCameraCadence(Action<string>? report = null, PreviewTextureRegistry? textures = null)
 	{
 		_report = report;
+		_textures = textures ?? new PreviewTextureRegistry();
 	}
 
-	public void Update(double now, bool allowed, double targetFps = 60.0)
+	public void Update(double now, bool allowed, double targetFps = 60.0, bool cacheStatic = false, double safetyFps = 1.0)
 	{
+		_observationTime = now;
 		if (_disposed)
 		{
 			return;
 		}
-		if (!allowed || !double.IsFinite(now) || !double.IsFinite(targetFps) || targetFps < 30.0 || targetFps > 120.0)
+		if (!allowed || !double.IsFinite(now) || !double.IsFinite(targetFps) || targetFps < 30.0 || targetFps > 120.0 ||
+			(cacheStatic && (!double.IsFinite(safetyFps) || safetyFps < 0.1 || safetyFps > 30.0)))
 		{
 			Reason = ((!allowed) ? "host or configuration did not allow cadence" : "invalid time or FPS configuration");
 			Restore();
-			_nextRender = 0.0;
-			_lastNow = double.NaN;
+			_schedule.Reset();
 			_wasHidden = false;
 			return;
 		}
@@ -81,6 +95,7 @@ internal sealed class PreviewCameraCadence : IDisposable
 		}
 		try
 		{
+			if (_cacheMode != cacheStatic) { _cacheMode = cacheStatic; Invalidate(); if (!cacheStatic) UnbindContent(); }
 			if (_owned && _camera != null && _camera.enabled != _lastWritten)
 			{
 				_owned = false;
@@ -91,6 +106,7 @@ internal sealed class PreviewCameraCadence : IDisposable
 			{
 				_nextDiscovery = now + 1.0;
 				_ready = Discover();
+				if (_ready && cacheStatic && !BindContent(_preview?.frontPanel)) _ready = Reject("static preview content callbacks unavailable");
 			}
 			if (!_ready || _camera == null || _inspector == null || _inspector.loading || _inspector.unloading || _preview == null || !_preview.isActiveAndEnabled || !_preview.previewMode || _consumer == null || !_camera.gameObject.activeInHierarchy)
 			{
@@ -99,7 +115,7 @@ internal sealed class PreviewCameraCadence : IDisposable
 					Reason = "cached preview lifecycle not ready";
 				}
 				Restore();
-				_nextRender = 0.0;
+				_schedule.Reset();
 				_wasHidden = false;
 				return;
 			}
@@ -109,8 +125,13 @@ internal sealed class PreviewCameraCadence : IDisposable
 				Restore();
 				_ready = false;
 				_nextDiscovery = now;
-				_nextRender = 0.0;
+				_schedule.Reset();
 				return;
+			}
+			if (cacheStatic && !Same(_preview.frontPanel, _contentPanel) && !BindContent(_preview.frontPanel))
+			{
+				Reason = "static preview content callbacks unavailable";
+				Restore(); return;
 			}
 			if (!_owned)
 			{
@@ -126,7 +147,7 @@ internal sealed class PreviewCameraCadence : IDisposable
 			{
 				Reason = "known hidden preview suppressed";
 				_wasHidden = true;
-				_nextRender = 0.0;
+				_schedule.Reset();
 				_skipped++;
 				SetEnabled(value: false);
 				return;
@@ -135,34 +156,25 @@ internal sealed class PreviewCameraCadence : IDisposable
 			{
 				Reason = "consumer visibility uncertain";
 				Restore();
-				_nextRender = 0.0;
+				_schedule.Reset();
 				_wasHidden = false;
 				return;
 			}
 			if (_wasHidden)
 			{
 				_wasHidden = false;
-				_nextRender = now;
+				_schedule.Reset();
 			}
-			if (!double.IsFinite(_lastNow) || now < _lastNow || targetFps != _lastRate)
+			if (cacheStatic)
 			{
-				_nextRender = now;
+				Matrix4x4 matrix = _camera.transform.localToWorldMatrix;
+				if (!_hasCameraMatrix || matrix != _cameraMatrix || (_target != null && !_target.IsCreated())) Invalidate();
+				_cameraMatrix = matrix; _hasCameraMatrix = true;
 			}
-			_lastNow = now;
-			_lastRate = targetFps;
-			double num = 1.0 / targetFps;
-			Reason = "visible independent preview cadence active";
-			bool flag = now + 1E-06 >= _nextRender;
+			Reason = cacheStatic ? "static preview content reused; geometry and clipping changes invalidate it" : "visible independent preview cadence active";
+			bool flag = _schedule.ShouldRender(now, cacheStatic ? safetyFps : targetFps, OnDemandRendering.willCurrentFrameRender);
 			if (flag)
 			{
-				if (now - _nextRender >= num)
-				{
-					_nextRender = now + num;
-				}
-				else
-				{
-					_nextRender += num;
-				}
 				_scheduled++;
 			}
 			else
@@ -175,6 +187,54 @@ internal sealed class PreviewCameraCadence : IDisposable
 		{
 			Block("preview camera cadence failed: " + ex.GetType().Name);
 		}
+	}
+
+	internal void Invalidate() { _schedule.Reset(); _hasCameraMatrix = false; }
+
+	private bool BindContent(UIPanel? panel)
+	{
+		if (panel == null) return false;
+		if (!Same(panel, _contentPanel))
+		{
+			UnbindContent(); _contentPanel = panel;
+			_managedGeometry = Invalidate;
+			_managedClip = _ => Invalidate();
+			_nativeGeometry = DelegateSupport.ConvertDelegate<UIPanel.OnGeometryUpdated>(_managedGeometry);
+			_nativeClip = DelegateSupport.ConvertDelegate<UIPanel.OnClippingMoved>(_managedClip);
+			Invalidate();
+		}
+		if (_nativeGeometry == null || _nativeClip == null) return false;
+		if (!Contains(panel.onGeometryUpdated, _nativeGeometry)) panel.onGeometryUpdated = Il2CppSystem.Delegate.Combine(panel.onGeometryUpdated, _nativeGeometry).Cast<UIPanel.OnGeometryUpdated>();
+		if (!Contains(panel.onClipMove, _nativeClip)) panel.onClipMove = Il2CppSystem.Delegate.Combine(panel.onClipMove, _nativeClip).Cast<UIPanel.OnClippingMoved>();
+		return Contains(panel.onGeometryUpdated, _nativeGeometry) && Contains(panel.onClipMove, _nativeClip);
+	}
+
+	private static bool Contains(Il2CppSystem.Delegate? source, Il2CppSystem.Delegate callback)
+	{
+		if (source == null) return false;
+		if (source.Pointer == callback.Pointer) return true;
+		var list = source.GetInvocationList();
+		for (int i = 0; i < list.Length; i++) if (list[i] != null && list[i].Pointer == callback.Pointer) return true;
+		return false;
+	}
+
+	private void UnbindContent()
+	{
+		try
+		{
+			if (_contentPanel != null && _nativeGeometry != null)
+			{
+				var remaining = Il2CppSystem.Delegate.Remove(_contentPanel.onGeometryUpdated, _nativeGeometry);
+				_contentPanel.onGeometryUpdated = remaining == null ? null : remaining.Cast<UIPanel.OnGeometryUpdated>();
+			}
+			if (_contentPanel != null && _nativeClip != null)
+			{
+				var remaining = Il2CppSystem.Delegate.Remove(_contentPanel.onClipMove, _nativeClip);
+				_contentPanel.onClipMove = remaining == null ? null : remaining.Cast<UIPanel.OnClippingMoved>();
+			}
+		}
+		catch { _blocked = true; }
+		_contentPanel = null; _nativeGeometry = null; _nativeClip = null; _managedGeometry = null; _managedClip = null;
 	}
 
 	private bool Discover()
@@ -241,7 +301,7 @@ internal sealed class PreviewCameraCadence : IDisposable
 		{
 			return Reject("preview camera stack nonempty or unavailable");
 		}
-		Il2CppArrayBase<UITexture> componentsInChildren = instance.GetComponentsInChildren<UITexture>(includeInactive: true);
+		Il2CppArrayBase<UITexture> componentsInChildren = _textures.Read(instance, _observationTime);
 		TextureCount = componentsInChildren?.Length ?? (-1);
 		if (componentsInChildren == null)
 		{
@@ -274,7 +334,7 @@ internal sealed class PreviewCameraCadence : IDisposable
 		}
 		if (!Same(targetTexture, _target))
 		{
-			_nextRender = 0.0;
+			_schedule.Reset();
 		}
 		_camera = camera;
 		_target = targetTexture;
@@ -310,6 +370,7 @@ internal sealed class PreviewCameraCadence : IDisposable
 
 	public bool Restore()
 	{
+		UnbindContent(); Invalidate();
 		if (!_owned)
 		{
 			return true;

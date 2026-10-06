@@ -4,6 +4,7 @@ using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Studio.Scripts;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace Azurite;
 
@@ -12,12 +13,16 @@ internal sealed class PreviewTargetLease : IDisposable
 	private const int MaximumInspectorTextures = 8192;
 
 	private readonly Action<string>? _report;
+	private readonly PreviewTextureRegistry _textures;
+	private double _observationTime;
 
 	private ScriptNodeInspector? _inspector;
 
 	private Test? _preview;
 
 	private Camera? _camera;
+
+	private Camera? _cadenceSuspendedCamera;
 
 	private UITexture? _consumer;
 
@@ -47,13 +52,16 @@ internal sealed class PreviewTargetLease : IDisposable
 
 	public int TextureCount { get; private set; } = -1;
 
-	public PreviewTargetLease(Action<string>? report = null)
+	public PreviewTargetLease(Action<string>? report = null, PreviewTextureRegistry? textures = null)
 	{
 		_report = report;
+		_textures = textures ?? new PreviewTextureRegistry();
 	}
 
-	public void Update(double now, bool allowed)
+	public void Update(double now, bool allowed, Camera? cadenceSuspendedCamera = null)
 	{
+		_observationTime = now;
+		_cadenceSuspendedCamera = cadenceSuspendedCamera;
 		if (_disposed)
 		{
 			return;
@@ -83,7 +91,7 @@ internal sealed class PreviewTargetLease : IDisposable
 					return;
 				}
 			}
-			if (!_bindingReady || _inspector == null || !_inspector.isActiveAndEnabled || _inspector.loading || _inspector.unloading || _preview == null || !_preview.isActiveAndEnabled || !_preview.previewMode || _camera == null || !_camera.isActiveAndEnabled || _consumer == null || !_consumer.isActiveAndEnabled || !_consumer.isVisible || _original == null)
+			if (!_bindingReady || _inspector == null || !_inspector.isActiveAndEnabled || _inspector.loading || _inspector.unloading || _preview == null || !_preview.isActiveAndEnabled || !_preview.previewMode || !CameraReady(_camera) || _consumer == null || !_consumer.isActiveAndEnabled || !_consumer.isVisible || _original == null)
 			{
 				if (_bindingReady)
 				{
@@ -175,9 +183,18 @@ internal sealed class PreviewTargetLease : IDisposable
 		{
 			return Reject("preview layer camera unavailable");
 		}
-		if (!camera.isActiveAndEnabled)
+		if (!CameraReady(camera))
 		{
 			return Reject("preview camera inactive or disabled");
+		}
+		if (!string.Equals(camera.gameObject.scene.name, "PreviewScene", StringComparison.Ordinal))
+		{
+			return Reject("camera scene does not match PreviewScene");
+		}
+		UniversalAdditionalCameraData cameraData = camera.GetComponent<UniversalAdditionalCameraData>();
+		if (cameraData == null || cameraData.renderType != CameraRenderType.Base || (cameraData.cameraStack?.Count ?? -1) != 0)
+		{
+			return Reject("preview camera must be a URP Base with an empty stack");
 		}
 		RenderTexture targetTexture = camera.targetTexture;
 		if (targetTexture == null)
@@ -193,7 +210,8 @@ internal sealed class PreviewTargetLease : IDisposable
 			Block("preview camera target changed externally");
 			return false;
 		}
-		if (_owned == null && !string.Equals(targetTexture.name, "Preview", StringComparison.Ordinal))
+		if (!(_owned != null && Matches(camera, _camera) && Matches(targetTexture, _owned)) &&
+			!string.Equals(targetTexture.name, "Preview", StringComparison.Ordinal))
 		{
 			return Reject("render target name unsupported");
 		}
@@ -201,7 +219,7 @@ internal sealed class PreviewTargetLease : IDisposable
 		{
 			return Reject("preview camera viewport is not full target");
 		}
-		Il2CppArrayBase<UITexture> componentsInChildren = instance.GetComponentsInChildren<UITexture>(includeInactive: true);
+		Il2CppArrayBase<UITexture> componentsInChildren = _textures.Read(instance, _observationTime);
 		TextureCount = componentsInChildren?.Length ?? (-1);
 		if (componentsInChildren == null)
 		{
@@ -290,6 +308,9 @@ internal sealed class PreviewTargetLease : IDisposable
 		Reason = reason;
 		return false;
 	}
+
+	private bool CameraReady(Camera? camera) => camera != null && camera.gameObject.activeInHierarchy &&
+		(camera.enabled || Matches(camera, _cadenceSuspendedCamera));
 
 	private bool OwnsKnownReferences()
 	{
@@ -384,6 +405,26 @@ internal sealed class PreviewTargetLease : IDisposable
 				_blocked = true;
 				return false;
 			}
+			// Export may acquire between discovery polls. Recheck the live consumer
+			// set before releasing a GPU resource rather than trusting the last poll.
+			bool liveForeignConsumer = false;
+			if (_inspector != null)
+			{
+				var consumers = _textures.Read(_inspector, _observationTime, force: true);
+				if (consumers == null || consumers.Length > MaximumInspectorTextures)
+				{
+					_blocked = true;
+					return false;
+				}
+				for (int i = 0; i < consumers.Length; i++)
+				{
+					UITexture consumer = consumers[i];
+					if (consumer != null && !Matches(consumer, _consumer) && Matches(consumer.mainTexture, _owned))
+					{
+						liveForeignConsumer = true;
+					}
+				}
+			}
 			if (_camera != null && Matches(_camera.targetTexture, _owned))
 			{
 				_camera.targetTexture = _original;
@@ -395,6 +436,12 @@ internal sealed class PreviewTargetLease : IDisposable
 			if ((_camera != null && Matches(_camera.targetTexture, _owned)) || (_consumer != null && Matches(_consumer.mainTexture, _owned)))
 			{
 				_blocked = true;
+				return false;
+			}
+			if (liveForeignConsumer)
+			{
+				_blocked = true;
+				Reason = "another consumer still references the owned preview target";
 				return false;
 			}
 			foreach (UITexture foreignConsumer in _foreignConsumers)

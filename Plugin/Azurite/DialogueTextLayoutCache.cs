@@ -30,7 +30,10 @@ internal sealed class DialogueTextLayoutCache : IDisposable
 
 	private sealed record Entry(PhoneticText Phonetic, ScriptListItem Row, LayoutKey Key, OutputState Output, SharedState Shared);
 
-	private readonly record struct LayoutKey(string Text, int Size, bool ApplyAll, bool Unlimited, IntPtr Region, IntPtr Prefab, LabelStyle RegionStyle, LabelStyle PrefabStyle, Vector3 Position, Vector3 Scale, Quaternion Rotation, Vector3 RegionPosition, Vector3 RegionScale, Quaternion RegionRotation);
+	// A row's list position changes during UIGrid reflow but does not change the
+	// text layout. Scale/rotation remain part of the key because they can affect
+	// the effective label geometry.
+	private readonly record struct LayoutKey(string Text, int Size, bool ApplyAll, bool Unlimited, IntPtr Region, IntPtr Prefab, LabelStyle RegionStyle, LabelStyle PrefabStyle, Vector3 Scale, Quaternion Rotation, Vector3 RegionPosition, Vector3 RegionScale, Quaternion RegionRotation);
 
 	private readonly record struct OutputState(IntPtr Chunks, int Count, ChunkState First, ChunkState Last, int ChildCount, float CurrentPosition, float RegionWidth);
 
@@ -80,11 +83,7 @@ internal sealed class DialogueTextLayoutCache : IDisposable
 
 	private readonly Harmony _harmony = new Harmony("halocue.azurite.dialogue-text-layout-cache");
 
-	private readonly System.Collections.Generic.Dictionary<IntPtr, Entry> _entries = new System.Collections.Generic.Dictionary<IntPtr, Entry>();
-
-	private readonly System.Collections.Generic.Queue<IntPtr> _cleanup = new System.Collections.Generic.Queue<IntPtr>();
-
-	private readonly HashSet<IntPtr> _queued = new HashSet<IntPtr>();
+	private readonly BoundedRowCache<IntPtr, Entry> _entries = new(MaximumEntries);
 
 	private bool _installed;
 
@@ -185,22 +184,7 @@ internal sealed class DialogueTextLayoutCache : IDisposable
 		if (now >= _nextCleanup)
 		{
 			_nextCleanup = now + 1.0;
-			int num = Math.Min(_cleanup.Count, 64);
-			for (int i = 0; i < num; i++)
-			{
-				IntPtr intPtr = _cleanup.Dequeue();
-				_queued.Remove(intPtr);
-				if (_entries.TryGetValue(intPtr, out Entry value))
-				{
-					if (value.Phonetic == null || value.Row == null)
-					{
-						_entries.Remove(intPtr);
-						continue;
-					}
-					_cleanup.Enqueue(intPtr);
-					_queued.Add(intPtr);
-				}
-			}
+			_invalidated += _entries.Prune(static value => value.Phonetic != null && value.Row != null, 64);
 		}
 		if (!(now < _nextReport))
 		{
@@ -217,8 +201,6 @@ internal sealed class DialogueTextLayoutCache : IDisposable
 	{
 		_allowed = false;
 		_entries.Clear();
-		_cleanup.Clear();
-		_queued.Clear();
 	}
 
 	private static void BeforeRefresh(ScriptListItem __instance, out RefreshScope __state)
@@ -289,18 +271,8 @@ internal sealed class DialogueTextLayoutCache : IDisposable
 		{
 			if (!(__instance == null) && !(__state.Row == null) && TryKey(__instance, __state.Text, __state.Size, __state.ApplyAll, out var key) && TryOutput(__instance, out var output))
 			{
-				if (active._entries.Count >= 2048)
-				{
-					active._entries.Clear();
-					active._cleanup.Clear();
-					active._queued.Clear();
-				}
 				IntPtr pointer = __instance.Pointer;
-				if (active._queued.Add(pointer))
-				{
-					active._cleanup.Enqueue(pointer);
-				}
-				active._entries[pointer] = new Entry(__instance, __state.Row, key, output, SharedState.Read());
+				active._invalidated += active._entries.Store(pointer, new Entry(__instance, __state.Row, key, output, SharedState.Read()));
 			}
 		}
 		catch
@@ -352,7 +324,7 @@ internal sealed class DialogueTextLayoutCache : IDisposable
 		}
 		Transform transform = text.transform;
 		Transform transform2 = regionText.transform;
-		key = new LayoutKey(original, size, applyAll, text.unlimitedLineWidth, regionText.Pointer, textPrefab.Pointer, LabelStyle.Read(regionText), LabelStyle.Read(component), transform.localPosition, transform.localScale, transform.localRotation, transform2.localPosition, transform2.localScale, transform2.localRotation);
+		key = new LayoutKey(original, size, applyAll, text.unlimitedLineWidth, regionText.Pointer, textPrefab.Pointer, LabelStyle.Read(regionText), LabelStyle.Read(component), transform.localScale, transform.localRotation, transform2.localPosition, transform2.localScale, transform2.localRotation);
 		return true;
 	}
 

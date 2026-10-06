@@ -13,6 +13,8 @@ internal sealed class AzuriteDriver : MonoBehaviour
 
 	internal Action? Destroyed;
 
+	internal Action? Quitting;
+
 	public AzuriteDriver(IntPtr pointer)
 		: base(pointer)
 	{
@@ -59,6 +61,18 @@ internal sealed class AzuriteDriver : MonoBehaviour
 		Tick = null;
 		LateTick = null;
 		Destroyed = null;
+		Quitting = null;
 		destroyed?.Invoke();
+	}
+
+	private void OnApplicationQuit()
+	{
+		// Terminal shutdown must drop presentation ownership before Unity tears
+		// down localization/services. Live disable and export still restore.
+		Action? quitting = Quitting;
+		Quitting = null;
+		Tick = null;
+		LateTick = null;
+		quitting?.Invoke();
 	}
 }

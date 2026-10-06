@@ -56,6 +56,8 @@ internal sealed class EditorRenderProbe
 				return false;
 			}
 			Test preview = instance.preview;
+			if (preview != null)
+				log($"editor preview producers: auto={preview.auto}; voice={preview.hasVoice}; delayed={preview.delayedAdvanceTask != null}; animations={AnimationActivity.CountPending(preview.currentAnims)}/{preview.currentAnims?.Count ?? 0}; backgroundAnimations={AnimationActivity.CountPending(preview.backgroundAnimations)}/{preview.backgroundAnimations?.Count ?? 0}; screenText={AnimationActivity.CountPending(preview.currentSTs)}/{preview.currentSTs?.Count ?? 0}; bgEffect={OptionalHostActivity.CurrentEffectActive(preview) || OptionalHostActivity.CustomEffectActive(preview)}; characterState={CharacterActivity.Observe(preview, true)}. Values are pending presence (0/1) / total; terminal entries do not count as work.");
 			log($"editor render probe: inspector={instance.Pointer:X}; loading={instance.loading}; unloading={instance.unloading}; preview={((preview == null) ? "none" : preview.Pointer.ToString("X"))}; previewActive={preview != null && preview.isActiveAndEnabled}; previewMode={preview != null && preview.previewMode}; screen={Screen.width}x{Screen.height}.");
 			GraphicsManager instance2 = Singleton<GraphicsManager>.Instance;
 			if (instance2 != null)

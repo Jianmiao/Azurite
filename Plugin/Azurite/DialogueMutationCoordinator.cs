@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using HarmonyLib;
 using Studio.Scripts;
 
@@ -89,7 +90,7 @@ internal sealed class DialogueMutationCoordinator : IDisposable
 			{
 				_active = null;
 			}
-			_log?.Invoke("dialogue mutation gate unavailable: " + error.GetType().Name + ". Native editor behavior is unchanged.");
+			_log?.Invoke("dialogue mutation gate unavailable: " + error + ". Native editor behavior is unchanged.");
 			return false;
 		}
 	}
@@ -101,7 +102,7 @@ internal sealed class DialogueMutationCoordinator : IDisposable
 			new HarmonyMethod(typeof(DialogueMutationCoordinator), nameof(Begin)),
 			new HarmonyMethod(typeof(DialogueMutationCoordinator), nameof(Complete)),
 			null,
-			new HarmonyMethod(typeof(DialogueMutationCoordinator), nameof(Finalize)),
+			new HarmonyMethod(typeof(DialogueMutationCoordinator), nameof(AfterMutation)),
 			null);
 		Patches? patches = Harmony.GetPatchInfo(method);
 		if (patches == null || !patches.Owners.Contains(Owner))
@@ -116,13 +117,14 @@ internal sealed class DialogueMutationCoordinator : IDisposable
 		internal bool Ended;
 	}
 
-	private static void Begin(out Scope __state)
+	private static void Begin(out IntPtr __state)
 	{
+		__state = IntPtr.Zero;
 		DialogueMutationCoordinator? active = _active;
-		__state = new Scope();
 		if (active != null && active.IsInstalled)
 		{
-			__state.Lease = active._state.Enter();
+			Scope scope = new Scope { Lease = active._state.Enter() };
+			__state = GCHandle.ToIntPtr(GCHandle.Alloc(scope));
 			if (active._state.Depth == 1)
 			{
 				try
@@ -137,15 +139,31 @@ internal sealed class DialogueMutationCoordinator : IDisposable
 		}
 	}
 
-	private static void Complete(Scope __state)
+	private static void Complete(IntPtr __state)
 	{
-		End(__state, exception: null);
+		End(GetScope(__state), exception: null);
 	}
 
-	private static Exception? Finalize(Exception? __exception, Scope __state)
+	private static Exception? AfterMutation(Exception? __exception, IntPtr __state)
 	{
-		End(__state, __exception);
+		if (__state != IntPtr.Zero)
+		{
+			GCHandle handle = GCHandle.FromIntPtr(__state);
+			try
+			{
+				End(handle.Target as Scope, __exception);
+			}
+			finally
+			{
+				handle.Free();
+			}
+		}
 		return __exception;
+	}
+
+	private static Scope? GetScope(IntPtr state)
+	{
+		return state == IntPtr.Zero ? null : GCHandle.FromIntPtr(state).Target as Scope;
 	}
 
 	private static void End(Scope? scope, Exception? exception)

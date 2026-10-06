@@ -8,7 +8,7 @@ namespace Azurite;
 
 internal sealed class EditorWorkProbe
 {
-	private readonly record struct WorkState(int Scene, IntPtr Inspector, bool Active, bool Loading, bool Unloading, bool Rearrange, bool SavePending, bool CompilePending, bool Saving, bool Applying, int LoadingCount);
+	private readonly record struct WorkState(int Scene, IntPtr Inspector, bool Active, bool Loading, bool Unloading, bool Rearrange, bool SavePending, bool CompilePending, bool Saving, bool Applying, int LoadingCount, bool ResourcesKnown, bool AssetPreloading, bool DatabasesReady);
 
 	private readonly Action<string> _log;
 
@@ -17,6 +17,8 @@ internal sealed class EditorWorkProbe
 	private StudioCommon? _studio;
 
 	private Loading? _loading;
+
+	private ScenarioResourceManager? _resources;
 
 	private AuthoringEditorSession? _session;
 
@@ -96,6 +98,7 @@ internal sealed class EditorWorkProbe
 				_studio = null;
 				_session = null;
 				_loading = null;
+				_resources = null;
 			}
 			if (now >= _nextReferences)
 			{
@@ -103,16 +106,18 @@ internal sealed class EditorWorkProbe
 				_inspector = ScriptNodeInspector.instance;
 				_studio = StudioCommon.instance;
 				_loading = Singleton<Loading>.Instance;
+				_resources = Singleton<ScenarioResourceManager>.Instance;
 				_session = AuthoringEditorSession.Current;
 			}
 			bool flag = _inspector != null;
 			bool flag2 = _studio != null;
-			WorkState workState = new WorkState(_scene, flag ? _inspector.Pointer : IntPtr.Zero, flag && _inspector.isActiveAndEnabled, flag && _inspector.loading, flag && _inspector.unloading, flag && _inspector.rearrangeScheduled, flag2 && _studio.autoSavePending, flag2 && _studio.autoCompilePending, _session != null && _session.SaveInProgress, _session != null && _session.IsApplying, (_loading != null) ? _loading.loadingCount : (-1));
+			bool flag3 = _resources != null;
+			WorkState workState = new WorkState(_scene, flag ? _inspector.Pointer : IntPtr.Zero, flag && _inspector.isActiveAndEnabled, flag && _inspector.loading, flag && _inspector.unloading, flag && _inspector.rearrangeScheduled, flag2 && _studio.autoSavePending, flag2 && _studio.autoCompilePending, _session != null && _session.SaveInProgress, _session != null && _session.IsApplying, (_loading != null) ? _loading.loadingCount : (-1), flag3, flag3 && _resources.Preloading, flag3 && _resources.AreDbsLoaded);
 			if (!_hasState || workState != _lastState)
 			{
 				_hasState = true;
 				_lastState = workState;
-				_log($"editor-work t={now:F3}s transition scene={workState.Scene} inspector={workState.Inspector} active={workState.Active} loading={workState.Loading} unloading={workState.Unloading} rearrange={workState.Rearrange} savePending={workState.SavePending} compilePending={workState.CompilePending} saving={workState.Saving} applying={workState.Applying} loadingCount={workState.LoadingCount}; {ReadCounts()}.");
+				_log($"editor-work t={now:F3}s transition scene={workState.Scene} inspector={workState.Inspector} active={workState.Active} loading={workState.Loading} unloading={workState.Unloading} rearrange={workState.Rearrange} savePending={workState.SavePending} compilePending={workState.CompilePending} saving={workState.Saving} applying={workState.Applying} loadingCount={workState.LoadingCount} resourcesKnown={workState.ResourcesKnown} assetPreloading={workState.AssetPreloading} databasesReady={workState.DatabasesReady}; {ReadCounts()}.");
 			}
 			double num2 = now - _windowStarted;
 			if (num2 >= 5.0)
@@ -128,6 +133,7 @@ internal sealed class EditorWorkProbe
 			_studio = null;
 			_session = null;
 			_loading = null;
+			_resources = null;
 			if (now >= _nextError)
 			{
 				_nextError = now + 5.0;

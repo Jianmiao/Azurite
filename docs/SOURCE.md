@@ -1,6 +1,8 @@
-# Azurite 1.0.0 来源与恢复说明
+# Azurite 本地试用包来源与恢复说明
 
 本仓库由已保留的 Azurite 0.7.0 .NET 程序经 ILSpyCmd 9.1.0.7988 反编译恢复，再添加 AA 1.0.0-fix 的受限适配和可移植验证。
+
+后续优化基于用户提供的 `Azurite-1.0.0-candidate-deep-3.7z` 内附源码及合作伙伴的 `1.0.1-candidate.efficiency-1`，继续维护编辑体验与对白虚拟化。历史文档保留作参考，本次实际版本、交付与验证限制以 README 为准。
 
 - 原 Azurite.dll SHA-256：`A5AB09163853364F393E65818C23C80FDE47CE3F40312746605DE469E6BC415F`。
 - 保留的原 Azurite.Core.dll SHA-256：`76A46C4A896DFBDFFD66C2BE85E9A0E07D2D0523FAAEF0841763D997C65DF1A5`。

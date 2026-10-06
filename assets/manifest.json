@@ -1,7 +1,7 @@
 {
   "name": "Azurite",
-  "version_number": "1.0.0",
+  "version_number": "1.0.20",
   "website_url": "https://github.com/Jianmiao/Azurite",
-  "description": "蓝铜矿：动态屏幕刷新率、静态场景按需绘制和大稿编辑保护。",
+  "description": "蓝铜矿本地候选：角色滚轮 2 倍、表情滚轮倍率上限修正，并允许资源导入期间先编辑角色/表情。",
   "dependencies": []
 }

@@ -19,8 +19,10 @@ Check(legacy.Supported && legacy.NativePatches && !legacy.FpsLabelPostfix && leg
 var current = HostProfile.ResolvePortable(game, metadata, true);
 Check(current.Supported, "AA 1.0.0-fix can activate basic scrolling and render scheduling");
 Check(current.Supported && !current.NativePatches && current.FpsLabelPostfix && !current.LegacyExporter &&
-    current.PlainTextPatch && current.PreviewOptimization && !current.PreviewOwnership && !current.LegacyLoadingException,
-    "AA 1.0.0-fix enables safe text and idle-surface paths but not unverified preview ownership");
+    current.PlainTextPatch && current.PreviewOptimization && !current.PreviewOwnership && !current.LegacyLoadingException &&
+    current.ProgressiveEditorLoading,
+    "AA 1.0.0-fix enables safe text, idle-surface and opt-in progressive editor loading paths but not unverified preview ownership");
+Check(!legacy.ProgressiveEditorLoading, "legacy host keeps progressive editor loading disabled");
 for (int i = 0; i < 3; i++) {
     var changed = (string[])oldHashes.Clone(); changed[i] = new string('0', 64);
     Check(!Resolve(changed).Supported, $"reject altered legacy identity component {i}");
@@ -97,6 +99,33 @@ Check(!mutation.IsActive && mutation.IsBlocking(2.2, 0.35) && !mutation.IsBlocki
 outerMutation.Complete(2.4);
 Check(mutation.Depth == 0 && mutation.Generation == 1,
     "repeated finalizer completion is idempotent");
+Check(!LargeProjectOptimizationPolicy.CanEnableLayoutCache(true, false, false, true, false),
+    "fix host layout cache stays disabled when the mutation gate is unavailable");
+Check(!LargeProjectOptimizationPolicy.CanEnableLayoutCache(true, false, true, false, false),
+    "layout cache remains opt-in even when the mutation gate is installed");
+Check(LargeProjectOptimizationPolicy.CanEnableLayoutCache(true, false, true, true, false),
+    "verified fix host may enable the layout cache only with a live mutation gate");
+Check(LargeProjectOptimizationPolicy.CanEnableLayoutCache(true, true, false, true, false),
+    "legacy native-patch host keeps its existing opt-in cache path");
+Check(!LargeProjectOptimizationPolicy.CanEnableLayoutCache(true, false, true, true, true),
+    "layout cache is disabled during export");
+var rowBefore = new[] { new IntPtr(1), new IntPtr(2), new IntPtr(3) };
+var rowInserted = new[] { new IntPtr(1), new IntPtr(2), new IntPtr(4), new IntPtr(3) };
+var rowDeleted = new[] { new IntPtr(1), new IntPtr(3) };
+Check(DialogueRowReusePlan.TryCreate(rowBefore, rowInserted, out var insertPlan) && insertPlan.Valid && insertPlan.IsInsertion,
+    "row reuse plan accepts one inserted identity");
+Check(DialogueRowReusePlan.TryCreate(rowBefore, rowDeleted, out var deletePlan) && deletePlan.Valid && !deletePlan.IsInsertion,
+    "row reuse plan accepts one deleted identity");
+Check(DialogueRowReusePlan.TryCreate(rowBefore, new[] { new IntPtr(1), new IntPtr(2) }, out var deleteTailPlan) &&
+    deleteTailPlan.ReuseBeforeIndices.SequenceEqual(new[] { 0, 1 }),
+    "row reuse plan accepts a deleted tail identity");
+Check(DialogueRowReusePlan.TryCreate(rowBefore, new[] { new IntPtr(1), new IntPtr(2), new IntPtr(3), new IntPtr(4) }, out var insertTailPlan) &&
+    insertTailPlan.ReuseBeforeIndices.SequenceEqual(new[] { 0, 1, 2, -1 }),
+    "row reuse plan accepts an inserted tail identity");
+Check(!DialogueRowReusePlan.TryCreate(rowBefore, new[] { new IntPtr(1), new IntPtr(2), new IntPtr(2), new IntPtr(3) }, out _),
+    "row reuse plan rejects duplicate identities");
+Check(!DialogueRowReusePlan.TryCreate(rowBefore, new[] { new IntPtr(1), new IntPtr(4), new IntPtr(3), new IntPtr(5) }, out _),
+    "row reuse plan rejects replacement of more than one identity");
 var failedMutation = mutation.Enter();
 failedMutation.Complete(double.NaN);
 Check(mutation.IsBlocking(3.0, 0.35),
