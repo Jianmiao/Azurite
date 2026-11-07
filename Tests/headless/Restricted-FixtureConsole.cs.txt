@@ -1,0 +1,45 @@
+// Harmless console child. No AA, audio, input, windows, account or registry writes.
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Threading;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
+class RestrictedFixtureConsole {
+ [StructLayout(LayoutKind.Sequential)] struct SidAndAttributes {public IntPtr Sid;public uint Attributes;}
+ [DllImport("advapi32.dll",SetLastError=true)] static extern bool OpenProcessToken(IntPtr process,uint access,out IntPtr token);
+ [DllImport("advapi32.dll",SetLastError=true)] static extern bool CreateRestrictedToken(IntPtr token,uint flags,uint disabled,IntPtr disableSids,uint deleteCount,IntPtr deletePrivileges,uint restrictedCount,[In] SidAndAttributes[] restrictedSids,out IntPtr restricted);
+ [DllImport("advapi32.dll",SetLastError=true)] static extern bool ImpersonateLoggedOnUser(IntPtr token);
+ [DllImport("advapi32.dll",SetLastError=true)] static extern bool RevertToSelf();
+ [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+ static bool Denied(Action action){try{action();return false;}catch(UnauthorizedAccessException){return true;}}
+ static int CheckPreparedAcl(string prepared,string replacement){
+  // Same logon session, deliberately restricted to Guests for the second access check.
+  // No account/logon/elevation operation; impersonation exists only inside this fixture.
+  IntPtr token=IntPtr.Zero,restricted=IntPtr.Zero;bool impersonating=false;
+  var sid=new SecurityIdentifier("S-1-5-32-546");byte[] bytes=new byte[sid.BinaryLength];sid.GetBinaryForm(bytes,0);var pin=GCHandle.Alloc(bytes,GCHandleType.Pinned);
+  try {
+   if(!OpenProcessToken(Process.GetCurrentProcess().Handle,14,out token))throw new System.ComponentModel.Win32Exception();
+   if(!CreateRestrictedToken(token,1,0,IntPtr.Zero,0,IntPtr.Zero,1,new SidAndAttributes[]{new SidAndAttributes{Sid=pin.AddrOfPinnedObject(),Attributes=0}},out restricted))throw new System.ComponentModel.Win32Exception();
+   if(!ImpersonateLoggedOnUser(restricted))throw new System.ComponentModel.Win32Exception();impersonating=true;
+   int blocked=0;if(Denied(()=>File.WriteAllText(prepared,"tamper")))blocked++;
+   if(Denied(()=>File.Delete(prepared)))blocked++;
+   if(Denied(()=>File.Replace(replacement,prepared,null)))blocked++;
+   if(!RevertToSelf())throw new System.ComponentModel.Win32Exception();impersonating=false;
+   Console.Write("acl-blocks="+blocked);return blocked==3?0:3;
+  } finally {if(impersonating)RevertToSelf();if(restricted!=IntPtr.Zero)CloseHandle(restricted);if(token!=IntPtr.Zero)CloseHandle(token);pin.Free();}
+ }
+ static int Main(string[] a) {
+  if(a[0]=="echo") { for(int i=1;i<a.Length;i++){if(i>1)Console.Write("|");Console.Write(Convert.ToBase64String(Encoding.UTF8.GetBytes(a[i])));}return 0; }
+  if(a[0]=="env") {Console.Write(Environment.GetEnvironmentVariable("AZUREARCHIVE_CLI_DIRECTORY"));return 0;}
+  if(a[0]=="leaf") {Thread.Sleep(60000);return 0;}
+  if(a[0]=="acl")return CheckPreparedAcl(a[1],a[2]);
+  if(a[0]!="tree"&&a[0]!="leak")return 2;
+  var child=Process.Start(new ProcessStartInfo {FileName=Process.GetCurrentProcess().MainModule.FileName,Arguments="leaf",UseShellExecute=false,CreateNoWindow=true});
+  File.WriteAllText(a[1],"{\"pids\":["+Process.GetCurrentProcess().Id+","+child.Id+"]}");
+  Console.Write("fixture-pipe-open");Console.Out.Flush();
+  if(a[0]=="leak") return 0;
+  Thread.Sleep(60000);return 0;
+ }
+}
