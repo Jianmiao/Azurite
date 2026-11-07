@@ -7,7 +7,7 @@ pwsh -NoProfile -File tools/Test-Source.ps1 -Suite Portable
 pwsh -NoProfile -File tests/Test-SourcePlan.ps1
 ```
 
-It builds Core and runs 19 source-linked or pure-model test projects, including wheel-control, single-speaker mutation and host authoring admission behavior. It does not launch AA or validate rendered UI, native callbacks, saving or actual performance.
+It builds Core and runs 24 source-linked or pure-model test projects, including wheel-control, single-speaker mutation, host authoring admission, selection freshness and five-family v2 card compilation. New top-level test projects must be explicitly classified before the runner proceeds. It does not launch AA or validate rendered UI, native callbacks, saving or actual performance.
 
 External integration checks require explicit, user-supplied dependencies:
 

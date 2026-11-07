@@ -15,7 +15,18 @@ $portable=@('Tests/HostProfile.Tests.csproj','ScrollTests/ScrollTests.csproj','P
  'RowCacheTests/RowCacheTests.csproj','VirtualizationTests/VirtualizationTests.csproj',
  'BackgroundGalleryTests/BackgroundGalleryTests.csproj','WheelTuningTests/WheelTuningTests.csproj',
  'WheelSettingsControlTests/WheelSettingsControlTests.csproj','AuthoringSpeakerShortcutTests/AuthoringSpeakerShortcutTests.csproj',
- 'HostActivityAuthoringTests/HostActivityAuthoringTests.csproj')
+ 'HostActivityAuthoringTests/HostActivityAuthoringTests.csproj',
+ 'BoxSelectionTests/BoxSelectionTests.csproj','BatchEditingTests/BatchEditingTests.csproj',
+ 'PresetCardPackTests/PresetCardPackTests.csproj','CardPackIntegrationTests/CardPackIntegrationTests.csproj',
+ 'CardPackV2Tests/CardPackV2Tests.csproj')
+$hostProjects=@('DriverTests/DriverTests.csproj','SelectorTests/SelectorTests.csproj',
+ 'LoadingIntegrationTests/LoadingIntegrationTests.csproj','CpuTests/CpuTests.csproj')
+$classified=@($portable)+@($hostProjects)
+$discovered=@(Get-ChildItem -LiteralPath $root -Directory | Where-Object {$_.Name.EndsWith('Tests',[StringComparison]::Ordinal)} | ForEach-Object {
+    Get-ChildItem -LiteralPath $_.FullName -File -Filter '*.csproj' | ForEach-Object {[IO.Path]::GetRelativePath($root,$_.FullName).Replace('\','/')}
+})
+$unclassified=@($discovered | Where-Object {$_ -notin $classified})
+if($unclassified.Count){throw ('Classify new test projects as Portable or Host before validation: '+($unclassified -join ', '))}
 $jobs=[Collections.Generic.List[object]]::new()
 function Add-Job([string]$Name,[string[]]$Arguments){$jobs.Add([pscustomobject]@{Name=$Name;Arguments=$Arguments})}
 if($Suite -in @('Portable','All')){

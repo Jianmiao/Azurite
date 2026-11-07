@@ -4,10 +4,12 @@ $root=Split-Path -Parent $PSScriptRoot
 $script=Join-Path $root 'tools/Test-Source.ps1'
 function Assert([bool]$value,[string]$message){if(!$value){throw $message}}
 $portable=& $script -Suite Portable -PlanOnly
-Assert ($portable.Jobs.Count -eq 20) 'Portable suite must include Core plus all 19 classified portable test projects.'
+Assert ($portable.Jobs.Count -eq 25) 'Portable suite must include Core plus all 24 classified portable test projects.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'WheelSettingsControlTests')) 'Portable suite must exercise actual wheel control.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringSpeakerShortcutTests')) 'Portable suite must exercise actual shortcut mutation.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'HostActivityAuthoringTests')) 'Portable suite must exercise actual host authoring admission.'
+Assert ([bool]($portable.Jobs | Where-Object Name -eq 'CardPackV2Tests')) 'Portable suite must exercise all five card-family compilation paths.'
+Assert ([bool]($portable.Jobs | Where-Object Name -eq 'BoxSelectionTests')) 'Portable suite must exercise selection freshness.'
 Assert (@($portable.Jobs | Where-Object Name -in @('CpuTests','DriverTests','SelectorTests','LoadingIntegrationTests')).Count -eq 0) 'Host-dependent tests leaked into portable suite.'
 Assert (!$portable.LaunchesAA) 'Source validation must not launch AA.'
 $failed=$false
