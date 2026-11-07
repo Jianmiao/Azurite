@@ -117,6 +117,49 @@ internal sealed class HostActivity
 		}
 	}
 
+	// Mutation admission is stricter than idle-rendering admission and is
+	// evaluated only for an actual shortcut chord. It deliberately ignores raw
+	// key activity while rejecting editor transitions and active preview work.
+	internal bool CanUseSingleSpeakerShortcut()
+	{
+		try
+		{
+			if (!Application.isFocused || HasInputOrIme(out _)) return false;
+			StudioCommon? studio = StudioCommon.instance;
+			ScriptNodeInspector? inspector = ScriptNodeInspector.instance;
+			if (studio == null || !studio.isActiveAndEnabled || !studio.gameObject.activeInHierarchy ||
+				studio.entryNode == null || !string.IsNullOrEmpty(studio.sessionInitializationError) ||
+				inspector == null || !inspector.isActiveAndEnabled || !inspector.gameObject.activeInHierarchy ||
+				inspector.scriptNode == null || inspector.loading || inspector.unloading || inspector.rearrangeScheduled)
+				return false;
+
+			// Known static resource windows are safe for rendering, but they own
+			// keyboard focus and must never route a script mutation.
+			WindowManager? windows = Singleton<WindowManager>.Instance;
+			if (windows == null || windows.activeWindow != null || windows.blocking?.activeInHierarchy == true)
+				return false;
+
+			Loading? loading = Singleton<Loading>.Instance;
+			List<string>? tags = Loading.LoadingTags;
+			ScenarioResourceManager? resources = Singleton<ScenarioResourceManager>.Instance;
+			AuthoringEditorSession? session = AuthoringEditorSession.Current;
+			if (loading == null || loading.loadingCount != 0 || tags == null || tags.Count != 0 ||
+				studio.autoSavePending || studio.autoCompilePending || session == null ||
+				session.SaveInProgress || session.IsApplying || resources == null ||
+				resources.Preloading || !resources.AreDbsLoaded)
+				return false;
+
+			_inspector = inspector;
+			return !HasPreviewOrAnimation(editorSurface: true, allowAmbient: false,
+				out _, out _, out _);
+		}
+		catch (Exception error)
+		{
+			ReportFailure("speaker authoring", error);
+			return false;
+		}
+	}
+
 	private void RefreshReferencesAtMostOncePerSecond()
 	{
 		long timestamp = Stopwatch.GetTimestamp();

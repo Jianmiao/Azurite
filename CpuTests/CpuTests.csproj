@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net6.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>annotations</Nullable></PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../../AAVideoExport-0.2.4-source/src/VideoExport.Plugin/RenderControlV1.cs" Link="Production/RenderControlV1.cs" />
+    <Compile Include="$(AaveRenderControlSource)" Link="Production/RenderControlV1.cs" Condition="'$(AaveRenderControlSource)' != ''" />
     <Compile Include="../Plugin/Azurite/RenderControlClient.cs" />
     <Compile Include="../Plugin/Azurite/RenderControlBinding.cs" />
     <Compile Include="../Plugin/Azurite/RenderControlState.cs" />
@@ -10,4 +10,7 @@
     <Compile Include="../Plugin/Azurite/DisplayRatePolicy.cs" />
     <Reference Include="Azurite.Core"><HintPath>../references/Azurite.Core.dll</HintPath></Reference>
   </ItemGroup>
+  <Target Name="RequireAaveRenderControlSource" BeforeTargets="CoreCompile">
+    <Error Condition="'$(AaveRenderControlSource)' == '' Or !Exists('$(AaveRenderControlSource)')" Text="Set AaveRenderControlSource to the AAVideoExport production RenderControlV1.cs file. This external integration test is not part of the portable suite." />
+  </Target>
 </Project>

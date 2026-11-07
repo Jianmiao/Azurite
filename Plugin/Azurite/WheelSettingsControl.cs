@@ -11,17 +11,16 @@ namespace Azurite;
 internal sealed class WheelSettingsControl : IDisposable
 {
     private const float RowGap = 24f;
-    private const float MinimumLabelWidth = 240f;
-    private const float MaximumLabelWidth = 320f;
+    private const int CaptionWidth = 240;
+    private const int ValueWidth = 100;
     private sealed class Entry
     {
         internal SettingPanel Panel = null!;
         internal UILabel Anchor = null!;
         internal UISlider Slider = null!;
         internal UILabel Label = null!;
+        internal UILabel ValueLabel = null!;
         internal bool Updating;
-        internal Vector3 LastAnchorPosition;
-        internal float LastSliderLeftOffset;
     }
     private readonly Func<float> _get;
     private readonly Action<float> _set;
@@ -42,21 +41,22 @@ internal sealed class WheelSettingsControl : IDisposable
                 foreach (var panel in UnityEngine.Object.FindObjectsOfType<SettingPanel>())
                 {
                     if (panel == null || panel.widgets == null || panel.widgets.fontNameLabel == null) continue;
-                    if (!_entries.TryGetValue(panel.Pointer, out var e) || e.Slider == null || e.Label == null)
+                    if (!_entries.TryGetValue(panel.Pointer, out var e) || e.Slider == null || e.Label == null || e.ValueLabel == null)
                         Create(panel);
-                    else if (e.Anchor != null && (e.Anchor.transform.localPosition != e.LastAnchorPosition || Math.Abs(SliderLeftOffset(e.Slider) - e.LastSliderLeftOffset) > 0.5f))
+                    else if (e.Anchor != null)
                         Layout(e);
                 }
             }
             foreach (var e in _entries.Values)
             {
-                if (e.Panel == null || e.Slider == null || e.Label == null) continue;
+                if (e.Panel == null || e.Slider == null || e.Label == null || e.ValueLabel == null) continue;
                 float scale = Math.Clamp(_get(), 0.5f, 2f);
                 float value = Math.Clamp((scale - 0.5f) / 1.5f, 0f, 1f);
                 if (!e.Updating && Math.Abs(e.Slider.value - value) > 0.001f)
                 { e.Updating = true; e.Slider.value = value; e.Updating = false; }
-                string text = $"滚轮灵敏度  {scale * 100f:0}%";
-                if (e.Label.text != text) e.Label.text = text;
+                if (e.Label.text != "滚动灵敏度") e.Label.text = "滚动灵敏度";
+                string text = $"{scale * 100f:0}%";
+                if (e.ValueLabel.text != text) e.ValueLabel.text = text;
             }
         }
         catch { /* a closing panel is allowed to disappear between discovery and write */ }
@@ -77,19 +77,13 @@ internal sealed class WheelSettingsControl : IDisposable
         // widgets. Leave enough horizontal room for the percentage label.
         foreach (var tick in sliderObject.GetComponentsInChildren<UILabel>(true))
             tick.enabled = false;
-        GameObject labelObject = NGUITools.AddChild(parent, anchor.gameObject);
-        var label = labelObject.GetComponent<UILabel>();
-        if (label == null) return null;
-        labelObject.name = "AzuriteWheelSensitivityLabel";
-        // A copied font label can be wider than the fixed 185-unit offset used
-        // by the first implementation. At 100% UI scale the value text then
-        // reaches into the slider thumb. Keep a dedicated, bounded caption
-        // column and compute the slider's left edge from the actual pivots.
-        label.width = (int)Math.Clamp(Math.Max(anchor.width, MinimumLabelWidth), MinimumLabelWidth, MaximumLabelWidth);
-        label.pivot = UIWidget.Pivot.Left;
-        label.overflowMethod = UILabel.Overflow.ClampContent;
-        label.text = "滚轮灵敏度  100%";
-        var entry = new Entry { Panel = panel, Anchor = anchor, Slider = slider, Label = label };
+        // The font-name object may be a LocalizedUILabel with anchors and font
+        // adapters. Copy its typography, never its lifecycle or clipping box.
+        var label = CreateLabel(parent, anchor, "AzuriteWheelSensitivityLabel", CaptionWidth, NGUIText.Alignment.Left);
+        var valueLabel = CreateLabel(parent, anchor, "AzuriteWheelSensitivityValue", ValueWidth, NGUIText.Alignment.Right);
+        label.text = "滚动灵敏度";
+        valueLabel.text = "100%";
+        var entry = new Entry { Panel = panel, Anchor = anchor, Slider = slider, Label = label, ValueLabel = valueLabel };
         Layout(entry);
         Action changed = () =>
         {
@@ -107,50 +101,68 @@ internal sealed class WheelSettingsControl : IDisposable
         _entries[panel.Pointer] = entry;
         return entry;
     }
-    private static float LeftEdge(UIWidget widget)
+    private static UILabel CreateLabel(Transform parent, UILabel source, string name, int width, NGUIText.Alignment alignment)
     {
-        float x = widget.transform.localPosition.x;
-        return widget.pivot switch
-        {
-            UIWidget.Pivot.TopLeft or UIWidget.Pivot.Left or UIWidget.Pivot.BottomLeft => x,
-            UIWidget.Pivot.Top or UIWidget.Pivot.Center or UIWidget.Pivot.Bottom => x - widget.width * 0.5f,
-            _ => x - widget.width
-        };
+        GameObject obj = NGUITools.AddChild(parent.gameObject);
+        obj.name = name;
+        var label = obj.AddComponent<UILabel>();
+        label.width = width;
+        label.pivot = UIWidget.Pivot.Left;
+        label.alignment = alignment;
+        label.maxLineCount = 1;
+        label.overflowMethod = UILabel.Overflow.ShrinkContent;
+        ApplyTypography(label, source);
+        return label;
+    }
+
+    private static void ApplyTypography(UILabel label, UILabel source)
+    {
+        if (source.bitmapFont != null) label.bitmapFont = source.bitmapFont;
+        else label.trueTypeFont = source.trueTypeFont;
+        label.fontSize = Math.Max(1, source.fontSize);
+        label.fontStyle = source.fontStyle;
+        label.height = Math.Max(source.height, label.fontSize + Math.Abs(source.spacingY) + 16);
+        label.color = source.color;
+        label.depth = source.depth;
     }
     private static void Layout(Entry entry)
     {
         UILabel anchor = entry.Anchor;
-        float anchorLeft = LeftEdge(anchor);
-        float rowOffset = Math.Max(74f, anchor.height + 24f);
-        Vector3 labelPosition = anchor.transform.localPosition;
-        labelPosition.x = anchorLeft;
+        Transform? parent = entry.Slider.transform.parent;
+        if (parent == null || entry.Panel.widgets.autoDelaySlider == null) return;
+        ApplyTypography(entry.Label, anchor);
+        ApplyTypography(entry.ValueLabel, anchor);
+        float rowOffset = Math.Max(74f, entry.Label.height + RowGap);
+        Vector3 labelPosition = parent.InverseTransformPoint(anchor.transform.position);
         labelPosition.y -= rowOffset;
-        entry.Label.transform.localPosition = labelPosition;
-
-        // Keep a real gap between the caption's right edge and the slider's
-        // left edge even when the host uses a centered slider pivot.
-        float labelRight = labelPosition.x + entry.Label.width;
-        float sliderPositionX = labelRight + RowGap - SliderLeftOffset(entry.Slider);
-        Vector3 sliderPosition = entry.Slider.transform.localPosition;
-        sliderPosition.x = sliderPositionX;
+        // Preserve the native slider column instead of pushing a full-width
+        // slider to the right of the font-name value column.
+        Vector3 sliderPosition = parent.InverseTransformPoint(entry.Panel.widgets.autoDelaySlider.transform.position);
         sliderPosition.y = labelPosition.y;
         entry.Slider.transform.localPosition = sliderPosition;
-        entry.LastAnchorPosition = anchor.transform.localPosition;
-        entry.LastSliderLeftOffset = SliderLeftOffset(entry.Slider);
+        if (!TrySliderBounds(entry.Slider, parent, out float left, out float right)) return;
+        labelPosition.x = left - RowGap - entry.Label.width;
+        entry.Label.transform.localPosition = labelPosition;
+        labelPosition.x = right + RowGap;
+        entry.ValueLabel.transform.localPosition = labelPosition;
     }
-    private static float SliderLeftOffset(UISlider slider)
+    private static bool TrySliderBounds(UISlider slider, Transform parent, out float left, out float right)
     {
-        float min = 0f;
-        bool found = false;
+        left = float.PositiveInfinity;
+        right = float.NegativeInfinity;
         foreach (UIWidget widget in slider.gameObject.GetComponentsInChildren<UIWidget>(true))
         {
-            // The AUTO template contains UILabel tick marks. They are hidden
-            // above and must not expand the slider's geometry for placement.
             if (widget is UILabel) continue;
-            min = found ? Math.Min(min, LeftEdge(widget)) : LeftEdge(widget);
-            found = true;
+            var corners = widget.worldCorners;
+            if (corners == null || corners.Length != 4) continue;
+            for (int i = 0; i < corners.Length; i++)
+            {
+                float x = parent.InverseTransformPoint(corners[i]).x;
+                left = Math.Min(left, x);
+                right = Math.Max(right, x);
+            }
         }
-        return found ? min : 0f;
+        return float.IsFinite(left) && float.IsFinite(right) && right > left;
     }
     public void Dispose()
     {
@@ -162,6 +174,7 @@ internal sealed class WheelSettingsControl : IDisposable
         {
             try { if (e.Slider != null) UnityEngine.Object.Destroy(e.Slider.gameObject); } catch { }
             try { if (e.Label != null) UnityEngine.Object.Destroy(e.Label.gameObject); } catch { }
+            try { if (e.ValueLabel != null) UnityEngine.Object.Destroy(e.ValueLabel.gameObject); } catch { }
         }
         _entries.Clear();
     }

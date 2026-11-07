@@ -5,7 +5,7 @@ using HarmonyLib;
 using Studio.Scripts;
 using UnityEngine;
 
-string hostPath = args.FirstOrDefault() ?? @"F:\AzureArchive_100_fix\BepInEx\interop\Assembly-CSharp.dll";
+string hostPath = args.FirstOrDefault() ?? throw new ArgumentException("Pass the current host Assembly-CSharp.dll path as the first test argument.");
 using var metadata = new HostMetadata(hostPath);
 Harmony.Metadata = metadata;
 var cases = new (string, Action)[]

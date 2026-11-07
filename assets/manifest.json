@@ -1,7 +1,7 @@
 {
   "name": "Azurite",
-  "version_number": "1.0.38",
+  "version_number": "1.0.40",
   "website_url": "https://github.com/Jianmiao/Azurite",
-  "description": "蓝铜矿 AA 1.0.1 兼容候选：帧率、滚动、空闲绘制、设置页滚轮灵敏度控件与 RenderControlV1 交接。",
+  "description": "蓝铜矿 AA 1.0.1 稳定基线候选：滚轮标题修复、默认关闭的单选发言槽快捷键及 RenderControlV1 交接；实机验收待完成。",
   "dependencies": []
 }

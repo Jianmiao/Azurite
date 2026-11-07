@@ -15,6 +15,7 @@ internal sealed record HostProfile(string Name, bool Supported, bool NativePatch
     // scheduling handoff. Do not inherit the Fix editor state-machine patches.
     private static readonly HostProfile Release101 = new("1.0.1 (render handoff, FPS and scrolling)", true, false, true, false, false, false, false, false, false);
     internal bool EditorPatches => NativePatches || ProgressiveEditorLoading;
+    internal bool SingleSpeakerAuthoring => ReferenceEquals(this, Release101);
 
 
     internal static HostProfile Resolve(string game, string interop, string unity)

@@ -12,7 +12,7 @@ $archive = (Resolve-Path -LiteralPath $ArchivePath).Path
 $backup = [IO.Path]::GetFullPath($BackupDirectory)
 if (-not $backup.StartsWith('E:\aamod\backups\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Backup must be inside E:\aamod\backups.' }
 if (Test-Path -LiteralPath $backup) { throw 'Preserve existing backup; choose a new directory.' }
-$validation = & (Join-Path $PSScriptRoot 'Test-ReleaseArchive.ps1') -ArchivePath $archive -RequireSidecar
+$validation = & (Join-Path $PSScriptRoot 'Test-ReleaseArchive.ps1') -ArchivePath $archive -RequireSidecar -AAInstallPath $aa
 $version = $validation.Version
 $active = [IO.File]::ReadAllText((Join-Path $aa 'ActiveProfile.txt')).Trim()
 if ($active -match '[\\/]' -or $active -in @('', '.', '..')) { throw 'Invalid active Profile name.' }
