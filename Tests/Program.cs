@@ -25,6 +25,9 @@ Check(HostProfile.IsPortableCandidate(game101, metadata101) && aa101.Supported &
 Check(!aa101.NativePatches && !aa101.LegacyExporter && !aa101.PreviewOwnership && !aa101.PreviewOptimization &&
     !aa101.PlainTextPatch && !aa101.ProgressiveEditorLoading && !aa101.LegacyLoadingException && !aa101.EditorPatches,
     "AA 1.0.1 does not inherit unverified legacy editor or preview patches");
+Check(aa101.SingleSpeakerAuthoring && !current.SingleSpeakerAuthoring && !legacy.SingleSpeakerAuthoring &&
+    !HostProfile.Unsupported.SingleSpeakerAuthoring,
+    "single speaker authoring is limited to the exact verified AA 1.0.1 profile");
 Check(!HostProfile.ResolvePortable(game101, metadata101, false).Supported &&
     !HostProfile.ResolvePortable(game101, metadata, true).Supported &&
     !HostProfile.ResolvePortable(game, metadata101, true).Supported,

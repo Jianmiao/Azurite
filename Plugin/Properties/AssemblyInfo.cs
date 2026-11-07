@@ -5,8 +5,8 @@ using System.Runtime.Versioning;
 
 [assembly: AssemblyCompany("Azurite")]
 [assembly: AssemblyConfiguration("Release")]
-[assembly: AssemblyFileVersion("1.0.38.0")]
-[assembly: AssemblyInformationalVersion("1.0.38-candidate.wheel-settings-layout-2")]
+[assembly: AssemblyFileVersion("1.0.40.0")]
+[assembly: AssemblyInformationalVersion("1.0.40-candidate.stable-baseline-1")]
 [assembly: AssemblyProduct("Azurite")]
 [assembly: AssemblyTitle("Azurite")]
-[assembly: AssemblyVersion("1.0.38.0")]
+[assembly: AssemblyVersion("1.0.40.0")]

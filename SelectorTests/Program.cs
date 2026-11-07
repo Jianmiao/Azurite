@@ -5,7 +5,7 @@ using CharacterList = Studio.Scripts.Window.CharacterExplorer.CharacterList;
 using BackgroundSelector = Studio.Scripts.Window.BackgroundExplorer.BackgroundExplorer;
 using PopupSelector = Studio.Scripts.Window.PopupImageExplorer.PopupImageExplorer;
 
-string aa = args.FirstOrDefault() ?? @"F:\AzureArchive_100_fix";
+string aa = args.FirstOrDefault() ?? throw new ArgumentException("Pass the AA installation directory as the first test argument.");
 string hostPath = Path.Combine(aa, "BepInEx", "interop", "Assembly-CSharp.dll");
 using var module = ModuleDefinition.ReadModule(hostPath);
 int passed = 0, failed = 0;

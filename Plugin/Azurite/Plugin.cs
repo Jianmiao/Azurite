@@ -16,15 +16,15 @@ using UnityEngine.SceneManagement;
 
 namespace Azurite;
 
-[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "1.0.38")]
+[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "1.0.40")]
 [BepInProcess("AzureArchive.exe")]
 public sealed class Plugin : BasePlugin
 {
 	public const string Id = "halocue.azurite";
 
-	public const string Version = "1.0.38";
+	public const string Version = "1.0.40";
 
-	public const string CandidateBuild = "wheel-settings-layout-2";
+	public const string CandidateBuild = "stable-baseline-1";
 
 	private static Plugin? _current;
 
@@ -132,6 +132,8 @@ public sealed class Plugin : BasePlugin
 	private ConfigEntry<float> _emotionWheelMultiplier;
 	private ConfigEntry<float> _userWheelScale;
 	private WheelSettingsControl? _wheelSettings;
+	private ConfigEntry<bool> _singleSpeakerShortcutsEnabled;
+	private AuthoringSpeakerShortcuts? _speakerShortcuts;
 
 	private ConfigEntry<double> _safetyRepaintFps;
 
@@ -304,6 +306,8 @@ public sealed class Plugin : BasePlugin
 		_emotionWheelMultiplier = base.Config.Bind("Editor Scrolling", "EmotionWheelMultiplier", 11.25f, "Independent wheel travel for the emotion chooser. Down scroll moves right; up scroll moves left; capped at 12.");
 		_userWheelScale = base.Config.Bind("Editor Scrolling", "UserWheelScale", 1.0f, "Global wheel sensitivity shown in AA settings: 0.5 to 2.0; 1.0 preserves current area multipliers.");
 		_wheelSettings = new WheelSettingsControl(() => Math.Clamp(_userWheelScale.Value, 0.5f, 2f), value => { _userWheelScale.Value = Math.Clamp(value, 0.5f, 2f); base.Config.Save(); });
+		_singleSpeakerShortcutsEnabled = base.Config.Bind("Authoring", "SingleSpeakerShortcuts", defaultValue: false,
+			"Experimental Alt+1..5 speaker assignment for one selected script row on verified AA 1.0.1 only. Native acceptance is pending; disabled by default. Multi-selection is not supported.");
 		// Existing profile values belong to the user; never remigrate a matching
 		// number on every startup now that scrolling has an in-app control.
 		_diagnostics = base.Config.Bind("Diagnostics", "LogStateChanges", defaultValue: false, "Every 5s record measured Update FPS, scheduled draw FPS, mode and actual settings. Scheduled draws are not completed GPU frames.");
@@ -361,6 +365,8 @@ public sealed class Plugin : BasePlugin
 				base.Log.LogInfo(message);
 			}, _previewTextures);
 			bool num = _host.Initialize(_harmony);
+			if (num && _host.Profile.SingleSpeakerAuthoring)
+				_speakerShortcuts = new AuthoringSpeakerShortcuts(message => base.Log.LogWarning(message), _activity.CanUseSingleSpeakerShortcut);
 			_editorBloom = new EditorBloomLease(message => base.Log.LogInfo(message));
 			base.Log.LogInfo("Azurite local candidate build=" + CandidateBuild + "; performance acceptance pending.");
 			if (_experimentalPreviewOwnership.Value)
@@ -657,6 +663,10 @@ public sealed class Plugin : BasePlugin
 			_reason = hostCompatibilitySnapshot.Reason;
 			return;
 		}
+		_speakerShortcuts?.Update(AuthoringSpeakerShortcuts.CanUpdate(_host.Profile, _enabled.Value,
+			_singleSpeakerShortcutsEnabled.Value, hostCompatibilitySnapshot.Supported,
+			hostCompatibilitySnapshot.ProbeHealthy, hostCompatibilitySnapshot.ExportActive,
+			_exportSuspended, progressiveBusy, mutationProtected, Application.isFocused));
 		_exportSuspended = false;
 		_rate.Observe(now);
 		_scrollProtected = _scrollActivity?.Observe(now, Application.isFocused, sampleViewportMotion: false) ?? false;
@@ -1179,6 +1189,8 @@ public sealed class Plugin : BasePlugin
 			_backgroundCategoryReflow = null;
 			_wheelSettings?.Dispose();
 			_wheelSettings = null;
+			_speakerShortcuts?.Dispose();
+			_speakerShortcuts = null;
 			_characterMeshes?.Dispose();
 			_characterMeshes = null;
 			_mutation?.Dispose();

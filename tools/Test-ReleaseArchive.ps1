@@ -4,6 +4,9 @@ param(
     [Parameter(Mandatory)][string]$ArchivePath,
     [string]$ExpectedVersion,
     [string]$CoreReferencePath,
+    [string]$ExpectedSourceCommit,
+    [string]$AAInstallPath,
+    [string]$CecilPath,
     [switch]$RequireSidecar
 )
 
@@ -20,7 +23,7 @@ $resolvedCore = (Resolve-Path -LiteralPath $CoreReferencePath).Path
 $prefix = "Azurite/$ExpectedVersion/"
 $required = @('Azurite.dll', 'Azurite.Core.dll', 'manifest.json', 'icon.png', 'SHA256SUMS.txt')
 $permitted = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-foreach ($name in ($required + @('README.md', 'SOURCE.md'))) { [void]$permitted.Add($name) }
+foreach ($name in ($required + @('README.md', 'SOURCE.md', 'BUILD.json'))) { [void]$permitted.Add($name) }
 
 function Get-ByteHash([byte[]]$Bytes) {
     [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($Bytes)).ToLowerInvariant()
@@ -121,6 +124,53 @@ foreach ($name in $entries.Keys) {
 }
 if ($hashes.Count -ne $entries.Count - 1) { throw 'Checksum coverage does not match the complete payload.' }
 
+$build = $null
+$identity = $null
+if ($entries.ContainsKey('BUILD.json')) {
+    $build = $utf8.GetString($entries['BUILD.json']) | ConvertFrom-Json
+    if ($build.schema -ne 1 -or $build.sourceCommit -cnotmatch '^[0-9a-f]{40}$' -or
+        $build.sourceTree -cnotmatch '^[0-9a-f]{40}$' -or
+        $build.sourceTreeClean -isnot [bool] -or -not $build.sourceTreeClean -or
+        $build.version -cne $ExpectedVersion -or
+        $build.candidateBuild -cnotmatch '^[a-z0-9][a-z0-9.-]*$' -or
+        $build.pluginSha256 -cnotmatch '^[0-9a-f]{64}$' -or
+        $build.coreSha256 -cnotmatch '^[0-9a-f]{64}$' -or
+        $build.coreMode -cne 'original' -or $build.runtimeAcceptance -cne 'not-performed') {
+        throw 'BUILD.json contains invalid candidate provenance or acceptance metadata.'
+    }
+    $hostReferences = @($build.hostReferences)
+    if ($hostReferences.Count -eq 0) { throw 'BUILD.json has no host reference hashes.' }
+    $hostPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($reference in $hostReferences) {
+        if ($null -eq $reference -or $reference.path -cnotmatch '^[^:/\\]+(?:/[^:/\\]+)+$' -or
+            ($reference.path -split '/' | Where-Object { $_ -in @('.', '..') }) -or
+            $reference.sha256 -cnotmatch '^[0-9a-f]{64}$' -or -not $hostPaths.Add($reference.path)) {
+            throw 'BUILD.json has invalid or duplicate host reference hashes.'
+        }
+    }
+    if ($ExpectedSourceCommit -and $build.sourceCommit -cne $ExpectedSourceCommit) {
+        throw 'BUILD.json sourceCommit does not match expected source commit.'
+    }
+    if ($build.pluginSha256 -cne (Get-ByteHash $entries['Azurite.dll']) -or
+        $build.coreSha256 -cne (Get-ByteHash $entries['Azurite.Core.dll'])) {
+        throw 'BUILD.json pluginSha256 or coreSha256 differs from archive payload.'
+    }
+    $identityArgs = @{
+        PluginBytes = $entries['Azurite.dll']
+        CoreBytes = $entries['Azurite.Core.dll']
+        ManifestBytes = $entries['manifest.json']
+    }
+    if ($AAInstallPath) { $identityArgs.AAInstallPath = $AAInstallPath }
+    if ($CecilPath) { $identityArgs.CecilPath = $CecilPath }
+    $identity = & (Join-Path $PSScriptRoot 'Test-CandidateIdentity.ps1') @identityArgs
+    if ($build.candidateBuild -cne $identity.CandidateBuild -or $build.version -cne $identity.Version -or
+        $build.pluginSha256 -cne $identity.PluginSha256 -or $build.coreSha256 -cne $identity.CoreSha256) {
+        throw 'BUILD.json version, candidateBuild, or binary hashes differ from validated identity.'
+    }
+} elseif ($ExpectedSourceCommit -or [version]$ExpectedVersion -ge [version]'1.0.40') {
+    throw 'BUILD.json is required for provenance validation of 1.0.40 and later candidate archives.'
+}
+
 $pluginVersion = Test-ManagedAssembly $entries['Azurite.dll'] 'Azurite' "$ExpectedVersion.0"
 $coreVersion = Test-ManagedAssembly $entries['Azurite.Core.dll'] 'Azurite.Core' ''
 $expectedCoreHash = (Get-FileHash -LiteralPath $resolvedCore -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -146,6 +196,10 @@ if (Test-Path -LiteralPath $sidecar -PathType Leaf) {
     PluginAssemblyVersion = $pluginVersion
     CoreAssemblyVersion = $coreVersion
     PayloadFiles = $entries.Count
+    SourceCommit = if ($build) { $build.sourceCommit } else { $null }
+    SourceTree = if ($build) { $build.sourceTree } else { $null }
+    CandidateBuild = if ($build) { $build.candidateBuild } else { $null }
+    CoreMode = if ($build) { $build.coreMode } else { $null }
     SHA256 = $archiveHash
     Result = 'PASS'
 }
