@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net6.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>annotations</Nullable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../../AAVideoExport-0.2.4-source/src/VideoExport.Plugin/RenderControlV1.cs" Link="Production/RenderControlV1.cs" />
+    <Compile Include="../Plugin/Azurite/RenderControlClient.cs" />
+    <Compile Include="../Plugin/Azurite/RenderControlBinding.cs" />
+    <Compile Include="../Plugin/Azurite/RenderControlState.cs" />
     <Compile Include="../Plugin/Azurite/CpuIdlePolicy.cs" />
     <Compile Include="../Plugin/Azurite/FpsController.cs" />
     <Compile Include="../Plugin/Azurite/DisplayRatePolicy.cs" />

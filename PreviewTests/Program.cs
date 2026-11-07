@@ -14,6 +14,8 @@ var fix = HostProfile.ResolvePortable(
 Check(!PreviewOptimizationPolicy.AllowsScopedOwnership(fix, false), "Fix host retains the safe default");
 Check(PreviewOptimizationPolicy.AllowsScopedOwnership(fix, true), "explicit opt-in allows the verified Fix host to attempt a live scoped lease");
 Check(!PreviewOptimizationPolicy.AllowsScopedOwnership(HostProfile.Unsupported, true), "opt-in cannot bypass host validation");
+Check(PreviewOptimizationPolicy.AllowsStaticCache(fix, true, true), "static preview cache is allowed only on the inspected Fix lifecycle");
+Check(!PreviewOptimizationPolicy.AllowsStaticCache(HostProfile.Unsupported, true, true), "static preview cache rejects unsupported hosts");
 Check(!fix.PreviewOwnership, "scoped opt-in does not enable legacy global renderScale ownership");
 
 Check(PreviewResolutionPlan.TryCreate(1920, 1080, 960, 540, out var half) && half == new PreviewResolutionPlan(960, 540),

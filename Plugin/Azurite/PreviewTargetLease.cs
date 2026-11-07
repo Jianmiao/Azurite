@@ -34,6 +34,8 @@ internal sealed class PreviewTargetLease : IDisposable
 
 	private PreviewResolutionPlan _current;
 
+	private double _currentResolutionScale = 1.0;
+
 	private double _candidateSince;
 
 	private double _nextDiscovery;
@@ -58,7 +60,7 @@ internal sealed class PreviewTargetLease : IDisposable
 		_textures = textures ?? new PreviewTextureRegistry();
 	}
 
-	public void Update(double now, bool allowed, Camera? cadenceSuspendedCamera = null)
+	public void Update(double now, bool allowed, Camera? cadenceSuspendedCamera = null, double resolutionScale = 1.0)
 	{
 		_observationTime = now;
 		_cadenceSuspendedCamera = cadenceSuspendedCamera;
@@ -66,7 +68,7 @@ internal sealed class PreviewTargetLease : IDisposable
 		{
 			return;
 		}
-		if (!allowed || !double.IsFinite(now))
+		if (!allowed || !double.IsFinite(now) || !double.IsFinite(resolutionScale) || resolutionScale < 0.5 || resolutionScale > 1.0)
 		{
 			Reason = ((!allowed) ? "host or configuration did not allow target matching" : "invalid observation time");
 			Restore();
@@ -111,7 +113,7 @@ internal sealed class PreviewTargetLease : IDisposable
 					return;
 				}
 				_nextMeasure = now + 0.1;
-				if (!Measure(_consumer, out var width, out var height) || !PreviewResolutionPlan.TryCreate(_original.width, _original.height, width, height, out var plan))
+				if (!Measure(_consumer, out var width, out var height) || !PreviewResolutionPlan.TryCreate(_original.width, _original.height, width * resolutionScale, height * resolutionScale, out var plan))
 				{
 					Reason = "viewport measurement invalid or no meaningful resolution saving";
 					Restore();
@@ -122,12 +124,17 @@ internal sealed class PreviewTargetLease : IDisposable
 					Reason = "matched preview target active";
 					ClearCandidate();
 				}
-				else if (_owned != null && !_current.DiffersByFivePercent(plan) && width <= (double)_current.Width && height <= (double)_current.Height)
+				else if (_owned != null && !_current.DiffersByFivePercent(plan) && plan.Width <= _current.Width && plan.Height <= _current.Height)
 				{
 					Reason = "within resolution hysteresis";
 					ClearCandidate();
 				}
-				else if (!(_owned != null) || (!(width > (double)_current.Width) && !(height > (double)_current.Height)) || Restore())
+				// A scale change must settle with the existing target still bound.
+				// Comparing the raw viewport with a reduced target would restore the
+				// full-size original even for tiny shrinkage or brief input changes.
+				// A physically enlarged viewport still restores immediately, measured
+				// against the scale at which the current target was acquired.
+				else if (_owned == null || (width * _currentResolutionScale <= _current.Width && height * _currentResolutionScale <= _current.Height) || Restore())
 				{
 					if (_candidate != plan)
 					{
@@ -137,7 +144,7 @@ internal sealed class PreviewTargetLease : IDisposable
 					}
 					else if (!(now - _candidateSince < 0.5))
 					{
-						Apply(plan);
+						Apply(plan, resolutionScale);
 						ClearCandidate();
 					}
 				}
@@ -356,7 +363,7 @@ internal sealed class PreviewTargetLease : IDisposable
 		return false;
 	}
 
-	private void Apply(PreviewResolutionPlan desired)
+	private void Apply(PreviewResolutionPlan desired, double resolutionScale)
 	{
 		if (_original == null || _camera == null || _consumer == null || !OwnsKnownReferences() || (_owned != null && !Restore()))
 		{
@@ -388,6 +395,7 @@ internal sealed class PreviewTargetLease : IDisposable
 			throw new InvalidOperationException("preview target assignment did not remain in effect");
 		}
 		_current = desired;
+		_currentResolutionScale = resolutionScale;
 		Reason = "matched preview target active";
 		_report?.Invoke($"embedded preview target {_original.width}x{_original.height} -> {desired.Width}x{desired.Height}; source descriptor and aspect retained");
 	}
@@ -456,6 +464,7 @@ internal sealed class PreviewTargetLease : IDisposable
 			UnityEngine.Object.Destroy(_owned);
 			_owned = null;
 			_current = default(PreviewResolutionPlan);
+			_currentResolutionScale = 1.0;
 			_foreignConsumers.Clear();
 			return true;
 		}

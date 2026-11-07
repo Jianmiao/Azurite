@@ -30,11 +30,11 @@ internal static class EditorActionCases
         DispatchUserAction(f.Preview.DeleteScript);
         f.Advance();
         Check(node.TestDialogue.SequenceEqual(new[] { "edited before assets", "second", "third" }), "delete blocked or reordered dialogue");
-        Check(f.Plugin.Busy && f.Preview.Played > 0 && f.Preview.ResourceOperations == 0,
-            "editor actions did not preserve native preview while resource-dependent work stayed guarded");
+        Check(f.Plugin.Busy && f.Preview.Played > 0 && f.Preview.ResourceOperations == 0 && f.Preview.SafeUiSyncOperations > 0 && f.Preview.SlotPropertySyncOperations > 0,
+            "editor actions did not initialize editable slot controls while resource-dependent work stayed guarded");
         for (int n = 0; n < 110 && f.Plugin.Busy; n++) f.Advance();
         f.Advance();
-        Check(!f.Plugin.Busy && f.Preview.Played > 0 && f.Preview.ResourceOperations == 3,
+        Check(!f.Plugin.Busy && f.Preview.Played > 0 && f.Preview.ResourceOperations == 0 && f.Preview.SlotPropertySyncOperations > 1,
             "pending selection did not receive resource refresh after completion");
         Check(node.TestDialogue[0] == "edited before assets", "resource completion replaced edited dialogue");
     }

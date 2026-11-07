@@ -17,6 +17,18 @@ var legacy = Resolve(oldHashes);
 Check(legacy.Supported && legacy.NativePatches && !legacy.FpsLabelPostfix && legacy.LegacyExporter &&
     legacy.PlainTextPatch && legacy.PreviewOptimization && legacy.PreviewOwnership && legacy.LegacyLoadingException, "existing verified host retains its capabilities");
 var current = HostProfile.ResolvePortable(game, metadata, true);
+const string game101 = "0776516C59811C724C450E205930546C5D102975F279E33C46C96B878FA06C8B";
+const string metadata101 = "B4AEEE165E7E10E0F46F85E095FD94487FDB041215F6DCB7AE9DE5D28A364F43";
+var aa101 = HostProfile.ResolvePortable(game101, metadata101, true);
+Check(HostProfile.IsPortableCandidate(game101, metadata101) && aa101.Supported && aa101.FpsLabelPostfix,
+    "installed AA 1.0.1 accepts verified scheduling and public export handoff");
+Check(!aa101.NativePatches && !aa101.LegacyExporter && !aa101.PreviewOwnership && !aa101.PreviewOptimization &&
+    !aa101.PlainTextPatch && !aa101.ProgressiveEditorLoading && !aa101.LegacyLoadingException && !aa101.EditorPatches,
+    "AA 1.0.1 does not inherit unverified legacy editor or preview patches");
+Check(!HostProfile.ResolvePortable(game101, metadata101, false).Supported &&
+    !HostProfile.ResolvePortable(game101, metadata, true).Supported &&
+    !HostProfile.ResolvePortable(game, metadata101, true).Supported,
+    "AA 1.0.1 requires its exact binary/metadata pair and verified bindings");
 Check(current.Supported, "AA 1.0.0-fix can activate basic scrolling and render scheduling");
 Check(current.Supported && !current.NativePatches && current.FpsLabelPostfix && !current.LegacyExporter &&
     current.PlainTextPatch && current.PreviewOptimization && !current.PreviewOwnership && !current.LegacyLoadingException &&

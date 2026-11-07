@@ -10,6 +10,11 @@ using var metadata = new HostMetadata(hostPath);
 Harmony.Metadata = metadata;
 var cases = new (string, Action)[]
 {
+    ("new input gets first load slice without starving long interactions", ForegroundLoadCases.InputGetsFirstSliceWithoutStarvation),
+    ("input admission pause does not block native task completion", ForegroundLoadCases.PendingTasksStillCompleteDuringInput),
+    ("environment controls and background gallery open before all resources finish", EnvironmentCases.PendingEnvironmentIsEditable),
+    ("audio deferral stays within environment sync even after exceptions", EnvironmentCases.AudioScopeDoesNotLeak),
+    ("environment native behavior and export audio remain intact", EnvironmentCases.ExportAndNativeEnvironmentRemainNative),
     ("native no-BGM sentinel is not submitted as an asset", NativeBatchCases.NoBgmSentinelIsSkipped),
     ("actual production Install resolves installed host signatures", InstallResolves),
     ("project entry patches Workbench and leaves CoLoadSave unchanged", WorkbenchOnly),
@@ -29,7 +34,7 @@ var cases = new (string, Action)[]
     ("preview outside deferred project loading follows native behavior", PreviewWithoutPending),
     ("preview raised during scene initialization also waits for resources", PreviewBeforeStudioStart),
     ("startup loading preview is deferred out of the native Start call", PreviewDuringInspectorLoading),
-    ("character and emotion operations remain usable while environment resources stay guarded", SelectorOperationsDuringPreload),
+    ("character emotion and background entry remain usable during preload", SelectorOperationsDuringPreload),
     ("native task failure leaves text available and preview protected", NativeBatchCases.FaultLeavesTextAvailable),
     ("editor close disposes queued preload exactly once", CloseQueued),
     ("editor close cancels native tasks without moving their coroutines", NativeBatchCases.CloseCancelsOutstandingNativeTasks),
@@ -246,9 +251,15 @@ static void SelectorOperationsDuringPreload()
     f.Preview.OpenCharacterSelector(1);
     f.Preview.OpenEmotionSelector(new Script.CharacterRecord(), new Script());
     f.Preview.SetCharacter(1, "character-during-load");
+    f.Preview.SyncSlots();
+    f.Preview.SyncEnvironmentProperties();
     f.Preview.OpenBackgroundSelector();
-    Check(f.Preview.ResourceOperations == before + 3,
+    Check(f.Preview.ResourceOperations == before + 4,
         "character/emotion entry and model mutation should remain usable during preload");
+    Check(f.Preview.SafeUiSyncOperations >= 1,
+        "character field synchronization must remain editable while resources are pending");
+    Check(f.Preview.SlotPropertySyncOperations > 0,
+        "slot, action and effect controls must be initialized before resources complete");
     Check(f.Plugin.Busy && !f.Plugin.ResourceDependentWorkAllowed, "selector test did not keep resources pending");
     f.Complete();
     Check(f.Preview.ResourceOperations >= before + 3, "resource operations did not resume after completion");
@@ -297,6 +308,7 @@ internal sealed class Fixture : IDisposable
         NativeTasks.Reset();
         Singleton<ScenarioResourceManager>.Instance = new ScenarioResourceManager();
         Singleton<CharacterManager>.Instance = new CharacterManager();
+        Singleton<AudioManager>.Instance = new AudioManager();
         var scripts = new Il2CppSystem.Collections.Generic.List<ScriptData>();
         scripts.Add(new ScriptData { bgName = 42 }); SetScripts(scripts);
         Harmony.Attempts.Clear();

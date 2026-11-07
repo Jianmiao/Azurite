@@ -35,6 +35,8 @@ internal sealed class DialogueVirtualization : IDisposable
     private int _fillFrame = -1, _fillRows;
     private long _fillTicks;
     private bool _tailAnchorReapplying;
+    private int _presentationFrame = -1;
+    private readonly HashSet<IntPtr> _presentationUpdated = new();
     private OpenScope? _opening;
     // Native ScriptListItem.Select schedules CenterOn for the next frame. The
     // opening prefix can suppress the immediate call, but the deferred call
@@ -506,14 +508,24 @@ internal sealed class DialogueVirtualization : IDisposable
         // remain blank.
         if (presentationDirty)
         {
+            if (_presentationFrame != Time.frameCount)
+            {
+                _presentationFrame = Time.frameCount;
+                _presentationUpdated.Clear();
+            }
             var refreshedPanels = new HashSet<IntPtr>();
             foreach (Slot slot in s.Slots)
             {
                 if (slot.Index < 0 || slot.Row.child == null) continue;
                 UIPanel? panel = slot.Row.child.panel;
-                if (panel != null && refreshedPanels.Add(panel.Pointer)) { panel.SetDirty(); panel.UpdateSelf(); }
+                if (panel != null && refreshedPanels.Add(panel.Pointer))
+                {
+                    panel.SetDirty();
+                    if (_presentationUpdated.Add(panel.Pointer)) panel.UpdateSelf();
+                }
             }
-            s.Panel.SetDirty(); s.Panel.UpdateSelf();
+            s.Panel.SetDirty();
+            if (_presentationUpdated.Add(s.Panel.Pointer)) s.Panel.UpdateSelf();
         }
     }
 

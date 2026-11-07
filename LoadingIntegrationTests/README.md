@@ -1,5 +1,7 @@
 # Production progressive-loading integration harness
 
+1.0.34 adds environment controls during preload, gallery entry, audio scope/finalizer isolation (including export and exceptions), and foreground load admission tests. These exercise production callbacks with native-call-shape stubs and the actual installed signatures. They do not render widgets or decode Unity assets. The older counts and initial wait-until-complete preview description below are historical baseline records, not the current behavior.
+
 Run:
 
 ```powershell

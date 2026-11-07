@@ -6,4 +6,5 @@
     <AAInstallPath Condition="'$(AAInstallPath)' == ''">F:\AzureArchive_100_fix</AAInstallPath>
   </PropertyGroup>
   <ItemGroup><Reference Include="Mono.Cecil"><HintPath>$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll</HintPath></Reference></ItemGroup>
+  <ItemGroup><Compile Include="../Plugin/Azurite/DeferredEditorSelectors.cs" Link="Production/DeferredEditorSelectors.cs" /></ItemGroup>
 </Project>

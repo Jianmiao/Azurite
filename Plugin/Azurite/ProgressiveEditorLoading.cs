@@ -34,19 +34,21 @@ internal sealed class ProgressiveEditorLoading : IDisposable
         internal readonly List<Job> Active = new();
         internal readonly List<ScriptNodeInspector> PendingInspectors = new();
         internal readonly HashSet<IntPtr> EarlyPreviewed = new();
+        internal readonly ForegroundLoadBudget Admission = new();
         internal List<ProgressiveResourceRequest> Requests;
         internal readonly double Started = Now;
         internal double LastProgress = Now, NextReport, NextNotice;
         internal int ShellFrame = -1, LastAdmissionFrame = -1, Next, Completed, ScriptCount;
         internal bool Finished, Failed, Lease, SourceDisposed, CancelRequested;
     }
-    private sealed record Hook(Type Type, string Method, Type[] Parameters, string Callback, bool Prefix = false);
+    private sealed record Hook(Type Type, string Method, Type[] Parameters, string Callback, bool Prefix = false, bool Finalizer = false);
     private readonly Action<string> _log;
     private readonly Harmony _harmony = new(HarmonyId);
     private static ProgressiveEditorLoading _active;
     private Session _session;
     private bool _installed, _disposed, _renderingOwned;
     private static bool _entryRefreshScope, _changeRefreshScope;
+    [ThreadStatic] private static int _environmentSyncDepth;
     private static double Now => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
     public bool Enabled { get; set; } = true;
     public bool Busy => _session != null && !_session.Finished;
@@ -68,14 +70,15 @@ internal sealed class ProgressiveEditorLoading : IDisposable
         new Hook(typeof(AuthoringEditorSession), "Begin", new[] { typeof(StudioCommon), typeof(ProjectData), typeof(string) }, nameof(AfterSessionBegin)),
         new Hook(typeof(StudioCommon), "OnDestroy", Type.EmptyTypes, nameof(AfterStudioDestroy)),
         new Hook(typeof(ScriptNodeInspector), "PlayPreview", Type.EmptyTypes, nameof(BeforePreview), true),
-        new Hook(typeof(ScriptNodeInspector), "SyncSlots", Type.EmptyTypes, nameof(BeforeResourceOperation), true),
-        new Hook(typeof(ScriptNodeInspector), "SyncOrClearSlotProperties", new[] { typeof(bool) }, nameof(BeforeResourceOperation), true),
-        new Hook(typeof(ScriptNodeInspector), "SyncEnvironmentProperties", Type.EmptyTypes, nameof(BeforeResourceOperation), true),
         new Hook(typeof(ScriptNodeInspector), "SetBGM", Type.EmptyTypes, nameof(BeforeResourceOperation), true),
-        new Hook(typeof(ScriptNodeInspector), "OpenBackgroundSelector", Type.EmptyTypes, nameof(BeforeResourceOperation), true),
+        new Hook(typeof(ScriptNodeInspector), "OpenBackgroundSelector", Type.EmptyTypes, nameof(BeforeCatalogOperation), true),
         new Hook(typeof(ScriptNodeInspector), "OpenPopupImageSelector", Type.EmptyTypes, nameof(BeforeResourceOperation), true),
         new Hook(typeof(ScriptNodeInspector), "OpenBGMSelector", Type.EmptyTypes, nameof(BeforeResourceOperation), true),
         new Hook(typeof(ScriptNodeInspector), "OpenSoundSelector", Type.EmptyTypes, nameof(BeforeResourceOperation), true),
+        new Hook(typeof(ScriptNodeInspector), "SyncEnvironmentProperties", Type.EmptyTypes, nameof(BeforeEnvironmentSync), true),
+        new Hook(typeof(ScriptNodeInspector), "SyncEnvironmentProperties", Type.EmptyTypes, nameof(FinalizeEnvironmentSync), Finalizer: true),
+        new Hook(typeof(AudioManager), "SetBGM", new[] { typeof(long) }, nameof(BeforeEnvironmentAudio), true),
+        new Hook(typeof(AudioManager), "StopAllBGMs", Type.EmptyTypes, nameof(BeforeEnvironmentAudio), true),
     };
     public bool Install()
     {
@@ -94,12 +97,14 @@ internal sealed class ProgressiveEditorLoading : IDisposable
             for (int n = 0; n < hooks.Length; n++)
             {
                 var patch = new HarmonyMethod(typeof(ProgressiveEditorLoading), hooks[n].Callback);
-                _harmony.Patch(targets[n], prefix: hooks[n].Prefix ? patch : null, postfix: hooks[n].Prefix ? null : patch);
+                _harmony.Patch(targets[n], prefix: hooks[n].Prefix ? patch : null,
+                    postfix: !hooks[n].Prefix && !hooks[n].Finalizer ? patch : null,
+                    finalizer: hooks[n].Finalizer ? patch : null);
                 if (Harmony.GetPatchInfo(targets[n])?.Owners.Contains(HarmonyId) != true)
                     throw new InvalidOperationException("Hook not registered: " + hooks[n].Method);
             }
             _installed = true;
-            _log("progressive editor hooks ready build=chooser-multiplier-cap-12-1; deferred catalog refresh during entry/change; character/emotion model edits remain live; environment resource entry remains guarded; native resource tasks; one admission per frame, at most four native tasks.");
+            _log("progressive editor hooks ready build=environment-edit-1; environment widgets and background chooser remain live during preload; only nested environment audio is deferred; native resource tasks; one admission per frame, at most four native tasks.");
             return true;
         }
         catch (Exception error)
@@ -223,6 +228,37 @@ internal sealed class ProgressiveEditorLoading : IDisposable
         var a = _active; var s = a?._session;
         if (s?.Studio != null && s.Studio.Pointer == __instance.Pointer) a.Cancel("editor closed");
     }
+    private static void RememberInspector(Session s, ScriptNodeInspector inspector)
+    {
+        if (inspector != null && !s.PendingInspectors.Exists(i => i != null && i.Pointer == inspector.Pointer))
+            s.PendingInspectors.Add(inspector);
+    }
+    private static bool BeforeCatalogOperation(ScriptNodeInspector __instance)
+    {
+        var a = _active; var s = a?._session;
+        if (s == null) return true;
+        // The background explorer owns its asynchronous thumbnail loads. Its
+        // metadata and native undo callback do not depend on project preload.
+        RememberInspector(s, __instance);
+        return s.ShellFrame >= 0 && !a._renderingOwned;
+    }
+    private static void BeforeEnvironmentSync(ScriptNodeInspector __instance, out int __state)
+    {
+        __state = _environmentSyncDepth;
+        var a = _active; var s = a?._session;
+        if (s == null || s.Finished || a._renderingOwned) return;
+        RememberInspector(s, __instance);
+        _environmentSyncDepth++;
+    }
+    private static Exception FinalizeEnvironmentSync(Exception __exception, int __state)
+    {
+        _environmentSyncDepth = __state;
+        return __exception;
+    }
+    // Native SyncEnvironmentProperties mixes widget/model synchronization with
+    // music playback. Scope the resource delay to those two nested audio calls,
+    // including exceptional exits; never gate unrelated preview/export audio.
+    private static bool BeforeEnvironmentAudio() => _environmentSyncDepth == 0 || _active?._renderingOwned == true;
     private static bool BeforeResourceOperation(ScriptNodeInspector __instance)
     {
         var a = _active; var s = a?._session;
@@ -254,7 +290,7 @@ internal sealed class ProgressiveEditorLoading : IDisposable
         s.NextNotice = Now + 3000;
         try { Singleton<NotificationManager>.Instance?.Notify(message); } catch { }
     }
-    public void Update(MonoBehaviour coroutineHost, bool renderingOwned)
+    public void Update(MonoBehaviour coroutineHost, bool renderingOwned, bool interactionActive = false)
     {
         _renderingOwned = renderingOwned;
         var s = _session;
@@ -296,7 +332,8 @@ internal sealed class ProgressiveEditorLoading : IDisposable
                 s.Completed++; s.LastProgress = Now;
             }
             if (s.ShellFrame >= 0 && !renderingOwned && Time.frameCount - s.ShellFrame >= 2 &&
-                s.LastAdmissionFrame != Time.frameCount && s.Active.Count < 4 && s.Next < s.Requests.Count)
+                s.LastAdmissionFrame != Time.frameCount && s.Active.Count < (interactionActive ? 1 : 4) && s.Next < s.Requests.Count &&
+                s.Admission.CanAdmit(Now, interactionActive))
             {
                 s.LastAdmissionFrame = Time.frameCount;
                 var request = s.Requests[s.Next];
@@ -306,6 +343,7 @@ internal sealed class ProgressiveEditorLoading : IDisposable
                 // is returned to native, and no resource factory is Harmony-patched.
                 var task = EnumeratorAsyncExtensions.ToUniTask(native, PlayerLoopTiming.Update, s.Cancellation.Token);
                 s.Active.Add(new Job { Request = request, Enumerator = native, Task = task });
+                s.Admission.Admitted(Now, interactionActive);
                 s.LastProgress = Now;
             }
             if (s.ShellFrame >= 0 && s.Next == s.Requests.Count && s.Active.Count == 0)

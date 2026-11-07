@@ -141,20 +141,20 @@ namespace HarmonyLib
     }
     public sealed class Harmony
     {
-        internal sealed record Hook(string Owner, MethodInfo Prefix, MethodInfo Postfix);
+        internal sealed record Hook(string Owner, MethodInfo Prefix, MethodInfo Postfix, MethodInfo Finalizer);
         internal static readonly Dictionary<MethodInfo, Hook> Hooks = new();
         internal static readonly List<MethodInfo> Attempts = new();
         internal static HostMetadata Metadata;
         private readonly string id;
         public Harmony(string id) => this.id = id;
-        public void Patch(MethodInfo original, HarmonyMethod prefix = null, HarmonyMethod postfix = null)
+        public void Patch(MethodInfo original, HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod finalizer = null)
         {
             Metadata.Verify(original);
             Attempts.Add(original);
             if (Hooks.TryGetValue(original, out var existing) && existing.Owner == id)
-                Hooks[original] = new Hook(id, prefix?.method ?? existing.Prefix, postfix?.method ?? existing.Postfix);
+                Hooks[original] = new Hook(id, prefix?.method ?? existing.Prefix, postfix?.method ?? existing.Postfix, finalizer?.method ?? existing.Finalizer);
             else
-                Hooks[original] = new Hook(id, prefix?.method, postfix?.method);
+                Hooks[original] = new Hook(id, prefix?.method, postfix?.method, finalizer?.method);
         }
         public static Patches GetPatchInfo(MethodInfo method)
         {
@@ -166,21 +166,31 @@ namespace HarmonyLib
         {
             if (!Hooks.TryGetValue(target, out var hook)) return original();
             object result = target.ReturnType == typeof(bool) ? false : null;
-            if (hook.Prefix == null || InvokeHook(hook.Prefix, instance, args, ref result) is not false) result = original();
-            if (hook.Postfix != null) InvokeHook(hook.Postfix, instance, args, ref result);
+            object state = null;
+            Exception error = null;
+            try
+            {
+                if (hook.Prefix == null || InvokeHook(hook.Prefix, instance, args, ref result, ref state, null) is not false) result = original();
+                if (hook.Postfix != null) InvokeHook(hook.Postfix, instance, args, ref result, ref state, null);
+            }
+            catch (Exception e) { error = e; }
+            if (hook.Finalizer != null) error = (Exception)InvokeHook(hook.Finalizer, instance, args, ref result, ref state, error);
+            if (error != null) throw error;
             return result;
         }
-        private static object InvokeHook(MethodInfo method, object instance, object[] args, ref object result)
+        private static object InvokeHook(MethodInfo method, object instance, object[] args, ref object result, ref object state, Exception error)
         {
             var p = method.GetParameters();
             object incomingResult = result;
-            var values = p.Select(x => x.Name == "__instance" ? instance : x.Name == "__result" ? incomingResult : x.Name?.StartsWith("__") == true && int.TryParse(x.Name[2..], out int n) ? args[n] : throw new InvalidOperationException("Unknown Harmony parameter " + x.Name)).ToArray();
+            object incomingState = state;
+            var values = p.Select(x => x.Name == "__instance" ? instance : x.Name == "__state" ? incomingState : x.Name == "__exception" ? error : x.Name == "__result" ? incomingResult : x.Name?.StartsWith("__") == true && int.TryParse(x.Name[2..], out int n) ? args[n] : throw new InvalidOperationException("Unknown Harmony parameter " + x.Name)).ToArray();
             object answer;
             try { answer = method.Invoke(null, values); }
             catch (TargetInvocationException e) { throw e.InnerException; }
             for (int i = 0; i < p.Length; i++)
             {
                 if (p[i].Name == "__result") result = values[i];
+                if (p[i].Name == "__state") state = values[i];
                 if (p[i].ParameterType.IsByRef && p[i].Name?.StartsWith("__") == true && int.TryParse(p[i].Name[2..], out int index))
                     args[index] = values[i];
             }
@@ -321,6 +331,8 @@ namespace Studio.Scripts
     {
         public int Played;
         public int ResourceOperations;
+        public int SafeUiSyncOperations;
+        public int SlotPropertySyncOperations;
         public bool loading;
         public bool unloading;
         public Test preview = new();
@@ -380,9 +392,21 @@ namespace Studio.Scripts
             HarmonyLib.Harmony.Invoke(this, method, args, () => { body(); return null; });
         }
         public void PlayPreview() => HarmonyLib.Harmony.Invoke(this, (MethodInfo)MethodBase.GetCurrentMethod(), Array.Empty<object>(), () => { Played++; return null; });
-        public void SyncSlots() => Dispatch((MethodInfo)MethodBase.GetCurrentMethod());
-        public void SyncOrClearSlotProperties(bool force) => Dispatch((MethodInfo)MethodBase.GetCurrentMethod(), force);
-        public void SyncEnvironmentProperties() => Dispatch((MethodInfo)MethodBase.GetCurrentMethod());
+        public void SyncSlots() => HarmonyLib.Harmony.Invoke(this, (MethodInfo)MethodBase.GetCurrentMethod(), Array.Empty<object>(), () => { SafeUiSyncOperations++; return null; });
+        public void SyncOrClearSlotProperties(bool force) => HarmonyLib.Harmony.Invoke(this, (MethodInfo)MethodBase.GetCurrentMethod(), new object[] { force }, () => { SlotPropertySyncOperations++; return null; });
+        public long TestBgmId = 17;
+        public bool TestEnvironmentReady;
+        public bool TestThrowEnvironment;
+        public void SyncEnvironmentProperties() => HarmonyLib.Harmony.Invoke(this, (MethodInfo)MethodBase.GetCurrentMethod(), Array.Empty<object>(), () =>
+        {
+            // Native 100689958 initializes environment widgets before touching
+            // AudioManager at 0x8038b4/0x80390c. Model that actual nested edge.
+            SafeUiSyncOperations++; TestEnvironmentReady = true;
+            if (TestThrowEnvironment) throw new InvalidOperationException("environment fixture failure");
+            if (TestBgmId == 0 || TestBgmId == 999) Singleton<AudioManager>.Instance.StopAllBGMs();
+            else Singleton<AudioManager>.Instance.SetBGM(TestBgmId);
+            return null;
+        });
         public void SetBGM() => Dispatch((MethodInfo)MethodBase.GetCurrentMethod());
         // Native SetCharacter mutates the model, then synchronizes resource
         // dependent slots/properties. The progressive prefix must allow the

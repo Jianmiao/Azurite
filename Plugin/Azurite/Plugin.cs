@@ -16,15 +16,15 @@ using UnityEngine.SceneManagement;
 
 namespace Azurite;
 
-[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "1.0.20")]
+[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "1.0.38")]
 [BepInProcess("AzureArchive.exe")]
 public sealed class Plugin : BasePlugin
 {
 	public const string Id = "halocue.azurite";
 
-	public const string Version = "1.0.20";
+	public const string Version = "1.0.38";
 
-	public const string CandidateBuild = "chooser-multiplier-cap-12-1";
+	public const string CandidateBuild = "wheel-settings-layout-2";
 
 	private static Plugin? _current;
 
@@ -54,12 +54,15 @@ public sealed class Plugin : BasePlugin
 	private ConfigEntry<bool> _experimentalPreviewOwnership;
 
 	private ConfigEntry<bool> _disableEditorBloom;
+	private ConfigEntry<bool> _idleEditorBloomReduction;
 
 	private EditorBloomLease? _editorBloom;
 
 	private ConfigEntry<bool> _limitPreview;
 	private ConfigEntry<bool> _cacheStaticPreview;
 	private bool _previewCacheStatic;
+	private bool _activePreviewReduction;
+	private double _inputHoldUntil;
 	private long _previewContentGeneration;
 
 	private ConfigEntry<bool> _profileListItems;
@@ -79,8 +82,11 @@ public sealed class Plugin : BasePlugin
 	private ConfigEntry<bool> _virtualizationEnabled;
 	private DialogueVirtualization? _virtualization;
 	private DeferredEditorSelectors? _deferredSelectors;
+	private BackgroundGalleryLoadCulling? _backgroundGalleryCulling;
+	private BackgroundCategoryReflow? _backgroundCategoryReflow;
 
 	private ConfigEntry<bool> _progressiveEditorLoading;
+	private ConfigEntry<bool> _backgroundGalleryLoadCulling;
 	private ProgressiveEditorLoading? _progressiveLoading;
 	private ConfigEntry<bool> _ambientCharacterPreview;
 	private ConfigEntry<double> _ambientCharacterFps;
@@ -91,6 +97,9 @@ public sealed class Plugin : BasePlugin
 	private ConfigEntry<double> _previewIdleFps;
 
 	private ConfigEntry<double> _previewFps;
+	private ConfigEntry<bool> _activePreviewCadence;
+	private ConfigEntry<double> _activePreviewFps;
+	private ConfigEntry<double> _activePreviewResolutionScale;
 
 	private ConfigEntry<bool> _repaintOnChange;
 
@@ -121,6 +130,8 @@ public sealed class Plugin : BasePlugin
 	private ConfigEntry<float> _characterWheelMultiplier;
 
 	private ConfigEntry<float> _emotionWheelMultiplier;
+	private ConfigEntry<float> _userWheelScale;
+	private WheelSettingsControl? _wheelSettings;
 
 	private ConfigEntry<double> _safetyRepaintFps;
 
@@ -265,13 +276,18 @@ public sealed class Plugin : BasePlugin
 		_ambientCharacterFps = base.Config.Bind("Preview", "AmbientCharacterFps", 60.0, "Rendered editor animation rate while idle, 30..120. Does not slow logical animation time or apply to export.");
 		_virtualizationEnabled = base.Config.Bind("Large Projects", "VirtualizeDialogueList", false, "Experimental verified-host dialogue list virtualization. Maintain a bounded visible row pool; restore the native list before unsupported editor actions and export. Requires matching AA native implementation.");
 		_progressiveEditorLoading = base.Config.Bind("Large Projects", "ProgressiveEditorLoading", false, "Experimental verified-host editor loading. Unlocks structure, dialogue editing, and character/emotion selector entry while project assets continue loading; resource-dependent synchronization, environment selectors, preview and export remain gated until ready.");
+		_backgroundGalleryLoadCulling = base.Config.Bind("Large Projects", "BackgroundGalleryLoadCulling", true, "Avoid redundant thumbnail load callbacks and bound new gallery requests. Native clipping, unloading, search and ordering remain intact.");
 		_previewScale = base.Config.Bind("Preview", "RenderScale", 1f, "Optional experimental global URP quality reduction for embedded editor preview only. 1 preserves native quality. Restored before export.");
 		_disableEditorBloom = base.Config.Bind("Preview", "DisableEditorBloom", defaultValue: false, "Optional editor quality tradeoff: disable the shared UI bloom effect only while the script editor is active. Restored before export and on editor exit. Changes editor appearance; default off.");
+		_idleEditorBloomReduction = base.Config.Bind("Preview", "IdleEditorBloomReduction", defaultValue: true, "Disable shared editor Bloom while the verified editor is active, including scrolling and editing; restore it outside the editor, during export, and when host state is unknown.");
 		_matchPreview = base.Config.Bind("Preview", "MatchDisplayResolution", defaultValue: false, "Use a separately owned preview texture matching its screen area. Experimental; original texture and export restored.");
-		_experimentalPreviewOwnership = base.Config.Bind("Preview", "ExperimentalPreviewOwnership", defaultValue: false, "Opt in to scoped preview texture/camera experiments on a verified 1.0.0-fix host. Also enable MatchDisplayResolution or LimitCameraCadence. Live PreviewScene, URP Base/empty-stack and consumer binding checks still apply; global RenderScale is not enabled by this switch.");
+		_experimentalPreviewOwnership = base.Config.Bind("Preview", "ExperimentalPreviewOwnership", defaultValue: true, "Enable scoped preview texture/camera ownership on the verified 1.0.0-fix host. Live PreviewScene, URP Base/empty-stack and consumer binding checks remain required; global RenderScale is not enabled by this switch.");
 		_limitPreview = base.Config.Bind("Preview", "LimitCameraCadence", defaultValue: false, "Reduce only embedded preview camera redraws. Editor UI and simulation retain normal updates; experimental until measured.");
-		_cacheStaticPreview = base.Config.Bind("Preview", "CacheStaticPreview", defaultValue: false, "Experimental: keep a confirmed static embedded preview texture while editor UI scrolls. Content callbacks, camera changes and a safety refresh invalidate the cache. Requires ExperimentalPreviewOwnership and a ready repaint observer; running character animation is excluded.");
+		_cacheStaticPreview = base.Config.Bind("Preview", "CacheStaticPreview", defaultValue: true, "Keep a confirmed static embedded preview texture while the editor is idle. Content callbacks, camera changes and a safety refresh invalidate the cache; running character animation is excluded. Export restores the original camera path.");
 		_previewFps = base.Config.Bind("Preview", "CameraFps", 60.0, "Embedded preview draw target, 30..120. Does not cap editor UI, logical time or export.");
+		_activePreviewCadence = base.Config.Bind("Preview", "ActiveInteractionCameraCadence", defaultValue: true, "Limit only the embedded preview camera to a separate target while the user is interacting. Editor UI, input and logical time retain the selected tier.");
+		_activePreviewFps = base.Config.Bind("Preview", "ActiveInteractionCameraFps", 60.0, "Embedded preview camera target during active scrolling/editing, 30..120. Does not cap editor UI or export.");
+		_activePreviewResolutionScale = base.Config.Bind("Preview", "ActiveInteractionResolutionScale", 0.85, "Embedded preview resolution scale during active interaction, 0.5..1.0. Restores full matching resolution when interaction settles and never changes the main UI resolution.");
 		_adaptivePreview = base.Config.Bind("Preview", "AdaptiveEditorIdle", defaultValue: false, "Reduce whole editor drawing only while a verified embedded preview is idle. Any input/scroll/loading restores normal rendering; appreciation and export excluded.");
 		_previewIdleFps = base.Config.Bind("Preview", "EditorIdleFps", 60.0, "Idle embedded-editor render target, 30..120. Input keeps the selected 60/120/unlimited tier.");
 		_repaintOnChange = base.Config.Bind("On Change Rendering", "Enabled", defaultValue: true, "Wake static editor/catalog rendering on UI geometry, clipping, surface or input changes. Unverified dynamic work uses normal rendering.");
@@ -286,10 +302,10 @@ public sealed class Plugin : BasePlugin
 		_settingsWheelMultiplier = base.Config.Bind("Editor Scrolling", "SettingsWheelMultiplier", 4.5f, "Independent wheel travel for the AA settings panel. 1 restores native behavior; capped at 6.");
 		_characterWheelMultiplier = base.Config.Bind("Editor Scrolling", "CharacterWheelMultiplier", 9.0f, "Independent wheel travel for the character chooser. Down scroll moves right; up scroll moves left; capped at 12.");
 		_emotionWheelMultiplier = base.Config.Bind("Editor Scrolling", "EmotionWheelMultiplier", 11.25f, "Independent wheel travel for the emotion chooser. Down scroll moves right; up scroll moves left; capped at 12.");
-		// Migrate the previous shipped default so an existing profile receives
-		// the requested 2.5x chooser sensitivity without manual config editing.
-		if (Math.Abs(_characterWheelMultiplier.Value - 4.5f) < 0.001f || Math.Abs(_characterWheelMultiplier.Value - 11.25f) < 0.001f) _characterWheelMultiplier.Value = 9.0f;
-		if (Math.Abs(_emotionWheelMultiplier.Value - 4.5f) < 0.001f) _emotionWheelMultiplier.Value = 11.25f;
+		_userWheelScale = base.Config.Bind("Editor Scrolling", "UserWheelScale", 1.0f, "Global wheel sensitivity shown in AA settings: 0.5 to 2.0; 1.0 preserves current area multipliers.");
+		_wheelSettings = new WheelSettingsControl(() => Math.Clamp(_userWheelScale.Value, 0.5f, 2f), value => { _userWheelScale.Value = Math.Clamp(value, 0.5f, 2f); base.Config.Save(); });
+		// Existing profile values belong to the user; never remigrate a matching
+		// number on every startup now that scrolling has an in-app control.
 		_diagnostics = base.Config.Bind("Diagnostics", "LogStateChanges", defaultValue: false, "Every 5s record measured Update FPS, scheduled draw FPS, mode and actual settings. Scheduled draws are not completed GPU frames.");
 		_frameTimings = base.Config.Bind("Diagnostics", "CollectFrameTimings", defaultValue: false, "Optional Unity CPU/GPU timing support; unsupported counters are reported, not treated as zero work.");
 		_profileEditor = base.Config.Bind("Diagnostics", "ProfileEditor", defaultValue: false, "Read-only editor load, Update-gap, list and preview render-target diagnostics. Does not change project data.");
@@ -350,7 +366,7 @@ public sealed class Plugin : BasePlugin
 			if (_experimentalPreviewOwnership.Value)
 				base.Log.LogInfo("Experimental preview ownership opt-in=" + PreviewOptimizationPolicy.AllowsScopedOwnership(_host.Profile, true) + "; live binding checks remain required; global URP renderScale and renderer features are unchanged.");
 			_activity.AllowLegacyLoadingException = _host.Profile.LegacyLoadingException;
-			if (num)
+			if (num && _host.Profile.EditorPatches)
 			{
 				_mutation = new DialogueMutationCoordinator(delegate(string message)
 				{
@@ -359,7 +375,7 @@ public sealed class Plugin : BasePlugin
 				_mutation.Install();
 			}
 			bool nativePatches = num && _host.Profile.NativePatches;
-			if (num && !_host.Profile.LegacyExporter)
+			if (num && _host.Profile.EditorPatches && !_host.Profile.LegacyExporter)
 			{
 				_deferredSelectors = new DeferredEditorSelectors(message => base.Log.LogInfo(message));
 				if (!_deferredSelectors.Install())
@@ -380,6 +396,18 @@ public sealed class Plugin : BasePlugin
 						_progressiveLoading.Dispose();
 						_progressiveLoading = null;
 					}
+				}
+				_backgroundGalleryCulling = new BackgroundGalleryLoadCulling(message => base.Log.LogInfo(message));
+				if (!_backgroundGalleryCulling.Install())
+				{
+					_backgroundGalleryCulling.Dispose();
+					_backgroundGalleryCulling = null;
+				}
+				_backgroundCategoryReflow = new BackgroundCategoryReflow(message => base.Log.LogInfo(message));
+				if (!_backgroundCategoryReflow.Install())
+				{
+					_backgroundCategoryReflow.Dispose();
+					_backgroundCategoryReflow = null;
 				}
 				if (_ambientCharacterPreview.Value)
 					_characterMeshes = new CharacterAnimationMeshCadence(_harmony,
@@ -503,6 +531,11 @@ public sealed class Plugin : BasePlugin
 			return;
 		}
 		_previewAllowed = false;
+		// The synchronous BeforeAcquire callback already restored our leases.
+		// While the exporter owns them, even per-frame "restore" paths must be
+		// skipped. Late binding never had leases to restore in the first place.
+		if (YieldToExporter()) return;
+		bool recentInput = ObserveRealInteraction(now);
 		if (!_profileOperations.Value && _operations != null)
 		{
 			_operations.Dispose();
@@ -528,6 +561,7 @@ public sealed class Plugin : BasePlugin
 		}
 		if (!_enabled.Value)
 		{
+			_backgroundGalleryCulling?.Update(now, false);
 			// A project already admitted to the editor still needs its resources and
 			// native preview guards. Disable future admissions, finish existing work.
 			if (_progressiveLoading != null)
@@ -578,9 +612,10 @@ public sealed class Plugin : BasePlugin
 			// Turning off the experiment prevents new deferrals; an already deferred
 			// project must finish safely rather than abandoning its resource guards.
 			_progressiveLoading.Enabled = _progressiveEditorLoading.Value;
-			_progressiveLoading.Update(_driver, hostCompatibilitySnapshot.ExportActive || _exportSuspended);
+			_progressiveLoading.Update(_driver, hostCompatibilitySnapshot.ExportActive || _exportSuspended, recentInput);
 		}
 		bool progressiveBusy = _progressiveLoading?.BlocksEditorOperations == true;
+		_backgroundGalleryCulling?.Update(now, _host.Profile.Supported && _backgroundGalleryLoadCulling.Value && !hostCompatibilitySnapshot.ExportActive && !_exportSuspended);
 		bool mutationProtected = _mutation?.IsBlocking(now, Math.Clamp(_mutationSettleSeconds.Value, 0.1, 5.0)) ?? false;
 		if (_virtualization != null)
 		{
@@ -608,7 +643,8 @@ public sealed class Plugin : BasePlugin
 			_rowReuse.Enabled = _rowReuseEnabled.Value && !virtualListActive;
 			_rowReuse.Update(now, hostCompatibilitySnapshot.Supported && _mutation?.IsInstalled == true && hostCompatibilitySnapshot.ProbeHealthy && !hostCompatibilitySnapshot.ExportActive && !_exportSuspended && !progressiveBusy);
 		}
-		_scroll?.Update(now, _host.HostSupported, _wheelMultiplier.Value, _dialogueWheelMultiplier.Value, _modManagerWheelMultiplier.Value, _backgroundWheelMultiplier.Value, _settingsWheelMultiplier.Value, _characterWheelMultiplier.Value, _emotionWheelMultiplier.Value);
+		_scroll?.Update(now, _host.HostSupported, _wheelMultiplier.Value, _dialogueWheelMultiplier.Value, _modManagerWheelMultiplier.Value, _backgroundWheelMultiplier.Value, _settingsWheelMultiplier.Value, _characterWheelMultiplier.Value, _emotionWheelMultiplier.Value, Math.Clamp(_userWheelScale.Value, 0.5f, 2f));
+			if (_host.Profile.FpsLabelPostfix) _wheelSettings?.Update();
 		_mappingAllowed = hostCompatibilitySnapshot.Supported && hostCompatibilitySnapshot.ProbeHealthy && !hostCompatibilitySnapshot.ExportActive;
 		if (!_mappingAllowed)
 		{
@@ -631,13 +667,18 @@ public sealed class Plugin : BasePlugin
 		_ambientObserved = hostActivitySnapshot.AmbientPreview;
 		_previewAllowed = hostActivitySnapshot.HasPreview;
 		bool scopedPreviewOwnership = PreviewOptimizationPolicy.AllowsScopedOwnership(_host.Profile, _experimentalPreviewOwnership.Value);
-		_editorBloom?.Update(now, _host.Profile.Supported && _disableEditorBloom.Value && !_exportSuspended);
-		_previewCacheStatic = _cacheStaticPreview.Value && hostActivitySnapshot.CanCachePreview && _repaintOnChange.Value;
-		_previewCadenceAllowed = progressiveResourcesReady && scopedPreviewOwnership && _previewAllowed && (hostActivitySnapshot.CanThrottle || _previewCacheStatic) && !mutationProtected;
+		_editorBloom?.Update(now, _host.Profile.EditorPatches && !_exportSuspended &&
+			(_disableEditorBloom.Value || (_idleEditorBloomReduction.Value && hostActivitySnapshot.IsEditor)));
+		_previewCacheStatic = PreviewOptimizationPolicy.AllowsStaticCache(_host.Profile, _experimentalPreviewOwnership.Value, _cacheStaticPreview.Value) && hostActivitySnapshot.CanCachePreview && _repaintOnChange.Value;
+		// HasInteraction also means "unsafe to idle" for animation/unknown host
+		// states. Only actual input or moving scroll views reduce preview quality.
+		_activePreviewReduction = _activePreviewCadence.Value && (recentInput || _scrollProtected) && hostActivitySnapshot.HasPreview && !hostActivitySnapshot.AmbientPreview;
+		_previewCadenceAllowed = progressiveResourcesReady && scopedPreviewOwnership && _previewAllowed && (hostActivitySnapshot.CanThrottle || _previewCacheStatic || _activePreviewReduction) && !mutationProtected;
 		// Resolution ownership is independent of input cadence: restoring and
 		// reallocating the target on every wheel event would add avoidable work.
 		// The lease validates that the embedded editor preview is still bound.
-		_previewTarget?.Update(now, progressiveResourcesReady && scopedPreviewOwnership && _matchPreview.Value && !_exportSuspended && !mutationProtected, _previewCadence?.SuspendedCamera);
+		_previewTarget?.Update(now, progressiveResourcesReady && scopedPreviewOwnership && _matchPreview.Value && !_exportSuspended && !mutationProtected, _previewCadence?.SuspendedCamera,
+			_activePreviewReduction ? _activePreviewResolutionScale.Value : 1.0);
 		if (_repaintOnChange.Value && (hostActivitySnapshot.CanThrottle || _previewCacheStatic || _profileEditor.Value))
 		{
 			_repaint?.Update(now);
@@ -700,6 +741,8 @@ public sealed class Plugin : BasePlugin
 		{
 			return;
 		}
+		// Ownership can change between Update and LateUpdate on the main thread.
+		if (YieldToExporter()) return;
 		if (!_enabled.Value)
 		{
 			RecordDiagnostics(now);
@@ -781,8 +824,9 @@ public sealed class Plugin : BasePlugin
 			_previewContentGeneration = previewGeneration;
 			_previewCadence?.Invalidate();
 		}
+		double previewTargetFps = _activePreviewReduction ? _activePreviewFps.Value : _previewFps.Value;
 		_previewCadence?.Update(now, _previewCadenceAllowed && (_progressiveLoading?.ResourceDependentWorkAllowed ?? true) && _mappingAllowed && !_exportSuspended &&
-			((cachePreview) || (!_scrollProtected && _limitPreview.Value)), _previewFps.Value, cachePreview, _safetyRepaintFps.Value);
+			(cachePreview || (!_scrollProtected && _limitPreview.Value) || _activePreviewReduction), previewTargetFps, cachePreview, _safetyRepaintFps.Value);
 		RecordDiagnostics(now);
 	}
 
@@ -831,8 +875,22 @@ public sealed class Plugin : BasePlugin
 		return num && flag && flag2 && flag3 && bloomRestored;
 	}
 
+	private bool YieldToExporter()
+	{
+		if (_host == null || (!_host.PublicRenderingBlocked && !(_exportSuspended && _host.HasPublicRenderControl))) return false;
+		_mappingAllowed = _previewAllowed = _previewCadenceAllowed = _characterMeshAllowed = false;
+		_requestedCpuFps = 0;
+		_mode = RenderMode.Protected;
+		_reason = "AAVideoExport owns rendering; Azurite writes suspended";
+		return true;
+	}
+
 	private void SuspendForExport()
 	{
+		// Block writers before restoring, including callbacks caused by restores.
+		_exportSuspended = true;
+		_mappingAllowed = false;
+		_backgroundGalleryCulling?.Update(Now, false);
 		_progressiveLoading?.SuspendForExport();
 		_virtualization?.Suspend();
 		_cpuIdle.Reset();
@@ -855,6 +913,7 @@ public sealed class Plugin : BasePlugin
 		{
 			throw new InvalidOperationException("Azurite could not fully restore its rendering settings before export acquisition.");
 		}
+		base.Log.LogInfo("RenderControlV1: restored Azurite leases before AAVE snapshots; rendering writes suspended.");
 	}
 
 	private void OnExportReleased()
@@ -864,6 +923,20 @@ public sealed class Plugin : BasePlugin
 		_policy.Reset(Now);
 		_rate.Reset();
 		_visualCadence.Reset();
+		base.Log.LogInfo("RenderControlV1: AAVE released restored rendering; idle observation restarted.");
+	}
+
+	private bool ObserveRealInteraction(double now)
+	{
+		try
+		{
+			if (!Application.isFocused) { _inputHoldUntil = 0; return false; }
+			if (Input.anyKey || Input.mouseScrollDelta.sqrMagnitude > 0 ||
+				!string.IsNullOrEmpty(Input.inputString) || !string.IsNullOrEmpty(Input.compositionString) || UICamera.isDragging)
+				_inputHoldUntil = now + 0.25;
+			return now < _inputHoldUntil;
+		}
+		catch { return false; } // Unknown state must not silently lower image quality.
 	}
 
 	private void RecordDiagnostics(double now)
@@ -931,7 +1004,7 @@ public sealed class Plugin : BasePlugin
 				log2.LogInfo(bepInExInfoLogInterpolatedStringHandler);
 				base.Log.LogInfo("repaint panels=" + _repaint.SummarizeDirtyPanels());
 			}
-			if (_previewCadence != null && _limitPreview.Value)
+			if (_previewCadence != null && (_limitPreview.Value || _cacheStaticPreview.Value))
 			{
 				ManualLogSource log3 = base.Log;
 				bepInExInfoLogInterpolatedStringHandler = new BepInExInfoLogInterpolatedStringHandler(73, 5, out isEnabled);
@@ -943,6 +1016,8 @@ public sealed class Plugin : BasePlugin
 					bepInExInfoLogInterpolatedStringHandler.AppendFormatted(_previewCadence.SkippedFrames);
 					bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; target=");
 					bepInExInfoLogInterpolatedStringHandler.AppendFormatted(_previewFps.Value);
+					bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; staticCache=");
+					bepInExInfoLogInterpolatedStringHandler.AppendFormatted(_previewCacheStatic);
 					bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; reason=");
 					bepInExInfoLogInterpolatedStringHandler.AppendFormatted(_previewCadence.Reason);
 					bepInExInfoLogInterpolatedStringHandler.AppendLiteral("; textures=");
@@ -1098,6 +1173,12 @@ public sealed class Plugin : BasePlugin
 			_deferredSelectors = null;
 			_progressiveLoading?.Dispose();
 			_progressiveLoading = null;
+			_backgroundGalleryCulling?.Dispose();
+			_backgroundGalleryCulling = null;
+			_backgroundCategoryReflow?.Dispose();
+			_backgroundCategoryReflow = null;
+			_wheelSettings?.Dispose();
+			_wheelSettings = null;
 			_characterMeshes?.Dispose();
 			_characterMeshes = null;
 			_mutation?.Dispose();

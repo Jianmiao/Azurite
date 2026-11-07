@@ -90,4 +90,41 @@ using (var fps = new FpsController(new ManualLogSource(), () => { }))
     fps.Update(3.3, true); fps.Update(3.4, true);
     Check(fps.IsOperational && fps.RestoreIdleFrameRate() && Pair() == new FpsPlan(-1, 1), "display refresh changes during idle preserve a recoverable normal plan");
 }
-Console.WriteLine($"RESULT {passed}/{passed}; source-linked FPS and CPU-idle lifecycle tests, not a native performance measurement.");
+// The actual provider and consumer drive the real FPS controller/interval lease.
+// This goes through BeforeAcquire/AfterRelease, not manually calling suspend.
+AAVideoExport.Integration.RenderControlV1.BeginHostInitialization();
+AAVideoExport.Integration.RenderControlV1.CompleteHostInitialization();
+Application.targetFrameRate = -1; QualitySettings.vSyncCount = 0; Singleton<UserSettings>.Instance = new();
+using (var fps = new FpsController(new ManualLogSource(), () => { }))
+{
+    fps.Update(0, true); fps.Update(1.1, true); fps.SetIdleFrameRate(30);
+    int interval = 1, acquireCount = 0, releaseCount = 0;
+    var cadence = new RenderIntervalLease(() => interval, value => interval = value);
+    Check(cadence.TryApply(8), "idle cadence owns an eight-frame interval before export");
+    var binding = RenderControlClient.TryBind(typeof(AAVideoExport.Integration.RenderControlV1).Assembly,
+        () => { acquireCount++; Check(cadence.Restore() && fps.SuspendForExport(), "real handoff restores both leases before capture snapshot"); },
+        () => releaseCount++, null, out var client, out var reason);
+    Check(binding == RenderControlBinding.Bound, reason);
+    using (client)
+    {
+        var outer = AAVideoExport.Integration.RenderControlV1.Acquire();
+        var capture = AAVideoExport.Integration.RenderControlV1.Acquire();
+        Check(interval == 1 && Pair() == new FpsPlan(-1, 0) && !fps.IsMappingApplied, "export snapshots see the restored native state");
+        Application.targetFrameRate = 144; QualitySettings.vSyncCount = 0;
+        for (int frame = 0; frame < 120; frame++)
+        {
+            var state = client!.Probe();
+            fps.Update(2 + frame / 60d, state.Healthy && state.Ready && !state.Owned);
+            fps.SetIdleFrameRate(0);
+            Check(Pair() == new FpsPlan(144, 0) && interval == 1, "owned export frame " + frame + " preserves its settings");
+        }
+        capture.Dispose();
+        Check(client!.Probe().Owned && releaseCount == 0 && acquireCount == 1, "nested capture completion cannot resume Azurite early");
+        Application.targetFrameRate = -1; QualitySettings.vSyncCount = 0;
+        outer.Dispose();
+        Check(!client.Probe().Owned && releaseCount == 1, "last restored lease releases exactly once");
+        fps.Update(5, true); fps.Update(5.1, true);
+        Check(fps.IsMappingApplied, "actual FPS controller resumes after public release");
+    }
+}
+Console.WriteLine($"RESULT {passed}/{passed}; source-linked FPS and public handoff lifecycle tests, not a native performance measurement.");

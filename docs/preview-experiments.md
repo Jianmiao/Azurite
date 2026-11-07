@@ -1,12 +1,13 @@
 # 编辑预览实验
 
-这组开关用于本地候选验证，默认关闭。`ExperimentalPreviewOwnership=true` 只让已验证的 AA 1.0.0-fix 尝试取得独立编辑预览的所有权，不会绕过宿主校验，也不会启用全局 `RenderScale`。
+静止预览缓存已在已验证的 AA 1.0.0-fix 主机默认启用。`ExperimentalPreviewOwnership=true` 只让该主机尝试取得受限的编辑预览所有权，不会绕过宿主校验，也不会启用全局 `RenderScale`。Legacy 和未验证主机不会启用这条缓存路径。
 
 ```ini
 [Preview]
 ExperimentalPreviewOwnership = true
 MatchDisplayResolution = true
 LimitCameraCadence = false
+CacheStaticPreview = true
 RenderScale = 1
 ```
 

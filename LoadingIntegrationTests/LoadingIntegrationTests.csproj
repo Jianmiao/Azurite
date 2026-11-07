@@ -9,6 +9,7 @@
     <ProgressiveControllerSource Condition="'$(ProgressiveControllerSource)' == ''">../Plugin/Azurite/ProgressiveEditorLoading.cs</ProgressiveControllerSource>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Plugin/Azurite/ForegroundLoadBudget.cs" Link="Production/ForegroundLoadBudget.cs" />
     <Compile Include="$(ProgressiveControllerSource)" Link="Production/ProgressiveEditorLoading.cs" />
     <Compile Include="../Plugin/Azurite/ProgressivePreloadBudget.cs" Link="Production/ProgressivePreloadBudget.cs" />
     <Compile Include="../Plugin/Azurite/ProgressivePreloadEnumerator.cs" Link="Production/ProgressivePreloadEnumerator.cs" />

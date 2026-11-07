@@ -52,6 +52,8 @@ internal sealed class EditorScrollTuning : IDisposable
 
 	private double _nextProbe;
 
+	private float _lastUserScale = 1f;
+
 	private bool _engaged;
 
 	private bool _disposed;
@@ -88,7 +90,7 @@ internal sealed class EditorScrollTuning : IDisposable
 		Update(now, allowed, multiplier, dialogueMultiplier, modManagerMultiplier, backgroundMultiplier, settingsMultiplier, 1f, 1f);
 	}
 
-	public void Update(double now, bool allowed, float multiplier, float dialogueMultiplier, float modManagerMultiplier, float backgroundMultiplier, float settingsMultiplier, float characterMultiplier, float emotionMultiplier)
+	public void Update(double now, bool allowed, float multiplier, float dialogueMultiplier, float modManagerMultiplier, float backgroundMultiplier, float settingsMultiplier, float characterMultiplier, float emotionMultiplier, float userScale = 1f)
 	{
 		if (_disposed || _failed)
 		{
@@ -101,17 +103,32 @@ internal sealed class EditorScrollTuning : IDisposable
 		settingsMultiplier = NormalizeMultiplier(settingsMultiplier);
 		characterMultiplier = NormalizeMultiplier(characterMultiplier);
 		emotionMultiplier = NormalizeMultiplier(emotionMultiplier);
-		if (!allowed || (multiplier <= 1f && dialogueMultiplier <= 1f && modManagerMultiplier <= 1f && backgroundMultiplier <= 1f && settingsMultiplier <= 1f && characterMultiplier <= 1f && emotionMultiplier <= 1f))
+		userScale = NormalizeUserScale(userScale);
+		// Preserve legacy opt-out at 1x, but apply the user's global scale after
+		// per-area normalization. Half speed must work at a native 1x baseline;
+		// double speed must not be clipped for the 11.25x emotion baseline.
+		float emotionDirection = emotionMultiplier == 1f && userScale == 1f ? 1f : -1f;
+		multiplier *= userScale;
+		dialogueMultiplier *= userScale;
+		modManagerMultiplier *= userScale;
+		backgroundMultiplier *= userScale;
+		settingsMultiplier *= userScale;
+		characterMultiplier *= userScale;
+		emotionMultiplier *= userScale;
+		if (!allowed || (userScale == 1f && multiplier == 1f && dialogueMultiplier == 1f && modManagerMultiplier == 1f && backgroundMultiplier == 1f && settingsMultiplier == 1f && characterMultiplier == 1f && emotionMultiplier == 1f))
 		{
 			Restore();
 		}
 		else
 		{
-			if (!double.IsFinite(now) || now < _nextProbe)
+			// Slider changes must apply on the next update, rather than waiting
+			// for the periodic one-second discovery pass.
+			if (!double.IsFinite(now) || (userScale == _lastUserScale && now < _nextProbe))
 			{
 				return;
 			}
 			_nextProbe = now + 1.0;
+			_lastUserScale = userScale;
 			_engaged = true;
 			try
 			{
@@ -154,7 +171,9 @@ internal sealed class EditorScrollTuning : IDisposable
 					if (uITable != null)
 					{
 						UIScrollView componentInParent = uITable.GetComponentInParent<UIScrollView>();
-						Touch(componentInParent, "background categories", backgroundMultiplier);
+						// Categories keep their native baseline; only the explicit
+						// user preference scales this separate scroll surface.
+						Touch(componentInParent, "background categories", userScale);
 					}
 				}
 				SettingPanel[] settingPanels = UnityEngine.Object.FindObjectsOfType<SettingPanel>();
@@ -187,7 +206,7 @@ internal sealed class EditorScrollTuning : IDisposable
 				{
 					// EmotionExplorer's horizontal layout has the opposite native
 					// coordinate convention from CharacterExplorer.
-					TouchDescendantScrolls(emotionExplorer, "emotion chooser", emotionMultiplier, -1f);
+					TouchDescendantScrolls(emotionExplorer, "emotion chooser", emotionMultiplier, emotionDirection);
 				}
 				_retired.Clear();
 				foreach (System.Collections.Generic.KeyValuePair<IntPtr, Lease> view in _views)
@@ -224,6 +243,11 @@ internal sealed class EditorScrollTuning : IDisposable
 		return Math.Min(multiplier, MaximumMultiplier);
 	}
 
+	private static float NormalizeUserScale(float scale)
+	{
+		return float.IsFinite(scale) ? Math.Clamp(scale, 0.5f, 2f) : 1f;
+	}
+
 	private void TouchDescendantScrolls(UnityEngine.Component owner, string scope, float multiplier, float direction)
 	{
 		Il2CppArrayBase<CenterableUIScrollView> discovered = owner.GetComponentsInChildren<CenterableUIScrollView>(includeInactive: true);
@@ -250,14 +274,14 @@ internal sealed class EditorScrollTuning : IDisposable
 		}
 		if (!_views.TryGetValue(pointer, out Lease value))
 		{
-			if (multiplier <= 1f)
+			if (multiplier == 1f && direction == 1f)
 			{
 				return;
 			}
 			value = new Lease(view, scope, direction);
 			_views.Add(pointer, value);
 		}
-		if (multiplier <= 1f)
+		if (multiplier == 1f && direction == 1f)
 		{
 			Release(value);
 		}

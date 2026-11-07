@@ -48,6 +48,76 @@ using (var fixture = new Fixture())
 
 using (var fixture = new Fixture())
 {
+    int allocations = RenderTexture.Allocations;
+    fixture.Lease.Update(0, true, resolutionScale: 0.7);
+    fixture.Lease.Update(0.6, true, resolutionScale: 0.7);
+    var owned = fixture.Camera.targetTexture!;
+    Check(owned.width == 672 && owned.height == 378 && ReferenceEquals(owned, fixture.Consumer.mainTexture),
+          "reduced resolution creates an aspect-correct target shared by camera and UI");
+    for (int i = 8; i < 40; i += 2) fixture.Lease.Update(i / 10.0, true, resolutionScale: 0.7);
+    Check(RenderTexture.Allocations == allocations + 1 && owned.ReleaseCalls == 0,
+          "stable reduced resolution does not allocate on repeated discoveries");
+    fixture.SetViewport(910, 511.875f);
+    fixture.Lease.Update(4.2, true, resolutionScale: 0.7);
+    fixture.Lease.Update(4.8, true, resolutionScale: 0.7);
+    Check(ReferenceEquals(owned, fixture.Camera.targetTexture) && owned.ReleaseCalls == 0 &&
+          RenderTexture.Allocations == allocations + 1,
+          "small reduced viewport shrink retains the owned target inside five percent hysteresis");
+}
+
+using (var fixture = new Fixture())
+{
+    fixture.Lease.Update(0, true, resolutionScale: 0.7);
+    fixture.Lease.Update(0.6, true, resolutionScale: 0.7);
+    var owned = fixture.Camera.targetTexture!;
+    int allocations = RenderTexture.Allocations;
+    for (int i = 0; i < 6; i++)
+    {
+        fixture.Lease.Update(0.8 + i * 0.4, true, resolutionScale: 1.0);
+        fixture.Lease.Update(1.0 + i * 0.4, true, resolutionScale: 0.7);
+    }
+    Check(ReferenceEquals(owned, fixture.Camera.targetTexture) && owned.ReleaseCalls == 0 &&
+          RenderTexture.Allocations == allocations,
+          "brief interaction and idle alternation retains the target without full-size fallback or reallocations");
+    fixture.Lease.Update(3.4, true, resolutionScale: 1.0);
+    Check(ReferenceEquals(owned, fixture.Camera.targetTexture),
+          "resolution-quality upgrade keeps the previous valid image during the settling window");
+    fixture.Lease.Update(4.0, true, resolutionScale: 1.0);
+    var fullViewport = fixture.Camera.targetTexture!;
+    Check(fullViewport.width == 960 && fullViewport.height == 540 && owned.ReleaseCalls == 1 &&
+          RenderTexture.Allocations == allocations + 1,
+          "stable return to full viewport quality performs only one replacement");
+    fixture.Lease.Update(4.2, false);
+    Check(fullViewport.Destroyed && ReferenceEquals(fixture.Camera.targetTexture, fixture.Original) &&
+          ReferenceEquals(fixture.Consumer.mainTexture, fixture.Original),
+          "export or disable immediately restores original bindings after scaled transitions");
+}
+
+using (var fixture = new Fixture())
+{
+    fixture.Activate();
+    var owned = fixture.Camera.targetTexture!;
+    fixture.Lease.Update(0.8, true, resolutionScale: 0.7);
+    fixture.Lease.Update(1.0, true, resolutionScale: 1.0);
+    fixture.Lease.Update(1.8, true, resolutionScale: 1.0);
+    Check(ReferenceEquals(owned, fixture.Camera.targetTexture) && owned.ReleaseCalls == 0,
+          "brief active-resolution request cannot replace a settled full-quality target");
+    fixture.Lease.Update(2.0, true, resolutionScale: 0.7);
+    fixture.Lease.Update(2.6, true, resolutionScale: 0.7);
+    Check(fixture.Camera.targetTexture!.width == 672 && owned.ReleaseCalls == 1,
+          "sustained active-resolution request applies once after settling");
+    var reduced = fixture.Camera.targetTexture!;
+    fixture.SetViewport(1280, 720);
+    fixture.Lease.Update(2.8, true, resolutionScale: 0.7);
+    Check(reduced.Destroyed && ReferenceEquals(fixture.Camera.targetTexture, fixture.Original),
+          "actual viewport growth restores original immediately even under reduced resolution");
+    fixture.Lease.Update(3.4, true, resolutionScale: 0.7);
+    Check(fixture.Camera.targetTexture!.width == 896 && fixture.Camera.targetTexture.height == 504,
+          "grown viewport acquires the correct reduced target after settling");
+}
+
+using (var fixture = new Fixture())
+{
     fixture.Activate();
     var owned = fixture.Camera.targetTexture!;
     fixture.Camera.enabled = false;
@@ -266,6 +336,11 @@ sealed class Fixture : IDisposable
         Inspector.preview = Preview;
     }
     public void Activate() { Lease.Update(0, true); Lease.Update(0.6, true); }
+    public void SetViewport(float width, float height) => Consumer.worldCorners = new(new[]
+    {
+        new Vector3(0, 0, 1), new Vector3(0, height, 1),
+        new Vector3(width, height, 1), new Vector3(width, 0, 1)
+    });
     public void Dispose() { Lease.Dispose(); ScriptNodeInspector.instance = null; }
     public static RenderTexture MakeTarget(string name) => new(new RenderTextureDescriptor
     {

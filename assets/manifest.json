@@ -1,7 +1,7 @@
 {
   "name": "Azurite",
-  "version_number": "1.0.20",
+  "version_number": "1.0.38",
   "website_url": "https://github.com/Jianmiao/Azurite",
-  "description": "蓝铜矿本地候选：角色滚轮 2 倍、表情滚轮倍率上限修正，并允许资源导入期间先编辑角色/表情。",
+  "description": "蓝铜矿 AA 1.0.1 兼容候选：帧率、滚动、空闲绘制、设置页滚轮灵敏度控件与 RenderControlV1 交接。",
   "dependencies": []
 }

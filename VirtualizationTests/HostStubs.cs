@@ -168,12 +168,12 @@ namespace Studio.Scripts.Nodes {
 public static class HostStats
 {
     public static readonly List<int> InitIndices = new();
-    public static int Created, Removed, Refreshes, Inits, Reflows, Syncs, Selections, Deselections, SiblingMoves, PanelUpdates, ChildSelections, Starts;
+    public static int Created, Removed, Refreshes, Inits, Reflows, Syncs, Selections, Deselections, SiblingMoves, PanelUpdates, PanelSetDirty, PanelUpdateSelf, ChildSelections, Starts;
     public static string? Failure;
     public static Action? BeforeDestroy, AfterDestroy, BeforeAdd, AfterRefresh, BeforeSyncReturn, DuringStart;
     public static bool InlineInit = true;
     public static void Fail(string point) { if (Failure != point) return; Failure = null; throw new InvalidOperationException("Injected " + point); }
-    public static void Reset() { Created = Removed = Refreshes = Inits = Reflows = Syncs = Selections = Deselections = SiblingMoves = PanelUpdates = ChildSelections = Starts = 0; Failure = null; BeforeDestroy = AfterDestroy = BeforeAdd = AfterRefresh = BeforeSyncReturn = DuringStart = null; InlineInit = true; InitIndices.Clear(); Time.frameCount = 0; }
+    public static void Reset() { Created = Removed = Refreshes = Inits = Reflows = Syncs = Selections = Deselections = SiblingMoves = PanelUpdates = PanelSetDirty = PanelUpdateSelf = ChildSelections = Starts = 0; Failure = null; BeforeDestroy = AfterDestroy = BeforeAdd = AfterRefresh = BeforeSyncReturn = DuringStart = null; InlineInit = true; InitIndices.Clear(); Time.frameCount = 0; }
     public static void AssertDense(ScriptNodeInspector host) { if(host.scriptNodeListItemsCache.Count!=host.scriptNode.scripts.Count)throw new Exception("count");for(int i=0;i<host.scriptNodeListItemsCache.Count;i++)if(host.scriptNodeListItemsCache[i]==null||host.scriptNodeListItemsCache[i].index!=i)throw new Exception("sparse native cache"); }
     public static void Once(ref Action? callback) { var current = callback; callback = null; current?.Invoke(); }
 }
@@ -316,7 +316,7 @@ public static class NGUIMath {
   for(int i=1;i<corners.Length;i++)bounds.Encapsulate(relativeTo.InverseTransformPoint(corners[i]));return bounds;
  }
 }
-public class UIPanel : UnityEngine.Behaviour { public bool hasClipping=true; public Vector4 finalClipRegion=new(300,-400,600,800); public void SetDirty()=>HostStats.PanelUpdates++; public void UpdateSelf()=>HostStats.PanelUpdates++; }
+public class UIPanel : UnityEngine.Behaviour { public bool hasClipping=true; public Vector4 finalClipRegion=new(300,-400,600,800); public void SetDirty(){HostStats.PanelUpdates++;HostStats.PanelSetDirty++;} public void UpdateSelf(){HostStats.PanelUpdates++;HostStats.PanelUpdateSelf++;} }
 public class UIScrollView : UnityEngine.Behaviour {
  public UIScrollView() { panel.gameObject = gameObject; }
  public UIPanel panel=new(); public Bounds mBounds; public bool mCalculatedBounds;

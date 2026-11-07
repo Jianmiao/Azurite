@@ -91,6 +91,17 @@ internal sealed class HostCompatibility : IDisposable
 	private bool _captureOptimizationEnabled;
 
 	internal bool HostSupported => _hostSupported;
+	internal bool HasPublicRenderControl => _publicRenderControl != null;
+	internal bool PublicRenderingBlocked
+	{
+		get
+		{
+			EnsureVideoExportBinding();
+			if (_publicRenderControl == null) return false;
+			var state = _publicRenderControl.Probe();
+			return !state.Healthy || !state.Ready || state.Owned;
+		}
+	}
 
 	internal HostProfile Profile { get; private set; } = HostProfile.Unsupported;
 
@@ -112,6 +123,7 @@ internal sealed class HostCompatibility : IDisposable
 		}
 		EnsureHostIdentity();
 		EnsureVideoExportBinding();
+		if (!_hostSupported) _log.LogWarning("Azurite rendering disabled: " + _hostReason + "; public export coordination is checked separately.");
 		return _hostSupported;
 	}
 
@@ -127,6 +139,7 @@ internal sealed class HostCompatibility : IDisposable
 			return HostCompatibilitySnapshot.Unsupported("adapter disposed");
 		}
 		EnsureHostIdentity();
+		EnsureVideoExportBinding();
 		if (!_hostSupported)
 		{
 			return HostCompatibilitySnapshot.Unsupported(_hostReason);
@@ -255,7 +268,7 @@ internal sealed class HostCompatibility : IDisposable
 
 	private void EnsureVideoExportBinding()
 	{
-		if (_bindingAttempted || _noExportConfirmed || !_hostSupported)
+		if (_bindingAttempted || _noExportConfirmed)
 		{
 			return;
 		}
@@ -309,7 +322,7 @@ internal sealed class HostCompatibility : IDisposable
 				break;
 			case RenderControlBinding.Absent:
 			{
-				if (!Profile.LegacyExporter)
+				if (!_hostSupported || !Profile.LegacyExporter)
 				{
 					FailBinding("this AA host requires AAVideoExport RenderControlV1; legacy private hooks are disabled");
 					break;
