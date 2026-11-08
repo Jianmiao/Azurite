@@ -2,6 +2,8 @@
 
 This is offline preparation, not a Core deployment or native AA/AAVE acceptance.
 
+This record binds the exact assemblies listed below. Later source-only fixes for native nullable-curve/empty-face compatibility do not replace this evidence with a check of their new binary. Recheck the final rebuilt artifact when actually migrating the Plugin; the preserved reference remains unchanged.
+
 | Assembly | SHA-256 |
 | --- | --- |
 | Preserved reference | `76a46c4a896dfbdffd66c2be85e9a0e07d2d0523faaef0841763d997c65df1a5` |

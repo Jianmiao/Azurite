@@ -155,7 +155,7 @@ public static class CardPackV2Compiler
             foreach (var key in new[] { "ending_position", "display_order" })
                 if (item.TryGetProperty(key, out var value) && (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var n) || !Slot(n))) Error(key + " must be an integer 1..5.");
             var hasFace = item.TryGetProperty("face_id", out var face);
-            if ((hasFace && face.ValueKind != JsonValueKind.String) || binding != null && !Has(binding.FaceIds, hasFace && face.ValueKind == JsonValueKind.String ? face.GetString()! : "00")) errors.Add(new("STAGE_RESOURCE", "Existing face, including the omitted default 00, must be verified by the character catalog."));
+            if ((hasFace && (face.ValueKind != JsonValueKind.String || string.IsNullOrEmpty(face.GetString()))) || binding != null && !Has(binding.FaceIds, hasFace && face.ValueKind == JsonValueKind.String ? face.GetString()! : "00")) errors.Add(new("STAGE_RESOURCE", "Existing face, including the omitted default 00, must be verified by the character catalog."));
             CheckEnum(item, "action", Actions.Concat(new[] { "Curve" }), Error);
             CheckEnum(item, "emoticon", Emoticons, Error);
             CheckEnum(item, "effect", new[] { "None", "Shot" }, Error);
@@ -165,7 +165,7 @@ public static class CardPackV2Compiler
                 if (shapes.ValueKind != JsonValueKind.Array || shapes.GetArrayLength() > 3) Error("shape_overrides must contain at most three unique native values.");
                 else { var seen = new HashSet<string>(); foreach (var shape in shapes.EnumerateArray()) if (shape.ValueKind != JsonValueKind.String || !new[] { "Sig", "Black", "Closeup" }.Contains(shape.GetString()) || !seen.Add(shape.GetString()!)) Error("Invalid shape override."); }
             }
-            if (item.TryGetProperty("curve", out var curve) && curve.ValueKind != JsonValueKind.Object) Error("Retained curve must be an adapter-validated native object.");
+            if (item.TryGetProperty("curve", out var curve) && curve.ValueKind is not (JsonValueKind.Object or JsonValueKind.Null)) Error("Retained curve must be an adapter-validated native object or null.");
             // Do not normalize, recreate, or strip retained native curve fields.
             stage.Add(item.Clone());
         }

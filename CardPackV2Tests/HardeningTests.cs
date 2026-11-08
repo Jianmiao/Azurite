@@ -13,6 +13,28 @@ static partial class Program
             InheritedStage = Json("[{\"slot\":2,\"resource_id\":\"catalog:actor/α\"}]"),
             Resources = Context().Resources.Select(x => x.ResourceKey == "actor" ? x with { FaceIds = new[] { "01" } } : x).ToArray()
         }), "STAGE_RESOURCE"));
+        Test("inherited null curve survives on non-target occupant", () => {
+            var stage = "[{\"slot\":2,\"resource_id\":\"catalog:actor/α\",\"face_id\":\"00\",\"action\":\"Idle\"},{\"slot\":5,\"resource_id\":\"catalog:other/β\",\"face_id\":\"01\",\"action\":\"Idle\",\"curve\":null}]";
+            var actual = Json(Operation(Success(Compile(Pack(ActionCard()), Context() with { InheritedStage = Json(stage) })))).GetProperty("line").GetProperty("stage");
+            EqualJson("[{\"slot\":2,\"resource_id\":\"catalog:actor/α\",\"face_id\":\"00\",\"action\":\"Greeting\"},{\"slot\":5,\"resource_id\":\"catalog:other/β\",\"face_id\":\"01\",\"action\":\"Idle\",\"curve\":null}]", actual.GetRawText());
+        });
+        Test("inherited null curve survives on target occupant", () => {
+            var stage = "[{\"slot\":2,\"resource_id\":\"catalog:actor/α\",\"face_id\":\"00\",\"action\":\"Idle\",\"curve\":null}]";
+            var actual = Json(Operation(Success(Compile(Pack(ActionCard()), Context() with { InheritedStage = Json(stage) })))).GetProperty("line").GetProperty("stage");
+            EqualJson("[{\"slot\":2,\"resource_id\":\"catalog:actor/α\",\"face_id\":\"00\",\"action\":\"Greeting\",\"curve\":null}]", actual.GetRawText());
+        });
+        foreach (var bad in new[] { "true", "[]", "\"curve\"" })
+            Test("inherited non-object non-null curve rejected " + bad, () => Reject(Compile(Pack(ActionCard()), Context() with {
+                InheritedStage = Json("[{\"slot\":2,\"resource_id\":\"catalog:actor/α\",\"face_id\":\"00\",\"curve\":" + bad + "}]")
+            }), "STAGE_SCHEMA"));
+        Test("malformed catalog cannot authorize empty explicit face", () => Reject(Compile(Pack(ActionCard()), Context() with {
+            InheritedStage = Json("[{\"slot\":2,\"resource_id\":\"catalog:actor/α\",\"face_id\":\"\"}]"),
+            Resources = Context().Resources.Select(x => x.ResourceKey == "actor" ? x with { FaceIds = new[] { "" } } : x).ToArray()
+        }), "STAGE_RESOURCE"));
+        Test("valid explicit face and omitted default still compile", () => {
+            Success(Compile(Pack(ActionCard()), Context() with { InheritedStage = Json("[{\"slot\":2,\"resource_id\":\"catalog:actor/α\",\"face_id\":\"01\"}]") }));
+            Success(Compile(Pack(ActionCard()), Context() with { InheritedStage = Json("[{\"slot\":2,\"resource_id\":\"catalog:actor/α\"}]") }));
+        });
         Test("legacy extra capability cannot silently disappear", () => {
             var old = Legacy(LegacyCard(PresetCardKind.Transition, PresetCardStepKind.ApplyTransition, "fade")) with { RequiredHostCapabilities = new[] { "audio.play" } };
             var result = CardPackV2Migration.TryMigrate(old);
