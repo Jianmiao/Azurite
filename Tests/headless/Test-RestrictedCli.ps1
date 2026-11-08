@@ -11,7 +11,9 @@ $root = Join-Path $repo ('artifacts\restricted-cli-tests\' + [guid]::NewGuid().T
 [void][IO.Directory]::CreateDirectory($root)
 $started=[datetime]::UtcNow.AddSeconds(-1)
 $response=Join-Path $root 'response.json'
-$cap='{"api_version":"1","ok":true,"data":{"api_version":"1","format_version":2,"schema_uri":"aap://schema/api/1","commands":["schema","capabilities"]},"warnings":[]}'
+$capFixture=Join-Path $PSScriptRoot 'fixtures\native-capabilities-20261108.json'
+Assert ((Get-AzuriteSha256 $capFixture) -ceq 'A12FC49612372CB6A9F5AB56B86EFEC8F438C585F0BF3E1FAD033F66A787401F') 'native capabilities fixture bytes are bound to the first response'
+$cap=[IO.File]::ReadAllText($capFixture)
 $schema='{"api_version":"1","ok":true,"data":{"api_version":"1","$id":"aap://schema/api/1","$schema":"https://json-schema.org/draft/2020-12/schema","$defs":{"LineInput":{"type":"object","properties":{"text":{"type":"string"}}},"LinePatch":{"type":"object","properties":{"text":{"type":"string"}}}},"tools":[{"name":"fixture"}],"cli_commands":{"fixture":{}}},"warnings":[]}'
 [IO.File]::WriteAllText($response,$cap)
 $valid=Read-AzuriteCliResponse -Path $response -Command capabilities -StartedUtc $started
@@ -31,6 +33,8 @@ Refuses { Read-AzuriteCliResponse -Path $response -Command schema -StartedUtc $s
 Refuses { Read-AzuriteCliResponse -Path $response -Command capabilities -StartedUtc $started } 'stale response refused'
 Refuses { Read-AzuriteCliResponse -Path (Join-Path $root 'absent.json') -Command capabilities -StartedUtc $started } 'missing response refused'
 Write-Output 'PASS: fresh meaningful native envelopes; stale/malformed/oversize/missing/failed/synthetic rejection'
+[IO.File]::WriteAllText($response,'{"api_version":"1","ok":true,"data":{"api_version":"1","format_version":2,"schema_uri":"aap://schema/api/1","commands":["schema","capabilities"]},"warnings":[]}')
+Refuses { Read-AzuriteCliResponse -Path $response -Command capabilities -StartedUtc $started } 'old synthetic top-level commands is not native capabilities'
 
 $install=Join-Path $root 'install'; [void][IO.Directory]::CreateDirectory($install)
 foreach($d in @('BepInEx\plugins','BepInEx\patchers','profiles\AzuriteAcceptance\configs','mods\Azurite\1.0.38','AzureArchive_Data\Plugins\x86_64')) { [void][IO.Directory]::CreateDirectory((Join-Path $install $d)) }

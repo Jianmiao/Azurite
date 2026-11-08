@@ -11,11 +11,32 @@ function Read-AzuriteBoundedJson([string]$Path,[long]$MaxBytes=1048576) {
  if($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -lt 2 -or $item.Length -gt $MaxBytes){throw 'Missing, linked or oversized JSON artifact.'}
  return [IO.File]::ReadAllText($Path)|ConvertFrom-Json -ErrorAction Stop
 }
+function ConvertTo-AzuriteUtcInstant([Parameter(Mandatory)]$Value) {
+ # JSON readers differ by PowerShell version. Never stringify a typed instant:
+ # culture formatting would erase Kind/offset and fractional ticks.
+ if($Value -is [DateTimeOffset]){return $Value.UtcDateTime}
+ if($Value -is [datetime]){
+  if($Value.Kind -eq [DateTimeKind]::Unspecified){throw 'UTC instant requires an explicit time zone; Unspecified DateTime is refused.'}
+  return $Value.ToUniversalTime()
+ }
+ if($Value -isnot [string] -or $Value -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?(Z|[+-]\d{2}:\d{2})$'){throw 'UTC instant requires an explicit-offset ISO timestamp.'}
+ try{return [DateTimeOffset]::Parse($Value,[Globalization.CultureInfo]::InvariantCulture,[Globalization.DateTimeStyles]::None).UtcDateTime}
+ catch{throw 'Invalid explicit-offset ISO UTC instant.'}
+}
+function Get-AzuriteNativeTimeWindow($Result,$BootstrapStartedUtc,$ObservedUtc) {
+ $nativeStarted=ConvertTo-AzuriteUtcInstant $Result.aaStartedUtc
+ $identityChecked=ConvertTo-AzuriteUtcInstant $Result.profilePathProof.checkedUtc
+ $bootstrapStarted=ConvertTo-AzuriteUtcInstant $BootstrapStartedUtc
+ $observed=ConvertTo-AzuriteUtcInstant $ObservedUtc
+ if($identityChecked -lt $bootstrapStarted -or $identityChecked -gt $nativeStarted){throw 'Target filesystem proof is outside pre-native bootstrap interval.'}
+ if($nativeStarted -lt $bootstrapStarted -or $nativeStarted -gt $observed){throw 'Native creation time is outside the owned bootstrap run.'}
+ return [pscustomobject]@{nativeStartedUtc=$nativeStarted;identityCheckedUtc=$identityChecked}
+}
 function Read-AzuriteStartupContract([string]$Path=(Join-Path $PSScriptRoot 'restricted-startup-contract.json')) {
  # This literal is the reviewed contract's digest, never calculated from the install.
- if((Get-AzuriteSha256 $Path) -cne '8B27AB740452DCA80E78335E4A7512242EBCFD65B7C67832A8A6104B1D3DE06F'){throw 'Unapproved startup contract digest.'}
+ if((Get-AzuriteSha256 $Path) -cne '5CED2B8185DFE43E94217F3B5D61F7B76D8DC5D70C817CABB50A098D46DC8362'){throw 'Unapproved startup contract digest.'}
  $contract=Read-AzuriteBoundedJson $Path
- if($contract.schema -ne 1 -or $contract.contractId -cne 'aa-2023.2.22f1-azurite-1.0.38-cli-nosound-v1'){throw 'Unapproved startup contract identity.'}
+ if($contract.schema -ne 1 -or $contract.contractId -cne 'aa-2023.2.22f1-azurite-1.0.38-cli-nosound-v2'){throw 'Unapproved startup contract identity.'}
  return $contract
 }
 function Assert-AzuritePinnedInstall([string]$Install,$Contract) {
@@ -45,6 +66,35 @@ function Assert-AzuritePinnedInstall([string]$Install,$Contract) {
 function Assert-AzuriteEvidence($Contract) {
  foreach($proof in $Contract.evidence){if((Get-AzuriteSha256 $proof.path) -cne $proof.sha256.ToUpperInvariant()){throw "Static evidence changed: $($proof.path)"}}
 }
+function Assert-AzuriteCapabilityScalars($Object,$Expected,[string]$Label) {
+ if($Object -isnot [pscustomobject]){throw "Native capabilities object missing: $Label"}
+ foreach($entry in $Expected.GetEnumerator()){
+  if(@($Object.PSObject.Properties.Name) -cnotcontains $entry.Key){throw "Native capabilities field missing: $Label.$($entry.Key)"}
+  $actual=$Object.PSObject.Properties[$entry.Key].Value;$wanted=$entry.Value
+  $valid=if($wanted -is [bool]){$actual -is [bool] -and $actual -eq $wanted}elseif($wanted -is [string]){$actual -is [string] -and $actual -ceq $wanted}else{($actual -is [int] -or $actual -is [long]) -and $actual -eq $wanted}
+  if(-not $valid){throw "Native capabilities type/value differs: $Label.$($entry.Key)"}
+ }
+}
+function Assert-AzuriteCapabilityNames($Value,[string[]]$Expected,[string]$Label) {
+ if($Value -isnot [array] -or $Value.Count -ne $Expected.Count){throw "Native capabilities declarations incomplete: $Label"}
+ $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+ foreach($name in $Value){if($name -isnot [string] -or $Expected -cnotcontains $name -or -not $seen.Add($name)){throw "Native capabilities declaration invalid: $Label"}}
+}
+function Assert-AzuriteCapabilitiesData($Data) {
+ # Pinned GetCapabilities builds data.tools/limits/etc. Its `commands` member is
+ # inside cli_mcp_control (RDI), attached to the root (RSI) at RVA 0x8c51d1.
+ Assert-AzuriteCapabilityScalars $Data @{api_version='1';format_version=2;protocol_version='2025-11-25';schema_uri='aap://schema/api/1';mcp_authentication='none'} 'data'
+ Assert-AzuriteCapabilityNames $Data.tools @('get_context','read_project','search_resources','create_dialogue','update_lines','edit_graph','apply_edits','validate_project','save_project','compile_project','get_request_status','resource_import','resource_remove','create_character_alias') 'tools'
+ Assert-AzuriteCapabilityScalars $Data.limits @{max_operations=500;max_create_dialogue_lines=497;max_queued_requests=64;max_retained_requests=512;request_retention_seconds=1800;max_request_bytes=2097152;default_page_size=50;max_page_size=200;max_choice_options=16} 'limits'
+ if($Data.limits.stage_slots -isnot [array] -or $Data.limits.stage_slots.Count -ne 5){throw 'Native capabilities stage slots are missing.'}
+ for($i=0;$i -lt 5;$i++){$slot=$Data.limits.stage_slots[$i];if(($slot -isnot [int] -and $slot -isnot [long]) -or $slot -ne $i+1){throw 'Native capabilities stage slots differ.'}}
+ Assert-AzuriteCapabilityNames $Data.resource_kinds @('character','background','background_effect','transition','bgm','sound','popup','voice') 'resource_kinds'
+ Assert-AzuriteCapabilityNames $Data.stable_identity @('project','node','line','option') 'stable_identity'
+ Assert-AzuriteCapabilityScalars $Data.persistence @{cli='saved_on_success';mcp='working_copy_then_explicit_or_configured_autosave';resource_import='separate_manifest_transaction';cli_mcp_control='editor_runtime_control_no_project_edit'} 'persistence'
+ Assert-AzuriteCapabilityScalars $Data.project_files @{primary_extension='.aap2';compatibility_extension='.aap';compatibility_marker='Aap2Compatibility';legacy_resave_behavior='read_unmarked_legacy_changes_then_refresh_both_on_save'} 'project_files'
+ Assert-AzuriteCapabilityScalars $Data.cli_mcp_control @{transport='current_user_named_pipe';instance_selection='optional_pid_required_if_multiple_gui_instances';no_instance_error='EDITOR_NOT_READY';multiple_instances_error='EDITOR_AMBIGUOUS';start_idempotent=$true;start_project_behavior='load_project_if_editor_empty_otherwise_guard';status_stop_project_behavior='guard_only';returns_bearer_token=$false} 'cli_mcp_control'
+ Assert-AzuriteCapabilityNames $Data.cli_mcp_control.commands @('mcp.start','mcp.status','mcp.stop') 'cli_mcp_control.commands'
+}
 function Read-AzuriteCliResponse([string]$Path,[ValidateSet('capabilities','schema')][string]$Command,[datetime]$StartedUtc) {
  $item=Get-Item -LiteralPath $Path -Force -ErrorAction Stop
  if($item.CreationTimeUtc -lt $StartedUtc -or $item.LastWriteTimeUtc -lt $StartedUtc){throw 'Response predates owned native start.'}
@@ -55,7 +105,7 @@ function Read-AzuriteCliResponse([string]$Path,[ValidateSet('capabilities','sche
  if($Command -eq 'schema'){
   if($d.'$id' -cne 'aap://schema/api/1' -or $d.'$schema' -cne 'https://json-schema.org/draft/2020-12/schema' -or $d.'$defs' -isnot [pscustomobject] -or $d.tools -isnot [array] -or $d.tools.Count -lt 1 -or $d.cli_commands -isnot [pscustomobject] -or @($d.cli_commands.PSObject.Properties).Count -lt 1){throw 'Native schema shape missing.'}
   foreach($name in @('LineInput','LinePatch')){$def=$d.'$defs'.$name;if($def -isnot [pscustomobject] -or $def.type -cne 'object' -or $def.properties -isnot [pscustomobject] -or @($def.properties.PSObject.Properties).Count -lt 1){throw "Native schema definition missing: $name"}}
- } else {if($d.format_version -ne 2 -or $d.schema_uri -cne 'aap://schema/api/1' -or $d.commands -isnot [array] -or $d.commands.Count -lt 1){throw 'Native capabilities shape missing.'}}
+ } else {Assert-AzuriteCapabilitiesData $d}
  return [pscustomobject]@{Data=$d;Sha256=(Get-AzuriteSha256 $Path);Bytes=$item.Length;Path=$item.FullName}
 }
 function ConvertTo-AzuriteWindowsArgument([AllowEmptyString()][string]$Value) {
@@ -273,4 +323,4 @@ function Get-AzuritePinDrift([string]$Install,$Contract) {
   if($actual -cne $pin.sha256.ToUpperInvariant()){[pscustomobject]@{path=$pin.path;expectedSha256=$pin.sha256;actualSha256=$actual;reason=$reason}}
  }
 }
-Export-ModuleMember -Function Get-AzuriteSha256,Write-AzuriteFlushedJson,Read-AzuriteBoundedJson,Read-AzuriteStartupContract,Assert-AzuritePinnedInstall,Assert-AzuriteEvidence,Read-AzuriteCliResponse,New-AzuriteProcessInfo,Set-AzuriteCliChildEnvironment,Initialize-AzuriteRestrictedNative,New-AzuriteNetFrameworkHelper,Assert-AzuriteTargetIdentity,Assert-AzuriteTargetIdentityRecord,Get-AzuriteProcessStatus,Get-AzuriteOuterProcessStatus,Get-AzuriteNativeProcessStatus,Get-AzuriteNativeResultStatus,Assert-AzuriteCleanupConfirmed,Assert-AzuriteCleanupGateClear,Start-AzuriteCleanupGate,Complete-AzuriteCleanupGate,Set-AzuriteRequestAcl,Assert-AzuriteRestrictedAcl,Limit-AzuriteRetainedArtifacts,Move-AzuritePreviousLoaderLog,Copy-AzuriteFreshLoaderLog,Get-AzuritePinDrift
+Export-ModuleMember -Function ConvertTo-AzuriteUtcInstant,Get-AzuriteNativeTimeWindow,Get-AzuriteCanonicalProfilePath,Get-AzuriteSha256,Write-AzuriteFlushedJson,Read-AzuriteBoundedJson,Read-AzuriteStartupContract,Assert-AzuritePinnedInstall,Assert-AzuriteEvidence,Read-AzuriteCliResponse,New-AzuriteProcessInfo,Set-AzuriteCliChildEnvironment,Initialize-AzuriteRestrictedNative,New-AzuriteNetFrameworkHelper,Assert-AzuriteTargetIdentity,Assert-AzuriteTargetIdentityRecord,Get-AzuriteProcessStatus,Get-AzuriteOuterProcessStatus,Get-AzuriteNativeProcessStatus,Get-AzuriteNativeResultStatus,Assert-AzuriteCleanupConfirmed,Assert-AzuriteCleanupGateClear,Start-AzuriteCleanupGate,Complete-AzuriteCleanupGate,Set-AzuriteRequestAcl,Assert-AzuriteRestrictedAcl,Limit-AzuriteRetainedArtifacts,Move-AzuritePreviousLoaderLog,Copy-AzuriteFreshLoaderLog,Get-AzuritePinDrift

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "fixture": "native-capabilities-20261108.json",
+  "sourceRunId": "b3231d471fa74fbaa9b297a11efce707",
+  "sourcePath": "E:\\aamod\\labs\\Azurite-20261108-stable\\runs\\restricted-b3231d471fa74fbaa9b297a11efce707\\request\\response.json",
+  "sourceBytes": 1710,
+  "sourceSha256": "A12FC49612372CB6A9F5AB56B86EFEC8F438C585F0BF3E1FAD033F66A787401F",
+  "command": "capabilities",
+  "sourceRunOutcome": "failed; preserved unchanged",
+  "scope": "Exact raw native capabilities response only; not complete run, Editor, card, audio or GPU acceptance",
+  "staticEvidence": {
+    "path": "E:\\aamod\\diagnostics\\azurite-plan-20261108\\native-contract\\AzureArchive.Automation.AuthoringApiSchema.GetCapabilities.asm.txt",
+    "sha256": "C9765C7C3316DBD9BE75F69CD5C4E08D22173289B7E31C5BA6E5B6F9EAED36C3",
+    "rootToolsAssignmentRva": "0x8c48f4",
+    "nestedCommandsAssignmentRva": "0x8c50ae",
+    "nestedObjectAttachedAsCliMcpControlRva": "0x8c51d1"
+  },
+  "dispatchEvidence": {
+    "path": "E:\\aamod\\diagnostics\\azurite-plan-20261108\\headless-audio\\startup-contract\\GameAssembly-100694954.asm.txt",
+    "sha256": "6387BD72EED89E538806AF38B7313CB4308673A35B52AE72262BC52C1E88AD55",
+    "getCapabilitiesCallRva": "0x92ac84",
+    "successEnvelopeCallRva": "0x92a9c5"
+  }
+}

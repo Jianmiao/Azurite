@@ -2,9 +2,9 @@
 
 ## Authority and constraints
 
-The user approved implementation on 2026-11-08, in order: stable baseline, authoring, performance. This file records that approved scope; runtime acceptance is not inferred from offline tests.
+The user approved implementation on 2026-11-08, in order: stable baseline, authoring, performance. Later on the same date, the user explicitly changed the account requirement to use the current Windows account and create no dedicated or one-time account. That instruction supersedes the earlier administrator/account prerequisite; other background and preservation requirements remain. Runtime acceptance is not inferred from offline tests.
 
-- All AA runs must be in a full isolated installation under a dedicated low-privilege Windows account, with independent Profile, LocalLow, HKCU and resource/workspace state.
+- All AA runs use the current unelevated Windows account and a full isolated installation, separate AA Profile and per-run request/log/output/workspace state. Do not create an account, request credentials or elevate. HKCU and known-folder roots are shared under this identity: preserve and verify the actual AA user settings/registry state, and do not claim that environment-variable overrides create an account or registry boundary. Broader normal-Editor/resource runs require their own proven state-preservation scope.
 - Strictly headless: no visible windows, no focus capture, no system keyboard/mouse injection. One AA process at a time; do not launch when daily AA is running. Stop only owned processes on timeout.
 - Use `-batchmode -nographics` for compatible logic tests and `-batchmode` with graphics for offscreen rendering. Hidden-window flags alone are insufficient. Keep audible output off daily devices without changing internal audio samples.
 - Each run has a unique ID, fresh logs, bounded timeout, low priority and explicit results. High-load measurements run only while the foreground is idle and stop/pause on activity.
@@ -14,7 +14,7 @@ The user approved implementation on 2026-11-08, in order: stable baseline, autho
 
 ## Task 1 — headless environment and recovery
 
-Inventory and hash installed Azurite, active Profile, configuration and user-level state; make a verified recovery copy. Prepare a full isolated AA copy and fixture workspace, with no links to daily writable state. Provide reviewed administrator-only account preparation and an unprivileged headless launcher. Current controller is not elevated and AzuriteTest does not exist: do not launch AA until this prerequisite is fulfilled. A secure credential must never enter source, command arguments, logs or chat. Prove account identity and data directories with a harmless child before AA startup. Validate CLI/schema/resource availability separately from ordinary Editor runtime and Mod lifecycle. Offscreen graphics requires nonempty captured frames; pure logic success is not rendering success. A missing headless/editor capability blocks only the dependent acceptance work and must not trigger visible fallback.
+Inventory and hash installed Azurite, active Profile, configuration and user-level state; preserve the verified recovery copy. Use the existing full isolated AA copy and fixture workspace. Replace the superseded account prerequisite with a reviewed current-account launch mode: prove the actual SID/token and real profile paths, preserve shared AA user state, and reuse owned-job cleanup, silence, window and freshness guards. No account preparation, password or credential file is required. Restrict initial execution to the audited resource-free capabilities/schema queries; verify current-account behavior before extending to ordinary Editor or resource work. Validate CLI/schema/resource availability separately from Editor runtime and Mod lifecycle. Offscreen graphics requires nonempty captured frames; pure logic success is not rendering success. A missing headless/editor capability blocks only dependent acceptance work and must not trigger visible fallback.
 
 ## Task 2 — stable code, tests and packaging
 

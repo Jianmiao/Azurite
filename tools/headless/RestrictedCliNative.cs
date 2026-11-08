@@ -10,6 +10,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 namespace Azurite.Restricted {
+ public static class KnownFolders {
+  [DllImport("shell32.dll")] static extern int SHGetKnownFolderPath(ref Guid id,uint flags,IntPtr token,out IntPtr path);
+  public static string LocalLow(){var id=new Guid("A520A1A4-1780-4FF6-BD18-167343C5AF16");IntPtr p;int result=SHGetKnownFolderPath(ref id,0,IntPtr.Zero,out p);if(result!=0)Marshal.ThrowExceptionForHR(result);try{return Marshal.PtrToStringUni(p);}finally{Marshal.FreeCoTaskMem(p);}}
+ }
  public sealed class OwnedJob {
   private IntPtr handle;
   [StructLayout(LayoutKind.Sequential)] struct BasicLimit { public long PerProcess,PerJob;public uint Flags;public UIntPtr Min,Max;public uint Active;public UIntPtr Affinity;public uint Priority,Scheduling; }

@@ -1,10 +1,13 @@
 # Restricted native CLI query probe
 
 This is authoring-branch infrastructure for the fixed independent lab at
-`E:\aamod\labs\Azurite-20261108-stable`. It has **not launched AA**. The
-dedicated `AzuriteTest` account must first be prepared manually using the already
-reviewed account initializer. The controller must then review this implementation
-before any native query. There is no account creation, elevation, audio-device
+`E:\aamod\labs\Azurite-20261108-stable`. The first native capabilities attempt
+returned a fresh success envelope but the overall run remained failed; its
+records are preserved unchanged. The user's
+selected execution mode is explicitly **`-UseCurrentAccount`**: use the current
+unelevated Windows identity without creating any account, supplying credentials,
+loading another profile or requesting elevation. Independent review precedes
+the first native query. There is no account creation, elevation, audio-device
 change, input injection, visible fallback, or arbitrary-command option here.
 
 The existing `Invoke-AzuriteHeadless.ps1` audio gate is unchanged. This separate
@@ -20,16 +23,16 @@ the process helper, changing ACLs, or starting a child:
 ```powershell
 pwsh -NoProfile -File .\tools\headless\Invoke-AzuriteRestrictedCli.ps1 `
   -LabRoot 'E:\aamod\labs\Azurite-20261108-stable' `
-  -Command capabilities -PlanOnly
+  -UseCurrentAccount -Command capabilities -PlanOnly
 ```
 
-Only after independent review and manual account preparation, the exact first
-query is:
+After independent review and explicit recovery of the existing quarantine, the
+next bounded current-account capabilities query is:
 
 ```powershell
 pwsh -NoProfile -File .\tools\headless\Invoke-AzuriteRestrictedCli.ps1 `
   -LabRoot 'E:\aamod\labs\Azurite-20261108-stable' `
-  -Command capabilities -TimeoutSeconds 120
+  -UseCurrentAccount -Command capabilities -TimeoutSeconds 120
 ```
 
 After reviewing a successful capabilities result, request schema separately by
@@ -52,14 +55,26 @@ existing, empty per-run workspace:
 
 There is no `--cli` token. `-disableaudio` is a standalone single-dash Unity
 token, not a business argument or an environment substitute.
+`--unity-user-data` is a UI style-property literal, not an established startup
+flag, and is never passed.
 
 ## Fixed inputs and account boundary
 
 `restricted-startup-contract.json` has a digest pinned in the shared helper. It
-contains 451 expected file hashes, ten exact directory/file scopes, and thirteen
+contains 451 expected file hashes, ten exact directory/file scopes, and sixteen
 evidence hashes. Expected values come from the reviewed startup evidence and
 the initial `runtime-copy-manifest.json`; the runner never approves current
 installation bytes by recalculating its expected pins.
+
+Contract revision `aa-2023.2.22f1-azurite-1.0.38-cli-nosound-v2` changes only the
+selected `halocue.azurite.cfg` byte pin to the independently reconstructed
+canonical BepInEx save (`0D3CA42AE3AF63C8E147FC2657747F8E6A166CC4F472DF797C0AD43C6249BF38`).
+All 57 section/key/value triples are unchanged. The other 450 input entries,
+ten scopes and thirteen earlier evidence pins remain identical; the audit,
+reconstruction proof and reconstructed expected cfg are three additional evidence
+pins. This is a specific reviewed correction, not automatic resealing, tolerance
+for future variants, a config write or a quarantine reset. The LF contract digest
+is `5CED2B8185DFE43E94217F3B5D61F7B76D8DC5D70C817CABB50A098D46DC8362`.
 
 The semantic startup evidence fixes UnityPlayer 2023.2.22f1, the host executable,
 GameAssembly, metadata, serialized startup assets, profile/config, Azurite
@@ -72,31 +87,87 @@ Doorstop's reviewed paths resolve under the isolated install:
 boot-config and Mono-search overrides are empty. Reparse links and unexpected
 startup/runtime environment overrides are refused.
 
-The controller validates the lab marker, private ACL owners and grants,
-manifest/DPAPI credential digest, account ownership description, enabled
-`AzuriteTest` SID distinct from its own, and Users-only local membership. It
-checks for any existing AzureArchive process, then acquires a global single-run
-mutex. Failure has no fallback to the controller's account.
+Current mode validates the marked/pinned lab, current SID, unelevated token,
+private lab preparation and absence of another AA process. It does not call
+dedicated-account, SAM-membership or credential/DPAPI helpers. Being a member of
+Administrators with an ordinary filtered token is not itself a refusal. PlanOnly
+may report `Ready=true` while `runs`/`secrets` still need lab-local preparation;
+it does not create them. The actual invocation creates only required lab-local
+directories/ACLs and retains historical files.
 
-The credentialed launch is the machine-wide Windows PowerShell 5.1 executable
-with `LoadUserProfile=true`. Its `ProcessStartInfo.Environment` and
-`EnvironmentVariables` are not touched. The bootstrap proves its actual SID,
-ordinary token privileges, loaded HKCU, known folders and corresponding target
-environment paths. Only then does it add the CLI directory to **its AA child's**
-environment. Neither user/machine registry environment nor controller environment
-is changed.
+The machine-wide PowerShell 5.1 bootstrap runs with no alternate credentials and
+no LoadUserProfile request. Its own system Security/Management/Utility modules
+are imported explicitly from PSHOME, avoiding PS7 module-path inheritance bugs
+without rewriting PSModulePath or other environment values. It proves the same
+actual SID/profile as the controller, a non-elevated token and loaded HKCU.
+USERPROFILE, APPDATA, LOCALAPPDATA, TEMP/TMP and HKCU remain the actual current
+user's values. Only the AA child's process environment gains the CLI directory.
+No registry environment is modified. This is not account or HKCU isolation.
 
-All profile-related paths must be canonical absolute local directories. Traversal,
-ambiguous components, controller-profile overlap, missing/inaccessible directories
-and reparse points anywhere in their ancestor chains are refused. The filesystem
-check runs under the target bootstrap identity and leaves inherited values
-unchanged. The controller may not have access to that user's profile, so it
-rechecks canonical containment and the correlated, timestamped bootstrap proof
-and identity-file hash rather than probing those directories with its own token.
+Paths must be canonical existing local directories without reparse ancestors.
+Current mode checks inherited paths against the controller's actual baseline,
+including legitimately configured temporary paths; it does not fabricate a new
+Windows profile. LocalLow planning uses its registered definition/override without
+compilation. Before the real backup and native start, SHGetKnownFolderPath from
+the controller-built helper must agree with that prospective path.
+
+The legacy mode without `-UseCurrentAccount` retains its dedicated-user manifest,
+credential, Users-only membership and distinct-profile checks for compatibility.
+It is not the execution choice for this user, and is never an automatic fallback.
+
+## Guarded shared user state
+
+The current Windows profile, `KnownFolder LocalLow\foxxlight\AzureArchive` and
+`HKCU\Software\foxxlight\AzureArchive` are explicitly shared. The resource-free
+native CLI path bypasses UserSettings initialization and workbench startup, but
+the engine can still update its own session metadata. No normal Editor command
+is covered by this mode.
+
+Before launch, fresh private `shared-state/before.json` and `scope.json` preserve
+bounded raw file backups and the full typed PlayerPrefs subtree. File roots are
+the AA LocalLow root, daily ActiveProfile.txt, its actual selected profile tree,
+daily Doorstop config and daily BepInEx config. Configured project/cache path
+strings are backed up as data; the multi-gigabyte project/cache trees are not
+followed or enumerated. The bound is 64 MiB total raw data, 32 MiB per file,
+512 files/directories, 128 registry keys and 2,048 values (registry data at most
+8 MiB). Missing required, inaccessible, changing, oversized or reparse inputs
+refuse launch rather than being skipped. ExpandString is read with
+DoNotExpandEnvironmentNames and binary bytes/value kinds are preserved.
+
+Only after verified owned-job drain does the controller capture `after.json`
+and compare file additions/deletions/content/attributes/timestamps, root
+structure and typed registry changes. Raw evidence and deltas stay private;
+public summaries contain classification/counts/hashes, not settings or visited
+paths. Unexpected state changes or unverifiable capture keep the run failed and
+quarantined. Same-user prepared-file hash changes are also refused.
+
+Only these exact existing REG_BINARY values have a narrow metadata exception:
+
+- `unity.player_session_count_h922449978`: both values must be 1–64 ASCII decimal
+  digits followed by exactly one terminal NUL; the numeric value must increment
+  by exactly one. It is not a little-endian integer and no exact observed byte
+  length is hardcoded.
+- `unity.player_sessionid_h1351336811`: both values must have the same bounded
+  decimal-plus-terminal-NUL shape and unchanged Binary type, without deletion.
+
+Every raw before/after delta remains in private evidence. There is no wildcard
+`unity.*` allowance. Metadata-only changes can close the user-preference gate,
+but summaries explicitly set `sharedRegistryChanged=true` and
+`finalStateUnchanged=false`. **No shared-state restoration is performed**, even
+for engine metadata. All actual user preferences and scoped daily files must
+remain unchanged; any other delta requires review. Schema is a separate later
+run with a fresh baseline after capabilities closes successfully.
 
 ## File ownership and owned cleanup
 
-Each run has a controller-owned protected root and tooling directory, with only
+In current mode each run and its tooling/evidence have private controller-owned
+ACLs; prepared files are marked read-only and hash-bound before/after execution.
+The same SID cannot create an ACL security boundary between parent and child:
+the child could remove read-only attributes. Hash/freshness checks are integrity
+guards for this reviewed query, not a sandbox claim. Shared settings are never
+given new ACLs or attributes. Output/request/workspace stay in the lab.
+
+In legacy dedicated mode, each run has a protected root/tooling directory with only
 read/execute access for the test account. Prepared bootstrap/module/native
 helper/contract/control/request files are individually protected and hash-checked.
 The request directory allows the test account to read and create files, but not
@@ -153,7 +224,13 @@ bootstrap PID/SID/run ID/command/paths, job evidence, exact startup args and
 NoSound proof hash, a fresh raw `response.json`, matching hashes, and a native
 success envelope with string API version `1`, boolean `ok: true`, object `data`,
 and `warnings` array. Capabilities must contain the pinned API/format/schema
-identity and nonempty commands. Schema must contain its native `$id`, `$schema`,
+identity, the native tool/resource/stable-ID declarations, typed limits,
+persistence/project-file contracts and nested `cli_mcp_control` declarations.
+There is no `data.commands`; those control commands live at
+`data.cli_mcp_control.commands`. This corrects the earlier static-source reading
+using the first exact native response. Its fixture validates response content
+only: the original failed run remains failed and immutable, and advertised
+tools do not establish Editor/card acceptance. Schema must contain its native `$id`, `$schema`,
 nonempty tools and CLI commands, and meaningful `$defs.LineInput` and
 `$defs.LinePatch` object properties. Generic synthetic `NativeResult` records,
 empty/stale/malformed/oversized/failed responses cannot pass.
@@ -197,9 +274,10 @@ The exact acceptance label is:
 Static evidence establishes a pre-init NoSound configuration for this fixed
 AudioManager/FMOD path. A query does not prove actual backend readback, nonzero
 or correct internal PCM, GPU/export behavior, real editing/Undo/Redo/save,
-loaded project/media coverage, or GUI acceptance. The real dedicated-user
-credentialed launch and profile behavior remain runtime checks after manual
-setup. Offline fixtures are never native AA evidence.
+loaded project/media coverage, or GUI acceptance. Actual AA execution under the
+selected current account remains a runtime check. Dedicated-user credentialed
+logon is only a legacy-mode boundary and is not a prerequisite for current mode.
+Offline fixtures are never native AA evidence.
 
 ## Offline fixtures
 
@@ -207,6 +285,9 @@ setup. Offline fixtures are never native AA evidence.
 pwsh -NoProfile -File .\Tests\headless\Test-RestrictedCli.ps1
 pwsh -NoProfile -File .\Tests\headless\Test-RestrictedCliFix1.ps1
 pwsh -NoProfile -File .\Tests\headless\Test-RestrictedCliFix2.ps1
+pwsh -NoProfile -File .\Tests\headless\Test-CurrentAccountCli.ps1 -CheckProductionPlan
+pwsh -NoProfile -File .\Tests\headless\Test-NativeCapabilitiesShape.ps1
+pwsh -NoProfile -File .\Tests\headless\Test-CanonicalConfigPin.ps1
 pwsh -NoProfile -File .\Tests\headless\Run-Tests.ps1
 ```
 

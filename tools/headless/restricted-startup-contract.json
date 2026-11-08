@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "contractId": "aa-2023.2.22f1-azurite-1.0.38-cli-nosound-v1",
+  "contractId": "aa-2023.2.22f1-azurite-1.0.38-cli-nosound-v2",
   "labRoot": "E:\\aamod\\labs\\Azurite-20261108-stable",
   "profile": "AzuriteAcceptance",
   "modName": "Azurite",
@@ -52,7 +52,7 @@
       "path": "profiles/AzuriteAcceptance/modconfig.json"
     },
     {
-      "sha256": "651944891A2FB6BCE206529B9DDFE0B2B1FC85C9186C94871125C9818193A3A1",
+      "sha256": "0D3CA42AE3AF63C8E147FC2657747F8E6A166CC4F472DF797C0AD43C6249BF38",
       "path": "profiles/AzuriteAcceptance/configs/halocue.azurite.cfg"
     },
     {
@@ -2776,11 +2776,24 @@
     {
       "sha256": "B81EB7A63366A760543423CA5CD8BAADD70CFB942E2079E817BE424B3696298B",
       "path": "E:\\aamod\\labs\\Azurite-20261108-stable\\runtime-copy-manifest.json"
+    },
+    {
+      "path": "E:\\aamod\\diagnostics\\azurite-plan-20261108\\first-native-query\\CONFIG-PIN-AUDIT.md",
+      "sha256": "488272ED56530985AA0C9BA5E828DA64129CECD4AFC319408402CDD1CF6E46CA"
+    },
+    {
+      "path": "E:\\aamod\\diagnostics\\azurite-plan-20261108\\first-native-query\\canonical-reconstruction-proof.json",
+      "sha256": "DA515D881C8B45D32893149F0F2FCC5CA6A4C103272FC17A8D3F24361208FA67"
+    },
+    {
+      "path": "E:\\aamod\\diagnostics\\azurite-plan-20261108\\first-native-query\\halocue.azurite.reconstructed-canonical.cfg",
+      "sha256": "0D3CA42AE3AF63C8E147FC2657747F8E6A166CC4F472DF797C0AD43C6249BF38"
     }
   ],
   "limitations": [
     "Static NoSound configuration proof, not actual output type/PCM acceptance.",
     "Loader core/dotnet/interop/unity-libs and root binaries use trusted-platform initial-copy integrity pins; this is not a semantic audit of those libraries.",
     "No project, media, arbitrary command, MCP, export or UI execution is authorized."
-  ]
+  ],
+  "revisionNote": "v2 changes only the selected AzuriteAcceptance config byte pin to the independently reconstructed canonical BepInEx save: all 57 section/key/value triples remain unchanged. Reconstruction uses verified original bytes, the pinned Azurite 1.0.38 Bind order and pinned BepInEx Save rules; it does not adopt live-new content. The first native run remains failed and immutable. No automatic resealing, variant tolerance, config write or quarantine recovery is introduced."
 }

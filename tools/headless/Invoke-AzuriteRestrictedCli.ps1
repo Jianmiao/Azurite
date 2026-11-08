@@ -3,14 +3,20 @@ param(
  [Parameter(Mandatory)][string]$LabRoot,
  [Parameter(Mandatory)][ValidateSet('capabilities','schema')][string]$Command,
  [ValidateRange(10,300)][int]$TimeoutSeconds=120,
+ [switch]$UseCurrentAccount,
  [switch]$PlanOnly
 )
 $ErrorActionPreference='Stop';Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot 'HeadlessCore.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'RestrictedCliCore.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'CurrentAccountCli.psm1') -Force
 $lab=Assert-AzuriteFullPath $LabRoot
 $controllerSid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $controllerProfile=[Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+$identityMode=if($UseCurrentAccount){'CurrentAccount'}else{'DedicatedAccount'}
+$currentPrincipal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
+$currentContext=[pscustomobject]@{sid=$controllerSid;profile=$controllerProfile;isAdministrator=$currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)}
+$currentEnvironment=[pscustomobject]@{localAppData=[Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData);environmentProfile=$env:USERPROFILE;environmentLocalAppData=$env:LOCALAPPDATA;environmentAppData=$env:APPDATA;environmentTemp=$env:TEMP;environmentTmp=$env:TMP}
 $contract=Read-AzuriteStartupContract
 $contractHash=Get-AzuriteSha256 (Join-Path $PSScriptRoot 'restricted-startup-contract.json')
 $install=Join-Path $lab 'install'
@@ -32,6 +38,17 @@ try {
  Assert-AzuritePinnedInstall $install $contract
  Assert-AzuriteEvidence $contract
 } catch {$failures.Add($_.Exception.Message)}
+if($UseCurrentAccount){
+ try {
+  if($currentContext.isAdministrator){throw 'Current-account mode requires the unelevated current token.'}
+  $registeredLow=Get-AzuriteRegisteredLocalLow $controllerProfile
+  $stateSpec=New-AzuriteSharedStateSpec $registeredLow.path $marker.dailyInstallPath $controllerSid
+  $planSnapshot=New-AzuriteSharedSnapshot $stateSpec (Read-AzuritePlayerPrefsSnapshot) 'plan' Plan
+  $currentPlan=Get-AzuriteCurrentPrerequisites $lab $contract $currentContext $stateSpec $planSnapshot
+  foreach($failure in $currentPlan.Failures){$failures.Add($failure)}
+  $planSnapshot=$null
+ } catch {$failures.Add('Current-account identity or bounded shared-state preflight failed: '+$_.Exception.GetType().Name)}
+}else{
 try {
  if(-not(Test-Path -LiteralPath $manifestPath -PathType Leaf)){throw 'Dedicated account manifest is missing; manual reviewed account setup remains required.'}
  Assert-AzuritePrivateAcl -Path $manifestPath -ControllerSid $controllerSid
@@ -48,11 +65,12 @@ try {
  $credentialRecord=Read-AzuriteBoundedJson $credentialPath 16384
  if(-not $manifest -or -not $account -or -not(Test-AzuriteCommittedCredential -Manifest $manifest -CredentialRecord $credentialRecord -LabId $marker.labId -ControllerSid $controllerSid -AccountSid $account.SID.Value)){throw 'DPAPI credential digest or ownership is uncommitted/invalid.'}
 } catch {$failures.Add($_.Exception.Message)}
+}
 try {
  if(-not(Test-Path -LiteralPath $systemShell -PathType Leaf)){throw 'System Windows PowerShell 5.1 is unavailable.'}
  [void](Assert-AzuriteFullPath $systemShell)
  if(@(Get-CimInstance Win32_Process -Filter "Name='AzureArchive.exe'" -ErrorAction Stop).Count){throw 'Another AzureArchive process exists.'}
- foreach($dir in @('runs','workspace','user-data')){if(-not(Test-Path -LiteralPath (Join-Path $lab $dir) -PathType Container)){throw "Prepared lab directory is missing: $dir"}}
+ if(-not $UseCurrentAccount){foreach($dir in @('runs','workspace','user-data')){if(-not(Test-Path -LiteralPath (Join-Path $lab $dir) -PathType Container)){throw "Prepared lab directory is missing: $dir"}}}
  if($account){
   Assert-AzuriteRestrictedAcl $lab $controllerSid $account.SID.Value
   Assert-AzuriteRestrictedAcl (Join-Path $lab 'runs') $controllerSid $account.SID.Value Modify
@@ -65,9 +83,10 @@ try {
   if((Get-AzuriteSha256 (Join-Path $PSScriptRoot 'Identity-Preflight.ps1')) -cne $manifest.preflightSha256){throw 'Reviewed identity helper differs from account setup pin.'}
  }
 } catch {$failures.Add($_.Exception.Message)}
-$plan=[pscustomobject]@{Command=$Command;LabRoot=$lab;Executable=(Join-Path $install 'AzureArchive.exe');UnityArguments=@('-batchmode','-nographics','-disableaudio','-logFile','<run>\output\unity.log');BusinessArgv=@($Command);Transport='AZUREARCHIVE_CLI_DIRECTORY + arguments.json';ContractSha256=$contractHash;Ready=($failures.Count -eq 0);Failures=$failures.ToArray();WillLaunch=$false;Acceptance=$contract.acceptance}
+$plan=[pscustomobject]@{Command=$Command;IdentityMode=$identityMode;RequiresCredentials=(-not $UseCurrentAccount);RequiresAccountSetup=(-not $UseCurrentAccount);SharedHKCU=[bool]$UseCurrentAccount;AccountIsolation=(-not $UseCurrentAccount);NativeKnownFolderVerificationRequired=[bool]$UseCurrentAccount;WillPrepareLabDirectories=$(if($UseCurrentAccount){@('runs','secrets')}else{@()});LabRoot=$lab;Executable=(Join-Path $install 'AzureArchive.exe');UnityArguments=@('-batchmode','-nographics','-disableaudio','-logFile','<run>\output\unity.log');BusinessArgv=@($Command);Transport='AZUREARCHIVE_CLI_DIRECTORY + arguments.json';ContractSha256=$contractHash;Ready=($failures.Count -eq 0);Failures=$failures.ToArray();WillLaunch=$false;Acceptance=$contract.acceptance}
 if($PlanOnly){return $plan}
 if(-not $plan.Ready){throw ('Restricted CLI prerequisites failed. No process started: '+($failures -join '; '))}
+$targetSid=if($UseCurrentAccount){$controllerSid}else{$account.SID.Value}
 
 $mutex=[Threading.Mutex]::new($false,'Global\AzuriteRestrictedCli-AA');$locked=$false;$credential=$null;$password=$null
 try {
@@ -75,39 +94,48 @@ try {
  if(-not $locked){throw 'Another restricted AA query holds the global run lock.'}
  Assert-AzuriteCleanupGateClear $lab
  if(@(Get-CimInstance Win32_Process -Filter "Name='AzureArchive.exe'").Count){throw 'AzureArchive appeared before staging.'}
+ if($UseCurrentAccount){
+  foreach($name in @('runs','secrets')){$path=Join-Path $lab $name;if(-not(Test-Path -LiteralPath $path)){[void](New-Item -ItemType Directory -Path $path);Set-AzuriteLabAcl -LabRoot $lab -Path $path -ControllerSid $controllerSid}else{Assert-AzuriteCurrentPrivatePath $path $controllerSid}}
+ }
  $runId=[guid]::NewGuid().ToString('N');$runDir=Join-Path $lab ('runs\restricted-'+$runId)
  [void](New-Item -ItemType Directory -Path $runDir -ErrorAction Stop)
- Set-AzuriteLabAcl -LabRoot $lab -Path $runDir -ControllerSid $controllerSid -TestSid $account.SID.Value
- Assert-AzuriteRestrictedAcl $runDir $controllerSid $account.SID.Value
+ Set-AzuriteRunPathAccess $lab $runDir $controllerSid $targetSid $identityMode Read
  $toolDir=Join-Path $runDir 'tooling';$requestDir=Join-Path $runDir 'request';$outputDir=Join-Path $runDir 'output';$workspace=Join-Path $runDir 'workspace'
  foreach($dir in @($toolDir,$requestDir,$outputDir,$workspace)){
   [void](New-Item -ItemType Directory -Path $dir)
-  $rights=if($dir -in @($outputDir,$workspace)){'Modify'}else{'ReadAndExecute'}
-  Set-AzuriteLabAcl -LabRoot $lab -Path $dir -ControllerSid $controllerSid -TestSid $account.SID.Value -TestRights $rights
+  $rights=if($dir -in @($outputDir,$workspace)){'Modify'}else{'Read'}
+  Set-AzuriteRunPathAccess $lab $dir $controllerSid $targetSid $identityMode $rights
  }
- Set-AzuriteRequestAcl $lab $requestDir $controllerSid $account.SID.Value
+ Set-AzuriteRunPathAccess $lab $requestDir $controllerSid $targetSid $identityMode Request
  $toolHashes=@{}
- foreach($name in @('RestrictedCliCore.psm1','RestrictedCliNative.cs','RestrictedCliBootstrap.ps1','Identity-Preflight.ps1','restricted-startup-contract.json')){
+ foreach($name in @('RestrictedCliCore.psm1','RestrictedCliNative.cs','RestrictedCliBootstrap.ps1','Identity-Preflight.ps1','restricted-startup-contract.json','CurrentAccountCli.psm1','HeadlessCore.psm1')){
   $src=Join-Path $PSScriptRoot $name;$dest=Join-Path $toolDir $name
   Copy-Item -LiteralPath $src -Destination $dest -ErrorAction Stop
-  Set-AzuriteLabAcl -LabRoot $lab -Path $dest -ControllerSid $controllerSid -TestSid $account.SID.Value
-  Assert-AzuriteRestrictedAcl $dest $controllerSid $account.SID.Value
+  Set-AzuriteRunPathAccess $lab $dest $controllerSid $targetSid $identityMode Read
   $hash=Get-AzuriteSha256 $src;if((Get-AzuriteSha256 $dest) -cne $hash){throw 'Staged tooling hash mismatch.'};$toolHashes[$name]=$hash
  }
  $nativeAssembly=Join-Path $toolDir 'RestrictedCliNative.dll'
  $helperBuild=New-AzuriteNetFrameworkHelper (Join-Path $toolDir 'RestrictedCliNative.cs') $nativeAssembly
- Set-AzuriteLabAcl -LabRoot $lab -Path $nativeAssembly -ControllerSid $controllerSid -TestSid $account.SID.Value
- Assert-AzuriteRestrictedAcl $nativeAssembly $controllerSid $account.SID.Value
+ Set-AzuriteRunPathAccess $lab $nativeAssembly $controllerSid $targetSid $identityMode Read
  $toolHashes['RestrictedCliNative.dll']=$helperBuild.assemblySha256
  $argumentsPath=Join-Path $requestDir 'arguments.json'
  Write-AzuriteFlushedJson $argumentsPath @{argv=@($Command);cwd=$workspace}
- Set-AzuriteLabAcl -LabRoot $lab -Path $argumentsPath -ControllerSid $controllerSid -TestSid $account.SID.Value
- Assert-AzuriteRestrictedAcl $argumentsPath $controllerSid $account.SID.Value
- $control=[ordered]@{schema=1;runId=$runId;command=$Command;labRoot=$lab;runDirectory=$runDir;targetSid=$account.SID.Value;controllerSid=$controllerSid;controllerProfile=$controllerProfile;contractSha256=$contractHash;toolHashes=$toolHashes;argumentsSha256=(Get-AzuriteSha256 $argumentsPath);deadlineUtc=[datetime]::UtcNow.AddSeconds($TimeoutSeconds).ToString('o')}
+ Set-AzuriteRunPathAccess $lab $argumentsPath $controllerSid $targetSid $identityMode Read
+ $stateDirectory=$null;$stateBefore=$null;$stateBeforeHash=$null;$actualLow=$null
+ if($UseCurrentAccount){
+  $actualLow=[Azurite.Restricted.KnownFolders]::LocalLow()
+  if(-not $actualLow.Equals($registeredLow.path,[StringComparison]::OrdinalIgnoreCase)){throw 'Actual KnownFolder LocalLow differs from the prospective registered path.'}
+  $stateDirectory=Join-Path $runDir 'shared-state';[void](New-Item -ItemType Directory -Path $stateDirectory);Set-AzuriteLabAcl -LabRoot $lab -Path $stateDirectory -ControllerSid $controllerSid
+  $stateSpec=New-AzuriteSharedStateSpec $actualLow $marker.dailyInstallPath $controllerSid
+  $stateBefore=New-AzuriteSharedSnapshot $stateSpec (Read-AzuritePlayerPrefsSnapshot) $runId Before
+  Write-AzuriteFlushedJson (Join-Path $stateDirectory 'before.json') $stateBefore
+  $stateBeforeHash=Get-AzuriteSha256 (Join-Path $stateDirectory 'before.json')
+  Write-AzuriteFlushedJson (Join-Path $stateDirectory 'scope.json') $stateSpec
+ }
+ $control=[ordered]@{schema=1;identityMode=$identityMode;runId=$runId;command=$Command;labRoot=$lab;runDirectory=$runDir;targetSid=$targetSid;controllerSid=$controllerSid;controllerProfile=$controllerProfile;currentLocalLow=$actualLow;currentEnvironment=$currentEnvironment;sharedStateBeforeSha256=$stateBeforeHash;contractSha256=$contractHash;toolHashes=$toolHashes;argumentsSha256=(Get-AzuriteSha256 $argumentsPath);deadlineUtc=[datetime]::UtcNow.AddSeconds($TimeoutSeconds).ToString('o')}
  $controlPath=Join-Path $toolDir 'control.json';Write-AzuriteFlushedJson $controlPath $control
- Set-AzuriteLabAcl -LabRoot $lab -Path $controlPath -ControllerSid $controllerSid -TestSid $account.SID.Value
- Assert-AzuriteRestrictedAcl $controlPath $controllerSid $account.SID.Value
- $password=ConvertTo-SecureString $credentialRecord.encryptedPassword -ErrorAction Stop;$credential=[pscredential]::new('AzuriteTest',$password)
+ Set-AzuriteRunPathAccess $lab $controlPath $controllerSid $targetSid $identityMode Read
+ if(-not $UseCurrentAccount){$password=ConvertTo-SecureString $credentialRecord.encryptedPassword -ErrorAction Stop;$credential=[pscredential]::new('AzuriteTest',$password)}
  Initialize-AzuriteRestrictedNative
  # Loader config stays pinned. Separate the existing isolated-install log from this run.
  if(@(Get-CimInstance Win32_Process -Filter "Name='AzureArchive.exe'").Count){throw 'AzureArchive appeared before log archival.'}
@@ -119,7 +147,7 @@ try {
  $previousTruncation=@(Limit-AzuriteRetainedArtifacts $previousDir)
  $psi=New-AzuriteProcessInfo -FilePath $systemShell -Arguments @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',(Join-Path $toolDir 'RestrictedCliBootstrap.ps1'),'-ControlPath',$controlPath) -WorkingDirectory $runDir -Credential $credential
  # Credentialed launch: Environment remains untouched. Only bootstrap changes its AA child's env.
- $remaining=[int]([datetime]::Parse($control.deadlineUtc).ToUniversalTime()-[datetime]::UtcNow).TotalMilliseconds
+ $remaining=[int]((ConvertTo-AzuriteUtcInstant $control.deadlineUtc)-[datetime]::UtcNow).TotalMilliseconds
  if($remaining -lt 1000){throw 'Preparation exhausted the shared deadline.'}
  $quarantinePath=Start-AzuriteCleanupGate $lab $runId $runDir $controllerSid
  $outer=[Azurite.Restricted.ProcessPump]::RunBootstrap($psi,$remaining,5000,$runId,262144,@($outputDir,$requestDir),4194304)
@@ -139,19 +167,18 @@ try {
   $nativeStatus=Get-AzuriteNativeResultStatus $result
   $result.processError=$nativeStatus.error
   if($nativeStatus.failed){throw $nativeStatus.reason}
-  if($result.schema -ne 1 -or $result.runId -cne $runId -or $result.bootstrapPid -ne $outer.Pid -or $result.targetSid -cne $account.SID.Value -or $result.command -cne $Command -or $result.contractSha256 -cne $contractHash -or $result.argumentsSha256 -cne $control.argumentsSha256 -or $result.status -cne 'passed' -or $result.aaExitCode -ne 0 -or $result.aaPid -isnot [long] -and $result.aaPid -isnot [int] -or $result.aaPid -le 0 -or $result.jobOwned -ne $true -or $result.noSoundConfigured -ne $true -or $result.acceptance -cne $contract.acceptance){throw 'Correlated bootstrap identity/evidence fields are invalid.'}
+  if($result.schema -ne 1 -or $result.identityMode -cne $identityMode -or $result.runId -cne $runId -or $result.bootstrapPid -ne $outer.Pid -or $result.targetSid -cne $targetSid -or $result.command -cne $Command -or $result.contractSha256 -cne $contractHash -or $result.argumentsSha256 -cne $control.argumentsSha256 -or $result.status -cne 'passed' -or $result.aaExitCode -ne 0 -or $result.aaPid -isnot [long] -and $result.aaPid -isnot [int] -or $result.aaPid -le 0 -or $result.jobOwned -ne $true -or $result.noSoundConfigured -ne $true -or $result.acceptance -cne $contract.acceptance){throw 'Correlated bootstrap identity/evidence fields are invalid.'}
   $identity=Read-AzuriteBoundedJson (Join-Path $outputDir 'identity.json') 32768
   if((Get-AzuriteSha256 (Join-Path $outputDir 'identity.json')) -cne $result.identitySha256){throw 'Identity record changed after target validation.'}
-  Assert-AzuriteTargetIdentityRecord $identity $result.profilePathProof $account.SID.Value $controllerSid $controllerProfile
+  if($UseCurrentAccount){Assert-AzuriteCurrentIdentityRecord $identity $result.profilePathProof $controllerSid $controllerProfile $actualLow $currentEnvironment}
+  else{Assert-AzuriteTargetIdentityRecord $identity $result.profilePathProof $targetSid $controllerSid $controllerProfile}
   if($identity.pid -ne $outer.Pid -or $identity.runId -cne $runId){throw 'Identity proof is not this bootstrap.'}
   $proof=@($contract.evidence|Where-Object{$_.path.EndsWith('STARTUP-CONTRACT.md')})[0].sha256
   if($result.noSoundProofSha256 -cne $proof){throw 'NoSound configuration evidence differs.'}
   $responsePath=Join-Path $requestDir 'response.json'
   if($result.responsePath -cne $responsePath -or $result.unityLogPath -cne (Join-Path $outputDir 'unity.log')){throw 'Child artifact paths are not this run.'}
-  $nativeStarted=[datetime]::Parse($result.aaStartedUtc).ToUniversalTime()
-  $identityChecked=[datetime]::Parse($result.profilePathProof.checkedUtc).ToUniversalTime()
-  if($identityChecked -lt $outer.StartedUtc -or $identityChecked -gt $nativeStarted){throw 'Target filesystem proof is outside pre-native bootstrap interval.'}
-  if($nativeStarted -lt $outer.StartedUtc -or $nativeStarted -gt [datetime]::UtcNow){throw 'Native creation time is outside the owned bootstrap run.'}
+  $timeWindow=Get-AzuriteNativeTimeWindow $result $outer.StartedUtc ([datetime]::UtcNow)
+  $nativeStarted=$timeWindow.nativeStartedUtc
   if(($result.nativeArguments -join '|') -cne (@('-batchmode','-nographics','-disableaudio','-logFile',(Join-Path $outputDir 'unity.log')) -join '|')){throw 'Native startup arguments differ from the fixed NoSound contract.'}
   $response=Read-AzuriteCliResponse -Path $responsePath -Command $Command -StartedUtc $nativeStarted
   if($response.Sha256 -cne $result.responseSha256 -or $response.Bytes -ne $result.responseBytes){throw 'Native raw response changed after validation.'}
@@ -163,16 +190,36 @@ try {
   $passed=$true
  } catch {$reason=$_.Exception.Message}
  if($outerStatus.error -and -not $reason.Contains($outerStatus.error)){$reason+=' '+$outerStatus.reason}
- $drift=@();$trimmed=@()
+ $drift=@();$trimmed=@();$stateCanRelease=-not $UseCurrentAccount
+ $stateSummary=[ordered]@{guarded=[bool]$UseCurrentAccount;verified=$false;accepted=$false;profileShared=[bool]$UseCurrentAccount;hkcuShared=[bool]$UseCurrentAccount;restorationPerformed=$false}
  if($outer.CleanupVerified){
+  if($UseCurrentAccount){
+   try{
+    Assert-AzuriteCleanupConfirmed $outer
+    Assert-AzuritePreparedHash (Join-Path $stateDirectory 'before.json') $stateBeforeHash
+    $stateAfter=New-AzuriteSharedSnapshot $stateSpec (Read-AzuritePlayerPrefsSnapshot) $runId After
+    Write-AzuriteFlushedJson (Join-Path $stateDirectory 'after.json') $stateAfter
+    $stateDelta=Compare-AzuriteSharedSnapshots $stateBefore $stateAfter $stateSpec $runId
+    Write-AzuriteFlushedJson (Join-Path $stateDirectory 'delta.json') $stateDelta
+    $stateCanRelease=$stateDelta.accepted
+    $stateSummary=[ordered]@{guarded=$true;verified=$true;accepted=$stateDelta.accepted;profileShared=$true;hkcuShared=$true;userPreferencesUnchanged=$stateDelta.userPreferencesUnchanged;sharedRegistryChanged=$stateDelta.registryChanged;finalStateUnchanged=$stateDelta.finalStateUnchanged;engineMetadataChanged=@($stateDelta.engineMetadata|ForEach-Object{$_.name});unexpectedDeltaCount=$stateDelta.unexpected.Count;restorationPerformed=$false;evidenceDirectory=$stateDirectory;beforeSha256=$stateBeforeHash;afterSha256=(Get-AzuriteSha256 (Join-Path $stateDirectory 'after.json'));deltaSha256=(Get-AzuriteSha256 (Join-Path $stateDirectory 'delta.json'))}
+    if(-not $stateCanRelease){$passed=$false;$reason+=' Shared-state preservation failed; private raw evidence retained and run quarantined.'}
+   }catch{
+    $passed=$false;$stateCanRelease=$false;$reason+=' Shared-state snapshot/comparison is unverified; run quarantined.'
+    Write-AzuriteFlushedJson (Join-Path $stateDirectory 'state-failure.json') @{error=$_.Exception.Message;restorationPerformed=$false}
+   }
+  }
   $drift=@(Get-AzuritePinDrift $install $contract)
-  if($drift.Count){$passed=$false;$reason+=' Pinned inputs drifted after the run; manual review required.'}
+  if($drift.Count){$passed=$false;if($UseCurrentAccount){$stateCanRelease=$false};$reason+=' Pinned inputs drifted after the run; manual review required.'}
   if(-not $passed){$trimmed+=@(Limit-AzuriteRetainedArtifacts $outputDir);$trimmed+=@(Limit-AzuriteRetainedArtifacts -Directory $requestDir -MaxFileBytes 1048576 -ExcludeFile @('arguments.json'))}
  }
- $cleanup=[ordered]@{runId=$outer.RunId;verified=$outer.CleanupVerified;jobObserved=$outer.JobObserved;directProcessExited=$outer.DirectProcessExited;jobDrained=$outer.JobDrained;remainingOwnedProcesses=$outer.RemainingOwnedProcesses;noProcessCreated=$outer.NoProcessCreated;graceLimitMilliseconds=5000;elapsedMilliseconds=$outer.CleanupMilliseconds;error=$outer.CleanupError;quarantinePath=$quarantinePath;requiresExplicitRecovery=(-not $outer.CleanupVerified)}
- $summary=[ordered]@{schema=1;runId=$runId;command=$Command;runDirectory=$runDir;bootstrapPid=$outer.Pid;bootstrapExitCode=$outer.ExitCode;bootstrapProcess=$outerStatus;cleanup=$cleanup;helperBuild=$helperBuild;targetSid=$account.SID.Value;passed=$passed;reason=$reason;timedOut=$outer.TimedOut;windowViolation=$outer.WindowViolation;contractSha256=$contractHash;acceptance=$contract.acceptance;previousLoaderLog=$previousLog;previousLogTruncation=$previousTruncation;loaderLog=$loaderEvidence;pinnedInputDrift=$drift;truncatedArtifacts=$trimmed;native=$result}
+ $cleanup=[ordered]@{runId=$outer.RunId;verified=$outer.CleanupVerified;jobObserved=$outer.JobObserved;directProcessExited=$outer.DirectProcessExited;jobDrained=$outer.JobDrained;remainingOwnedProcesses=$outer.RemainingOwnedProcesses;noProcessCreated=$outer.NoProcessCreated;graceLimitMilliseconds=5000;elapsedMilliseconds=$outer.CleanupMilliseconds;error=$outer.CleanupError;quarantinePath=$quarantinePath;requiresExplicitRecovery=(-not ($outer.CleanupVerified -and $stateCanRelease))}
+ $summary=[ordered]@{schema=1;identityMode=$identityMode;accountIsolation=(-not $UseCurrentAccount);sharedState=$stateSummary;runId=$runId;command=$Command;runDirectory=$runDir;bootstrapPid=$outer.Pid;bootstrapExitCode=$outer.ExitCode;bootstrapProcess=$outerStatus;cleanup=$cleanup;helperBuild=$helperBuild;targetSid=$targetSid;passed=$passed;reason=$reason;timedOut=$outer.TimedOut;windowViolation=$outer.WindowViolation;contractSha256=$contractHash;acceptance=$contract.acceptance;previousLoaderLog=$previousLog;previousLogTruncation=$previousTruncation;loaderLog=$loaderEvidence;pinnedInputDrift=$drift;truncatedArtifacts=$trimmed;native=$result}
  Write-AzuriteFlushedJson (Join-Path $runDir 'controller-result.json') $summary
- if($outer.CleanupVerified){Complete-AzuriteCleanupGate $lab $runId $controllerSid $outer}
+ if($outer.CleanupVerified -and $stateCanRelease){
+  if($UseCurrentAccount){Complete-AzuriteCurrentCleanupGate $lab $runId $controllerSid $outer $stateDelta}
+  else{Complete-AzuriteCleanupGate $lab $runId $controllerSid $outer}
+ }
  if(-not $passed){throw "Restricted native query failed: $reason; evidence: $runDir"}
  return [pscustomobject]$summary
 } finally {if($password){$password.Dispose()};if($locked){$mutex.ReleaseMutex()};$mutex.Dispose()}
