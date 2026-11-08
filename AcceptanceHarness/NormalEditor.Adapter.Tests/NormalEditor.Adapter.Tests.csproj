@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NormalEditor.Adapter.Core/NormalEditor.Adapter.Core.csproj" />
+    <Reference Include="Azurite.NormalEditor.Policy.PreparationOnly"><HintPath>../NormalEditor.Policy/bin/Release/net6.0/Azurite.NormalEditor.Policy.PreparationOnly.dll</HintPath></Reference>
+    <Reference Include="Azurite.EditorIsolation.Policy.LabOnly"><HintPath>../EditorIsolation.Policy/bin/Release/net6.0/Azurite.EditorIsolation.Policy.LabOnly.dll</HintPath></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll</HintPath></Reference>
+  </ItemGroup>
+  <Target Name="RequireExplicitMetadataInput" BeforeTargets="ResolveReferences"><Error Condition="'$(AAInstallPath)' == '' Or !Exists('$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll')" Text="Supply AAInstallPath explicitly for read-only metadata inputs." /></Target>
+</Project>

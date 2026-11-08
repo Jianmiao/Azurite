@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><AssemblyName>Azurite.NormalEditor.Adapter.Core.PreparationOnly</AssemblyName><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework></PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Azurite.NormalEditor.Policy.PreparationOnly"><HintPath>../NormalEditor.Policy/bin/Release/net6.0/Azurite.NormalEditor.Policy.PreparationOnly.dll</HintPath></Reference>
+    <Reference Include="Azurite.EditorIsolation.Policy.LabOnly"><HintPath>../EditorIsolation.Policy/bin/Release/net6.0/Azurite.EditorIsolation.Policy.LabOnly.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

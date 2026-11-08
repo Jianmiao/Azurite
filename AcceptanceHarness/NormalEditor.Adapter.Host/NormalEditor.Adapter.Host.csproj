@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><AssemblyName>Azurite.NormalEditor.Adapter.Host.PreparationOnly</AssemblyName><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../NormalEditor.Adapter.Core/NormalEditor.Adapter.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Reference Include="Azurite.NormalEditor.Policy.PreparationOnly"><HintPath>../NormalEditor.Policy/bin/Release/net6.0/Azurite.NormalEditor.Policy.PreparationOnly.dll</HintPath></Reference>
+    <Reference Include="Azurite.EditorIsolation.Policy.LabOnly"><HintPath>../EditorIsolation.Policy/bin/Release/net6.0/Azurite.EditorIsolation.Policy.LabOnly.dll</HintPath></Reference>
+    <Reference Include="0Harmony" Private="false"><HintPath>$(AAInstallPath)/BepInEx/core/0Harmony.dll</HintPath></Reference>
+    <Reference Include="Il2CppInterop.Runtime" Private="false"><HintPath>$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>
+    <Reference Include="Il2CppInterop.Common" Private="false"><HintPath>$(AAInstallPath)/BepInEx/core/Il2CppInterop.Common.dll</HintPath></Reference>
+    <Reference Include="Assembly-CSharp" Private="false"><HintPath>$(AAInstallPath)/BepInEx/interop/Assembly-CSharp.dll</HintPath></Reference>
+    <Reference Include="Il2Cppmscorlib" Private="false"><HintPath>$(AAInstallPath)/BepInEx/interop/Il2Cppmscorlib.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule" Private="false"><HintPath>$(AAInstallPath)/BepInEx/interop/UnityEngine.CoreModule.dll</HintPath></Reference>
+  </ItemGroup>
+  <Target Name="RequireExplicitHost" BeforeTargets="ResolveReferences"><Error Condition="'$(AAInstallPath)' == '' Or !Exists('$(AAInstallPath)/BepInEx/interop/UnityEngine.CoreModule.dll')" Text="Supply AAInstallPath explicitly for build-only pinned interop inputs; no discovery/install is performed." /></Target>
+</Project>
