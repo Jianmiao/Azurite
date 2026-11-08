@@ -2,7 +2,7 @@ using Azurite.EditorIsolation;
 
 namespace Azurite.NormalEditor;
 
-public enum NormalStep { BindAwake, ReadEnter, ReadReturn, OnReadyEnter, ResourceStart, OnReadyReturn, Readiness, SaveTaskCreated, SaveMoveNextEnter, WriteEnter, WriteReturn, SaveMoveNextReturn, Close }
+public enum NormalStep { BindAwake, InitTaskCreated, InitMoveNextEnter, InitMoveNextReturn, ReadEnter, ReadReturn, ResourceStart, Readiness, SaveTaskCreated, SaveMoveNextEnter, WriteEnter, WriteReturn, SaveMoveNextReturn, Close }
 
 public sealed record NormalBinding(string RunId, long Generation, int ProcessId, uint NativeThreadId,
     RunPaths Paths, string SeedSha256, string ControlSha256, string SeedMarker);
@@ -16,6 +16,15 @@ public interface INormalAdmissionLease
 {
     string EvidenceSha256 { get; }
     void AssertPermitted(NormalBinding binding, NormalStep step, SettingsObservation observation);
+}
+
+public sealed class InitInvocation
+{
+    internal InitInvocation(long ordinal, long iterator, int state)
+    { Ordinal = ordinal; Iterator = iterator; State = state; }
+    public long Ordinal { get; }
+    public long Iterator { get; }
+    public int State { get; }
 }
 
 public sealed class SaveInvocation

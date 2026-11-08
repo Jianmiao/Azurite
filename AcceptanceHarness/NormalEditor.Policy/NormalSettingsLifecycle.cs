@@ -6,17 +6,18 @@ namespace Azurite.NormalEditor;
 
 public sealed class NormalSettingsLifecycle
 {
-    private enum Phase { New, Awake, Reading, ReadComplete, OnReady, AfterOnReady, Ready, Closed }
+    private enum Phase { New, Awake, InitRead, AwaitingRead, Reading, ReadComplete, InitContinuation, Ready, Closed }
     private readonly object sync = new();
     private readonly NormalBinding binding;
     private readonly INormalAdmissionLease? admission;
     private readonly string? admissionHash;
     private readonly ISettingsSnapshotReader reader;
     private Phase phase;
-    private bool inTransition, readyObserved, saveStarted, writeReturned;
-    private long owner, data, readIterator, saveIterator, lastSequence, resumeOrdinal, writes, resumes, writeGeneration, resourceStarts;
+    private bool inTransition, readyObserved, initializationCompleted, saveStarted, writeReturned;
+    private long owner, data, initIterator, readIterator, saveIterator, lastSequence, initOrdinal, resumeOrdinal, writes, resumes, writeGeneration, resourceStarts;
     private int managedThread;
     private SettingsSnapshot? accepted, pending;
+    private InitInvocation? initActive;
     private SaveInvocation? active;
     private WritePermit? activeWrite;
     public string? Failure { get; private set; }
@@ -25,7 +26,8 @@ public sealed class NormalSettingsLifecycle
     public long WriteGeneration { get { lock (sync) return writeGeneration; } }
     public long ResourceStartObservations { get { lock (sync) return resourceStarts; } }
     public bool ReadyObserved { get { lock (sync) return readyObserved; } }
-    public bool RepeatedSaveLineageObserved { get { lock (sync) return Failure is null && readyObserved && writes >= 2 && resumes >= 2 && active is null; } }
+    public bool InitializationCompleted { get { lock (sync) return initializationCompleted; } }
+    public bool RepeatedSaveLineageObserved { get { lock (sync) return Failure is null && initializationCompleted && readyObserved && writes >= 2 && resumes >= 2 && active is null; } }
 
     public NormalSettingsLifecycle(NormalBinding binding, INormalAdmissionLease? admission = null, ISettingsSnapshotReader? reader = null)
     {
@@ -43,12 +45,56 @@ public sealed class NormalSettingsLifecycle
         binding.Paths.Validate(); owner = observation.Owner; managedThread = Environment.CurrentManagedThreadId; phase = Phase.Awake;
     });
 
+    public void InitTaskCreated(SettingsObservation observation, long iterator, int state) => Move(observation, NormalStep.InitTaskCreated, () =>
+    {
+        Owner(observation, requireData: false);
+        Require(phase == Phase.Awake && initIterator == 0 && iterator > 0 && state == 0 && observation.Data == 0 && !observation.IsReady, "InitTask must bind once from the actual state-zero coroutine argument during Awake.");
+        initIterator = iterator;
+    });
+
+    public InitInvocation InitMoveNextEntered(SettingsObservation observation, long iterator, int state) => Move(observation, NormalStep.InitMoveNextEnter, () =>
+    {
+        Owner(observation, requireData: state != 0);
+        Require(initIterator > 0 && iterator == initIterator && initActive is null && !initializationCompleted && !observation.IsReady, "Unbound, reentrant or already-ready InitTask entry.");
+        if (state == 0)
+        {
+            Require(phase == Phase.Awake && observation.Data == 0 && readIterator == 0, "InitTask state zero must precede the original read.");
+            phase = Phase.InitRead;
+        }
+        else
+        {
+            Require(state == 1 && phase == Phase.ReadComplete, "InitTask continuation requires the completed bound original read.");
+            phase = Phase.InitContinuation;
+        }
+        initActive = new InitInvocation(++initOrdinal, iterator, state);
+        return initActive;
+    });
+
+    // yieldedReadIterator describes an actual yield only; it is not the terminal iterator's retained current field.
+    public void InitMoveNextReturned(SettingsObservation observation, InitInvocation invocation, long iterator, bool yielded, int nextState, long yieldedReadIterator = 0) => Move(observation, NormalStep.InitMoveNextReturn, () =>
+    {
+        InitFrame(invocation);
+        Owner(observation, requireData: invocation.State != 0);
+        Require(iterator == initIterator, "Original InitTask return belongs to another iterator.");
+        if (invocation.State == 0)
+        {
+            Require(phase == Phase.InitRead && yielded && nextState == 1 && yieldedReadIterator > 0 && yieldedReadIterator != initIterator && readIterator == 0 && observation.Data == 0 && !observation.IsReady, "Original InitTask must yield its actual read child in state one.");
+            readIterator = yieldedReadIterator; phase = Phase.AwaitingRead;
+        }
+        else
+        {
+            Require(phase == Phase.Ready && !yielded && nextState == -1 && yieldedReadIterator == 0 && observation.IsReady && readyObserved && saveIterator > 0 && active is null, "Original InitTask did not complete after readiness and natural saver capture.");
+            initializationCompleted = true;
+        }
+        initActive = null;
+    });
+
     public void ReadEntered(SettingsObservation observation, long iterator, int state) => Move(observation, NormalStep.ReadEnter, () =>
     {
-        Owner(observation, requireData: false); Require(phase == Phase.Awake && iterator > 0 && state == 0 && observation.Data == 0 && !observation.IsReady, "Invalid original read entry.");
+        Owner(observation, requireData: false); Require(phase == Phase.AwaitingRead && initActive is null && readIterator > 0 && iterator == readIterator && state == 0 && observation.Data == 0 && !observation.IsReady, "Original read must enter through the actual child yielded by InitTask.");
         var snapshot = Capture();
         Require(SettingsSnapshot.Hash(snapshot.MainSha256, binding.SeedSha256) && SettingsSnapshot.Hash(snapshot.ControlSha256, binding.ControlSha256) && snapshot.Marker == binding.SeedMarker && snapshot.Backup1 is null && snapshot.Backup2 is null && snapshot.Backup3 is null, "Initial settings are not the exact fresh seeds.");
-        accepted = snapshot; readIterator = iterator; phase = Phase.Reading;
+        accepted = snapshot; phase = Phase.Reading;
     });
 
     public void OriginalReadReturned(SettingsObservation observation, long iterator, bool yielded, string seedMarker) => Move(observation, NormalStep.ReadReturn, () =>
@@ -58,29 +104,34 @@ public sealed class NormalSettingsLifecycle
         data = observation.Data; Owner(observation); phase = Phase.ReadComplete;
     });
 
-    public void OnReadyEntered(SettingsObservation observation) => Move(observation, NormalStep.OnReadyEnter, () =>
-    { Owner(observation); Require(phase == Phase.ReadComplete && !observation.IsReady, "OnReady must follow original read and precede native ready store."); phase = Phase.OnReady; });
-
-    public void ResourceInitializationObserved(SettingsObservation observation) => Move(observation, NormalStep.ResourceStart, () =>
+    public void ResourceInitializationObserved(SettingsObservation observation, InitInvocation? continuation = null) => Move(observation, NormalStep.ResourceStart, () =>
     {
         Owner(observation); Require(resourceStarts == 0, "Repeated initial resource-start observation.");
-        if (phase == Phase.OnReady) Require(!observation.IsReady, "Native OnReady runs before the ready flag is set.");
-        else LaterReady(observation);
+        if (!observation.IsReady)
+        {
+            InitFrame(continuation);
+            Require(continuation.State == 1 && phase == Phase.InitContinuation && !readyObserved, "False-ready resource entry requires the active InitTask continuation before true readiness.");
+        }
+        else { ReadyContext(continuation); LaterReady(observation); }
         resourceStarts++; // Observation only; not permission for OS/cache/resource effects.
     });
 
-    public void OnReadyReturned(SettingsObservation observation) => Move(observation, NormalStep.OnReadyReturn, () =>
-    { Owner(observation); Require(phase == Phase.OnReady && !observation.IsReady, "OnReady return must precede the native ready store."); phase = Phase.AfterOnReady; });
+    public void ReadinessObserved(SettingsObservation observation, InitInvocation? continuation = null) => Move(observation, NormalStep.Readiness, () =>
+    { ReadyContext(continuation); LaterReady(observation); });
 
-    public void ReadinessObserved(SettingsObservation observation) => Move(observation, NormalStep.Readiness, () => LaterReady(observation));
-
-    public void SaveTaskCreated(SettingsObservation observation, long iterator) => Move(observation, NormalStep.SaveTaskCreated, () =>
-    { LaterReady(observation); Require(saveIterator == 0 && iterator > 0, "SaveTask must bind once from its actual creation callback."); saveIterator = iterator; });
+    public void SaveTaskCreated(SettingsObservation observation, InitInvocation continuation, long iterator, int state) => Move(observation, NormalStep.SaveTaskCreated, () =>
+    {
+        InitFrame(continuation); Require(continuation.State == 1 && !initializationCompleted, "SaveTask capture must be inside the actual InitTask continuation.");
+        LaterReady(observation);
+        Require(saveIterator == 0 && iterator > 0 && iterator != initIterator && iterator != readIterator && state == 0, "SaveTask must bind once from its actual state-zero coroutine argument.");
+        saveIterator = iterator;
+    });
 
     public SaveInvocation SaveMoveNextEntered(SettingsObservation observation, long iterator, int state, bool dirty) => Move(observation, NormalStep.SaveMoveNextEnter, () =>
     {
         LaterReady(observation); Require(saveIterator != 0 && iterator == saveIterator && active is null, "Unbound or reentrant SaveTask resume.");
         Require(state == (saveStarted ? 1 : 0), "SaveTask must first yield state zero, then resume state one.");
+        Require(state == 0 || initializationCompleted, "Later SaveTask resumes require original InitTask completion.");
         active = new SaveInvocation(++resumeOrdinal, iterator, writeGeneration, state, dirty); activeWrite = null; pending = null; writeReturned = false;
         return active;
     });
@@ -88,7 +139,7 @@ public sealed class NormalSettingsLifecycle
     public WritePermit AdmitWrite(SettingsObservation observation, SaveInvocation invocation) => Move(observation, NormalStep.WriteEnter, () =>
     {
         LaterReady(observation); Invocation(invocation);
-        Require(invocation.State == 1 && invocation.Dirty && activeWrite is null && !writeReturned, "Write is not the unique nested dirty SaveTask write.");
+        Require(initializationCompleted && invocation.State == 1 && invocation.Dirty && activeWrite is null && !writeReturned, "Write is not the unique nested dirty SaveTask write after InitTask completion.");
         Require(Capture().Same(accepted!), "Fresh pre-write snapshot differs from accepted run-owned lineage.");
         activeWrite = new WritePermit(invocation); return activeWrite;
     });
@@ -125,7 +176,7 @@ public sealed class NormalSettingsLifecycle
     });
 
     public void Close(SettingsObservation observation) => Move(observation, NormalStep.Close, () =>
-    { LaterReady(observation); Require(active is null, "Cannot retire owner during a native save frame."); phase = Phase.Closed; });
+    { LaterReady(observation); Require(initializationCompleted && initActive is null && active is null, "Cannot retire owner before original InitTask completion or during a native save frame."); phase = Phase.Closed; });
 
     public void Fail(string reason) { lock (sync) Failure ??= reason; }
     private static bool IsHash(string? text) => text is not null && Regex.IsMatch(text, "\\A[0-9a-fA-F]{64}\\z");
@@ -141,7 +192,14 @@ public sealed class NormalSettingsLifecycle
         }
     }
     private void LaterReady(SettingsObservation observation)
-    { Owner(observation); Require((phase == Phase.AfterOnReady || phase == Phase.Ready) && observation.IsReady, "Later native readiness has not been observed or regressed."); phase = Phase.Ready; readyObserved = true; }
+    { Owner(observation); Require((phase == Phase.InitContinuation || phase == Phase.Ready) && (initActive?.State == 1 || initializationCompleted) && observation.IsReady, "Native readiness outside the bound continuation/completed initialization or readiness regression."); phase = Phase.Ready; readyObserved = true; }
+    private void InitFrame([NotNull] InitInvocation? invocation)
+    { Require(initActive is not null && invocation is not null && ReferenceEquals(initActive, invocation) && invocation.Iterator == initIterator, "Stale, foreign or missing InitTask invocation."); }
+    private void ReadyContext(InitInvocation? continuation)
+    {
+        if (initActive is not null) { InitFrame(continuation); Require(continuation.State == 1, "Readiness cannot be observed in initial InitTask state zero."); }
+        else Require(initializationCompleted && continuation is null, "Readiness context is incomplete or carries a retired continuation.");
+    }
     private void Invocation(SaveInvocation invocation)
     { Require(active is not null && ReferenceEquals(active, invocation) && invocation.Iterator == saveIterator && invocation.WriteGeneration == writeGeneration, "Stale/foreign SaveTask invocation or write generation."); }
     private SettingsSnapshot Capture()
