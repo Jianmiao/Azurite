@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><AssemblyName>Azurite.CacheRoot.Core.LabOnly</AssemblyName><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework></PropertyGroup>
+  <ItemGroup><EmbeddedResource Include="Pins/binding-contract-pins.json" /></ItemGroup>
+</Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><AssemblyName>Azurite.CacheRoot.Binding.LabOnly</AssemblyName><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../CacheRoot.Core/CacheRoot.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Reference Include="BepInEx.Unity.IL2CPP" Private="false"><HintPath>$(AAInstallPath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>
+    <Reference Include="MonoMod.RuntimeDetour" Private="false"><HintPath>$(AAInstallPath)/BepInEx/core/MonoMod.RuntimeDetour.dll</HintPath></Reference>
+  </ItemGroup>
+  <Target Name="RequirePinnedReferences" BeforeTargets="ResolveReferences"><Error Condition="!Exists('$(AAInstallPath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll')" Text="Pass the explicit installed AA metadata/reference root." /></Target>
+</Project>

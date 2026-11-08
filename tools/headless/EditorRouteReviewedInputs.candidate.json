@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "admission": "pending-independent-controller-review",
+  "labRoot": "E:\\aamod\\labs\\Azurite-20261108-editor",
+  "baseContractSha256": "5CED2B8185DFE43E94217F3B5D61F7B76D8DC5D70C817CABB50A098D46DC8362",
+  "copyReceipt": {
+    "sha256": "075F3A2B79604BBE3A64463E9068C547734319626E8FEEF549CF9CCC17C2B558",
+    "path": "E:\\aamod\\labs\\Azurite-20261108-editor\\program-copy-manifest.json"
+  },
+  "harnessReceipt": {
+    "sha256": "ED4C39F79897019372553B46A8B7D916A3DEA05FC636AF75838CECDB8C1710B9",
+    "path": "C:\\Users\\21294\\.codex\\worktrees\\azurite-authoring-20261108\\Azurite-github-publish-1.0.38\\.superpowers\\sdd\\azurite-authoring-20261108\\editor-isolation-probe-fix1-hashes.json"
+  },
+  "guardReview": {
+    "sha256": "3E70119C423A86BD84D6F2BCD42CED691A9DAA2B742B62537C4C02B66805EAF7",
+    "path": "C:\\Users\\21294\\.codex\\worktrees\\azurite-authoring-20261108\\Azurite-github-publish-1.0.38\\.superpowers\\sdd\\azurite-authoring-20261108\\editor-isolation-native-source-guard-review.json"
+  },
+  "orderingAudioProof": {
+    "sha256": "55BCC703B7758B64FF62149DF894250DE0860487468817064AECB257F2D0E49F",
+    "path": "C:\\Users\\21294\\.codex\\worktrees\\azurite-authoring-20261108\\Azurite-github-publish-1.0.38\\.superpowers\\sdd\\azurite-authoring-20261108\\normal-start-order-audio-proof.md"
+  },
+  "binaries": [
+    {
+      "sha256": "7CAD0B86DD9E8F8296EFEFAC8D15C79ECF8DD198FB608669D8D58C8A209C3AD4",
+      "path": "BepInEx/patchers/AzuriteEditorIsolation/Azurite.EditorIsolation.Guard.LabOnly.dll"
+    },
+    {
+      "sha256": "2F6297CAEC213D87464EFAD1A387230E40943B89EB71333FB65C8E03DC0D7653",
+      "path": "BepInEx/patchers/AzuriteEditorIsolation/Azurite.EditorIsolation.Policy.LabOnly.dll"
+    },
+    {
+      "sha256": "BAEBF067615250B8E55FE011E7D575FDB1098C9A0221EF8CBCD48602CEC65358",
+      "path": "BepInEx/plugins/AzuriteEditorIsolation/Azurite.EditorIsolation.Probe.LabOnly.dll"
+    }
+  ],
+  "toolPins": {
+    "EditorRouteCore.psm1": "EDC5AF0DF7FD3A34CF741776EC68985D4DE41525B46A0F558A4605A90D46D38E",
+    "EditorRouteBootstrap.ps1": "C2477F9E57694918595EC53CD66A2EC00B3A947BA6197D96D2493C79D26102EB",
+    "Invoke-AzuriteEditorRouteSelfTest.ps1": "D156CFEFAAAFD11E42D889C962F0E85F7BABAC882FFDA06610466A4D104832CC",
+    "EditorRoutePrepareContract.ps1": "B8B4CFB7FA82FE48303270CCB456C60C3BBE7AE152318F7500D02870BC345391",
+    "RestrictedCliCore.psm1": "452A4255FD950C9B6D1E3E35C537FDB93BD4B40874FB4536DFCC44C754AB1F59",
+    "RestrictedCliNative.cs": "EC7B6A1A0FA6B9F1069EB37C94FB6DDBC221569D73FDFB3F4FD96AD13B5045B4",
+    "Identity-Preflight.ps1": "85037E845F31E686067B54B590BCC6FBADBE665E08F29BD2FBFD5EC5CB0E5911",
+    "CurrentAccountCli.psm1": "A43ACD287F2712E735D60D9475A7DB4BD4720C3FD3315ED43641E824A263D747",
+    "HeadlessCore.psm1": "75F2DCCC4015059FE41A476C87117B315F2D38F27569629C5F2192D4792B757F",
+    "restricted-startup-contract.json": "5CED2B8185DFE43E94217F3B5D61F7B76D8DC5D70C817CABB50A098D46DC8362"
+  },
+  "invalidManifestConfig": {
+    "baselineSha256": "F2E0F930EFDA6A7FA292E872760A27CDC9BB1D232CD82D719446622C4DC6EF06",
+    "expectedSha256": "A0DA59BFA4590A1C3A2B75FF8FF8EE078EF192783606994FF2D1772C358CDBE6",
+    "receipt": {
+      "path": "C:\\Users\\21294\\.codex\\worktrees\\azurite-authoring-20261108\\Azurite-github-publish-1.0.38\\artifacts\\early-abort-config\\early-abort-config-receipt.json",
+      "sha256": "45C110175D0E260769A868FE015B254C65092F01A335FA359F54077EBE328337"
+    },
+    "report": {
+      "path": "C:\\Users\\21294\\.codex\\worktrees\\azurite-authoring-20261108\\Azurite-github-publish-1.0.38\\.superpowers\\sdd\\azurite-authoring-20261108\\early-abort-config-audit.md",
+      "sha256": "3B37F82EF3BF866F6A190BC46AD7B0CA38071259336366310AF3D5076A6FFC11"
+    },
+    "derived": {
+      "path": "C:\\Users\\21294\\.codex\\worktrees\\azurite-authoring-20261108\\Azurite-github-publish-1.0.38\\artifacts\\early-abort-config\\BepInEx.early-abort.expected.cfg",
+      "sha256": "A0DA59BFA4590A1C3A2B75FF8FF8EE078EF192783606994FF2D1772C358CDBE6"
+    }
+  }
+}

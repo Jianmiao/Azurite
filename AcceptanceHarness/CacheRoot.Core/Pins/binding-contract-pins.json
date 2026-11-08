@@ -1,0 +1,1167 @@
+{
+  "staticOnly": true,
+  "targetModulesExecuted": false,
+  "unityPlayerSha256": "df965f4ba87ce9976d55b0699671779e0ef921f75d5407689ac0ddd514fef1bc",
+  "codePins": [
+    {
+      "name": "root_copy_helper",
+      "rva": "0x4d45c0",
+      "endExclusiveRva": "0x4d46d3",
+      "size": 275,
+      "sha256": "c7e59b3bc411b3b046d4563efbfb95ea396fe573e95e1163765e6071410a3ddb",
+      "prefix32": "48895c24104889742418574883ec20488bda4885c9742b48894c243048c7c2ff"
+    },
+    {
+      "name": "path_builder",
+      "rva": "0x4d0170",
+      "endExclusiveRva": "0x4d0488",
+      "size": 792,
+      "sha256": "78f84ee9ab91abbbe8db9e60dcc53a38ea5d042984c1efad91377c379d4a17c8",
+      "prefix32": "48895c242055565741554157488d6c24c94881ecd00000004c8b0d2172710148"
+    },
+    {
+      "name": "string_constructor",
+      "rva": "0xdfcc0",
+      "endExclusiveRva": "0xdfccf",
+      "size": 15,
+      "sha256": "b85b8c96f10c8b40d336b2f9cf69215c68f42b2b7e48b690f9d02564a1abab86",
+      "prefix32": "66895120488bc1c60100c6411f1fc3"
+    },
+    {
+      "name": "string_destructor",
+      "rva": "0xdfcf0",
+      "endExclusiveRva": "0xdfd51",
+      "size": 97,
+      "sha256": "51877e97fdb6033232b246210b3acfddb91f9260c833b6ee68a8c49806895071",
+      "prefix32": "4883ec380fb6411f24c03c40754e440fb741204c8d0d242a7c0148895c244048"
+    },
+    {
+      "name": "string_length_reader",
+      "rva": "0xdfcd0",
+      "endExclusiveRva": "0xdfce9",
+      "size": 25,
+      "sha256": "97164590e19d8bae41ed3e93130d799b63e17570e83eefd699339234acd6de1b",
+      "prefix32": "80791f40730e480fbe491fb81f000000482bc1c3488b4110c3"
+    },
+    {
+      "name": "cache_constructor",
+      "rva": "0x4c6400",
+      "endExclusiveRva": "0x4c65af",
+      "size": 431,
+      "sha256": "3abf6d56bb68c821523b2fe3812dee3863626b2b39b16ae5b1be485b5fad13aa",
+      "prefix32": "48895c240848896c24104889742418574883ec40668911488d3da2654501c741"
+    },
+    {
+      "name": "cache_initializer_complete",
+      "rva": "0x4c6810",
+      "endExclusiveRva": "0x4c6961",
+      "size": 337,
+      "sha256": "050cc110620d84292de93222de37f717fa6e88b6a8f108d75f88b6c99b3ebb45",
+      "prefix32": "48895c2420564883ec30488bf10fb6da33c9e815eb2e014c638680000000488d"
+    },
+    {
+      "name": "default_setup",
+      "rva": "0x4d23f0",
+      "endExclusiveRva": "0x4d2594",
+      "size": 420,
+      "sha256": "04fe697109710f621fd6fb8b1a04a8b60770d2540e5365186de1f6b39385be9f",
+      "prefix32": "488bc44889580848896810488970184889782041564881ec80000000c740a89b"
+    },
+    {
+      "name": "temp_builder_consumer",
+      "rva": "0x4d0490",
+      "endExclusiveRva": "0x4d06c0",
+      "size": 560,
+      "sha256": "ace6f8e65fc0a96a4439cc5fe82c5efedd5e68c2303fdff228731e649bf89e69",
+      "prefix32": "48895c2408488974241048897c24184c8974242055488d6c24f04881ec100100"
+    },
+    {
+      "name": "custom_cache_init_site",
+      "rva": "0x4d1920",
+      "endExclusiveRva": "0x4d1a30",
+      "size": 272,
+      "sha256": "b67dad9861c8db6cb799088c56413fadf9340d7514414023458e7d9fd9b603ce",
+      "prefix32": "1a4401488bc8e8d54affff488bd8eb03498bdd498b7710498b471848ffc648d1"
+    },
+    {
+      "name": "sibling_cache_init_site",
+      "rva": "0x4d3180",
+      "endExclusiveRva": "0x4d3240",
+      "size": 192,
+      "sha256": "b9c258d4619e87a2120a46cc06b260a464bfb922b542068ee59301a382c103bf",
+      "prefix32": "97c6040700e8d673ccff4c8b7d6feb174d8bc4498bd5eb064c8bc6498bd6488d"
+    }
+  ],
+  "dataPins": {
+    "cacheRootRva": "0x1be73a0",
+    "initialRootObject34Bytes": "000000000000000000000000000000000000000000000000000000000000001f4900",
+    "cacheManagerSlotRva": "0x1c98370",
+    "crtStateRva": "0x1c54cc0",
+    "allocatorSlotRva": "0x1c56248",
+    "defaultCacheCtorAllocatorWordAt1913400": "0900"
+  },
+  "managedModules": [
+    {
+      "path": "E:\\aamod\\labs\\Azurite-20261108-editor\\install\\BepInEx\\core\\BepInEx.Unity.IL2CPP.dll",
+      "sha256": "62c8246a3076bfe459ec80c482381228d0eb1dde3434fe97ae5255fef406fe72",
+      "assemblyVersion": "6.0.0.0",
+      "mvid": "bbc7391c-010a-4f1b-8966-22a54b549a1d",
+      "selectedTypes": [
+        {
+          "name": "BepInEx.Unity.IL2CPP.Hook.BaseNativeDetour`1",
+          "token": "0x2000022",
+          "public": false,
+          "methods": [
+            {
+              "name": ".ctor",
+              "token": "0x60000d5",
+              "rva": "0x53db",
+              "signatureHex": "20020118128211",
+              "public": false,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "originalMethodPtr"
+                },
+                {
+                  "sequence": 2,
+                  "name": "detourMethod"
+                }
+              ]
+            },
+            {
+              "name": "get_IsPrepared",
+              "token": "0x60000d6",
+              "rva": "0x5404",
+              "signatureHex": "200002",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "set_IsPrepared",
+              "token": "0x60000d7",
+              "rva": "0x540c",
+              "signatureHex": "20010102",
+              "public": false,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "value"
+                }
+              ]
+            },
+            {
+              "name": "get_TrampolineMethod",
+              "token": "0x60000d8",
+              "rva": "0x5415",
+              "signatureHex": "200012820d",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "set_TrampolineMethod",
+              "token": "0x60000d9",
+              "rva": "0x541d",
+              "signatureHex": "20010112820d",
+              "public": false,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "value"
+                }
+              ]
+            },
+            {
+              "name": "get_DetourMethod",
+              "token": "0x60000da",
+              "rva": "0x5426",
+              "signatureHex": "2000128211",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "set_DetourMethod",
+              "token": "0x60000db",
+              "rva": "0x542e",
+              "signatureHex": "200101128211",
+              "public": false,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "value"
+                }
+              ]
+            },
+            {
+              "name": "get_OriginalMethodPtr",
+              "token": "0x60000dc",
+              "rva": "0x5437",
+              "signatureHex": "200018",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 0,
+                  "name": ""
+                }
+              ]
+            },
+            {
+              "name": "get_DetourMethodPtr",
+              "token": "0x60000dd",
+              "rva": "0x543f",
+              "signatureHex": "200018",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 0,
+                  "name": ""
+                }
+              ]
+            },
+            {
+              "name": "get_TrampolinePtr",
+              "token": "0x60000de",
+              "rva": "0x5447",
+              "signatureHex": "200018",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 0,
+                  "name": ""
+                }
+              ]
+            },
+            {
+              "name": "set_TrampolinePtr",
+              "token": "0x60000df",
+              "rva": "0x544f",
+              "signatureHex": "20010118",
+              "public": false,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "value"
+                }
+              ]
+            },
+            {
+              "name": "get_IsValid",
+              "token": "0x60000e0",
+              "rva": "0x5458",
+              "signatureHex": "200002",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "set_IsValid",
+              "token": "0x60000e1",
+              "rva": "0x5460",
+              "signatureHex": "20010102",
+              "public": false,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "value"
+                }
+              ]
+            },
+            {
+              "name": "get_IsApplied",
+              "token": "0x60000e2",
+              "rva": "0x5469",
+              "signatureHex": "200002",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "set_IsApplied",
+              "token": "0x60000e3",
+              "rva": "0x5471",
+              "signatureHex": "20010102",
+              "public": false,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "value"
+                }
+              ]
+            },
+            {
+              "name": "Dispose",
+              "token": "0x60000e4",
+              "rva": "0x547a",
+              "signatureHex": "200001",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "Apply",
+              "token": "0x60000e5",
+              "rva": "0x5494",
+              "signatureHex": "200001",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "Undo",
+              "token": "0x60000e6",
+              "rva": "0x553d",
+              "signatureHex": "200001",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "Free",
+              "token": "0x60000e7",
+              "rva": "0x5555",
+              "signatureHex": "200001",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "GenerateTrampoline",
+              "token": "0x60000e8",
+              "rva": "0x5564",
+              "signatureHex": "2001128215128215",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "signature"
+                }
+              ]
+            },
+            {
+              "name": "GenerateTrampoline",
+              "token": "0x60000e9",
+              "rva": "0x5594",
+              "signatureHex": "3001001e00",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "ApplyImpl",
+              "token": "0x60000ea",
+              "rva": "0x0",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "Prepare",
+              "token": "0x60000eb",
+              "rva": "0x5624",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "PrepareImpl",
+              "token": "0x60000ec",
+              "rva": "0x0",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "UndoImpl",
+              "token": "0x60000ed",
+              "rva": "0x0",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "FreeImpl",
+              "token": "0x60000ee",
+              "rva": "0x0",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": ".cctor",
+              "token": "0x60000ef",
+              "rva": "0x56cd",
+              "signatureHex": "000001",
+              "public": false,
+              "static": true,
+              "parameters": []
+            }
+          ]
+        },
+        {
+          "name": "BepInEx.Unity.IL2CPP.Hook.INativeDetour",
+          "token": "0x2000025",
+          "public": true,
+          "methods": [
+            {
+              "name": "get_OriginalMethodPtr",
+              "token": "0x60000f9",
+              "rva": "0x0",
+              "signatureHex": "200018",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 0,
+                  "name": ""
+                }
+              ]
+            },
+            {
+              "name": "get_DetourMethodPtr",
+              "token": "0x60000fa",
+              "rva": "0x0",
+              "signatureHex": "200018",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 0,
+                  "name": ""
+                }
+              ]
+            },
+            {
+              "name": "get_TrampolinePtr",
+              "token": "0x60000fb",
+              "rva": "0x0",
+              "signatureHex": "200018",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 0,
+                  "name": ""
+                }
+              ]
+            },
+            {
+              "name": "CreateDefault",
+              "token": "0x60000fc",
+              "rva": "0x575b",
+              "signatureHex": "100102128094181e00",
+              "public": false,
+              "static": true,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "original"
+                },
+                {
+                  "sequence": 2,
+                  "name": "target"
+                }
+              ]
+            },
+            {
+              "name": "Create",
+              "token": "0x60000fd",
+              "rva": "0x576c",
+              "signatureHex": "100102128094181e00",
+              "public": true,
+              "static": true,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "original"
+                },
+                {
+                  "sequence": 2,
+                  "name": "target"
+                }
+              ]
+            },
+            {
+              "name": "CreateAndApply",
+              "token": "0x60000fe",
+              "rva": "0x57cc",
+              "signatureHex": "100103128094181e00101e00",
+              "public": true,
+              "static": true,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "from"
+                },
+                {
+                  "sequence": 2,
+                  "name": "to"
+                },
+                {
+                  "sequence": 3,
+                  "name": "original"
+                }
+              ]
+            },
+            {
+              "name": ".cctor",
+              "token": "0x60000ff",
+              "rva": "0x57f4",
+              "signatureHex": "000001",
+              "public": false,
+              "static": true,
+              "parameters": []
+            }
+          ]
+        },
+        {
+          "name": "BepInEx.Unity.IL2CPP.Hook.Dobby.DobbyDetour",
+          "token": "0x2000029",
+          "public": false,
+          "methods": [
+            {
+              "name": ".ctor",
+              "token": "0x600010e",
+              "rva": "0x5930",
+              "signatureHex": "20020118128211",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "originalMethodPtr"
+                },
+                {
+                  "sequence": 2,
+                  "name": "detourMethod"
+                }
+              ]
+            },
+            {
+              "name": "ApplyImpl",
+              "token": "0x600010f",
+              "rva": "0x593a",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "PrepareImpl",
+              "token": "0x6000110",
+              "rva": "0x5948",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "UndoImpl",
+              "token": "0x6000111",
+              "rva": "0x5974",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "FreeImpl",
+              "token": "0x6000112",
+              "rva": "0x5982",
+              "signatureHex": "200001",
+              "public": false,
+              "static": false,
+              "parameters": []
+            }
+          ]
+        },
+        {
+          "name": "BepInEx.Unity.IL2CPP.Hook.Dobby.DobbyLib",
+          "token": "0x200002a",
+          "public": false,
+          "methods": [
+            {
+              "name": "Hook",
+              "token": "0x6000113",
+              "rva": "0x0",
+              "signatureHex": "00030818180f18",
+              "public": true,
+              "static": true,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "target"
+                },
+                {
+                  "sequence": 2,
+                  "name": "replacement"
+                },
+                {
+                  "sequence": 3,
+                  "name": "originalCall"
+                }
+              ]
+            },
+            {
+              "name": "Prepare",
+              "token": "0x6000114",
+              "rva": "0x0",
+              "signatureHex": "00030818180f18",
+              "public": true,
+              "static": true,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "target"
+                },
+                {
+                  "sequence": 2,
+                  "name": "replacement"
+                },
+                {
+                  "sequence": 3,
+                  "name": "originalCall"
+                }
+              ]
+            },
+            {
+              "name": "Commit",
+              "token": "0x6000115",
+              "rva": "0x0",
+              "signatureHex": "00010818",
+              "public": true,
+              "static": true,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "target"
+                }
+              ]
+            },
+            {
+              "name": "Destroy",
+              "token": "0x6000116",
+              "rva": "0x0",
+              "signatureHex": "00010818",
+              "public": true,
+              "static": true,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "target"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "E:\\aamod\\labs\\Azurite-20261108-editor\\install\\BepInEx\\core\\BepInEx.Core.dll",
+      "sha256": "352aacc2d5356489a00891f76db28b6463c81d25bcb02f90035171a669b7e35b",
+      "assemblyVersion": "6.0.0.0",
+      "mvid": "1258560f-9c0e-485f-83dd-ca64bc82153e",
+      "selectedTypes": []
+    },
+    {
+      "path": "E:\\aamod\\labs\\Azurite-20261108-editor\\install\\BepInEx\\core\\BepInEx.Preloader.Core.dll",
+      "sha256": "ec168752c9a885d9fe035370ac2dbd8b52b91b24cb60fbc425cfcbee5436dae9",
+      "assemblyVersion": "6.0.0.0",
+      "mvid": "490d9677-6379-44b6-a2c0-fab5ace9028e",
+      "selectedTypes": []
+    },
+    {
+      "path": "E:\\aamod\\labs\\Azurite-20261108-editor\\install\\BepInEx\\core\\MonoMod.RuntimeDetour.dll",
+      "sha256": "1b3d55f53cb9f9f2550daed4dfd300b247d71698a0ace82bc7b9ff38d563594f",
+      "assemblyVersion": "22.7.31.1",
+      "mvid": "0472d84d-3f0e-4f04-a80c-02de6a282881",
+      "selectedTypes": [
+        {
+          "name": "MonoMod.RuntimeDetour.IDetour",
+          "token": "0x200000f",
+          "public": true,
+          "methods": [
+            {
+              "name": "get_IsValid",
+              "token": "0x60000c7",
+              "rva": "0x0",
+              "signatureHex": "200002",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "get_IsApplied",
+              "token": "0x60000c8",
+              "rva": "0x0",
+              "signatureHex": "200002",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "Apply",
+              "token": "0x60000c9",
+              "rva": "0x0",
+              "signatureHex": "200001",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "Undo",
+              "token": "0x60000ca",
+              "rva": "0x0",
+              "signatureHex": "200001",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "Free",
+              "token": "0x60000cb",
+              "rva": "0x0",
+              "signatureHex": "200001",
+              "public": true,
+              "static": false,
+              "parameters": []
+            },
+            {
+              "name": "GenerateTrampoline",
+              "token": "0x60000cc",
+              "rva": "0x0",
+              "signatureHex": "2001128081128081",
+              "public": true,
+              "static": false,
+              "parameters": [
+                {
+                  "sequence": 1,
+                  "name": "signature"
+                }
+              ]
+            },
+            {
+              "name": "GenerateTrampoline",
+              "token": "0x60000cd",
+              "rva": "0x0",
+              "signatureHex": "3001001e00",
+              "public": true,
+              "static": false,
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "E:\\aamod\\labs\\Azurite-20261108-editor\\install\\BepInEx\\core\\MonoMod.Utils.dll",
+      "sha256": "72a5b4249985873d7ecb160cbbed7a1e6540a38ee7618c72c64b9cb068c1438a",
+      "assemblyVersion": "22.7.31.1",
+      "mvid": "0ef55822-0e09-4f92-8468-74bff6da80bb",
+      "selectedTypes": []
+    },
+    {
+      "path": "E:\\aamod\\labs\\Azurite-20261108-editor\\install\\BepInEx\\core\\Il2CppInterop.Runtime.dll",
+      "sha256": "65ab051a681c2c1e52df7596ff738be401aae72cff882ff18241cf54a3ea38a4",
+      "assemblyVersion": "1.5.3.0",
+      "mvid": "ab9a457d-353f-4e53-b665-3c12b9f380d3",
+      "selectedTypes": []
+    }
+  ],
+  "nativeDetourModule": {
+    "path": "E:\\aamod\\labs\\Azurite-20261108-editor\\install\\BepInEx\\core\\dobby.dll",
+    "sha256": "8015de7d867245a1095d13947a63763878e4cf5fd3d3089b63cc39200b055ded",
+    "size": 205312,
+    "machine": "0x8664",
+    "sizeOfImage": "0x38000",
+    "exports": [
+      {
+        "name": "DobbyBuildVersion",
+        "rva": "0x3bd0",
+        "first32Bytes": "488d0531cb0100c3cccccccccccccccc40534883ec20488bd9e822010000488b"
+      },
+      {
+        "name": "DobbyCommit",
+        "rva": "0x2d30",
+        "first32Bytes": "40534883ec30488bd94885c97542488d052bd90100448d49404889442420b9ff"
+      },
+      {
+        "name": "DobbyDestroy",
+        "rva": "0x3be0",
+        "first32Bytes": "40534883ec20488bd9e822010000488bc8488bd3e8870000004885c0742e8078"
+      },
+      {
+        "name": "DobbyHook",
+        "rva": "0x2df0",
+        "first32Bytes": "48896c241856415641574883ec304d8bf84c8bf2488be94885c9754b488d059d"
+      },
+      {
+        "name": "DobbyPrepare",
+        "rva": "0x3060",
+        "first32Bytes": "488974241048897c241841564883ec304d8bf0488bf2488bf94885c9754d488d"
+      },
+      {
+        "name": "dobby_disable_near_branch_trampoline",
+        "rva": "0x3e00",
+        "first32Bytes": "4883ec28488b0dbddb0200ba08010000e85f0f000048c705a8db020000000000"
+      },
+      {
+        "name": "dobby_enable_near_branch_trampoline",
+        "rva": "0x3e30",
+        "first32Bytes": "40534883ec20b908010000e8f80e0000488bd84885c0740c488d05d9c8010048"
+      }
+    ],
+    "imports": [
+      {
+        "dll": "KERNEL32.dll",
+        "name": "VirtualQuery"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetSystemInfo"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "VirtualAlloc"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "VirtualProtect"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "CloseHandle"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetCurrentProcessId"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "OpenProcess"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "VirtualProtectEx"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "SetEndOfFile"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "RtlCaptureContext"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "RtlLookupFunctionEntry"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "RtlVirtualUnwind"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "UnhandledExceptionFilter"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "SetUnhandledExceptionFilter"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetCurrentProcess"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "TerminateProcess"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "IsProcessorFeaturePresent"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "IsDebuggerPresent"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetStartupInfoW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetModuleHandleW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "QueryPerformanceCounter"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetCurrentThreadId"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetSystemTimeAsFileTime"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "InitializeSListHead"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "RtlUnwindEx"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "RtlPcToFileHeader"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "RaiseException"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "InterlockedFlushSList"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetLastError"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "SetLastError"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "EncodePointer"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "EnterCriticalSection"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "LeaveCriticalSection"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "DeleteCriticalSection"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "InitializeCriticalSectionAndSpinCount"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "TlsAlloc"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "TlsGetValue"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "TlsSetValue"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "TlsFree"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FreeLibrary"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetProcAddress"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "LoadLibraryExW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "RtlUnwind"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "ExitProcess"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetModuleHandleExW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetModuleFileNameW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "HeapAlloc"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "HeapFree"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FlsAlloc"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FlsGetValue"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FlsSetValue"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FlsFree"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "LCMapStringW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetStdHandle"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetFileType"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FlushFileBuffers"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "WriteFile"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetConsoleOutputCP"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetConsoleMode"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetFileSizeEx"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "SetFilePointerEx"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FindClose"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FindFirstFileExW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FindNextFileW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "IsValidCodePage"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetACP"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetOEMCP"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetCPInfo"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetCommandLineA"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetCommandLineW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "MultiByteToWideChar"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "WideCharToMultiByte"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetEnvironmentStringsW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "FreeEnvironmentStringsW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetProcessHeap"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "GetStringTypeW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "SetStdHandle"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "ReadFile"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "ReadConsoleW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "CreateFileW"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "HeapSize"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "HeapReAlloc"
+      },
+      {
+        "dll": "KERNEL32.dll",
+        "name": "WriteConsoleW"
+      }
+    ]
+  }
+}

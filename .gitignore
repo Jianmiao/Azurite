@@ -6,3 +6,5 @@ dist/
 artifacts/
 *.zip
 *.partial
+# Local approval artifact; the pending template remains versioned.
+tools/headless/EditorRouteReviewedInputs.json
