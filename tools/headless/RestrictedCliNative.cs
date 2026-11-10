@@ -14,7 +14,7 @@ namespace Azurite.Restricted {
   [DllImport("shell32.dll")] static extern int SHGetKnownFolderPath(ref Guid id,uint flags,IntPtr token,out IntPtr path);
   public static string LocalLow(){var id=new Guid("A520A1A4-1780-4FF6-BD18-167343C5AF16");IntPtr p;int result=SHGetKnownFolderPath(ref id,0,IntPtr.Zero,out p);if(result!=0)Marshal.ThrowExceptionForHR(result);try{return Marshal.PtrToStringUni(p);}finally{Marshal.FreeCoTaskMem(p);}}
  }
- public sealed class OwnedJob {
+ public sealed partial class OwnedJob {
   private IntPtr handle;
   [StructLayout(LayoutKind.Sequential)] struct BasicLimit { public long PerProcess,PerJob;public uint Flags;public UIntPtr Min,Max;public uint Active;public UIntPtr Affinity;public uint Priority,Scheduling; }
   [StructLayout(LayoutKind.Sequential)] struct IoCounters { public ulong ReadOps,WriteOps,OtherOps,ReadBytes,WriteBytes,OtherBytes; }
@@ -59,7 +59,7 @@ namespace Azurite.Restricted {
   // Result files and streams must be flushed BEFORE this call. It intentionally kills self.
   public void Terminate(uint code){if(!TerminateJobObject(handle,code))throw new Win32Exception(Marshal.GetLastWin32Error());Thread.Sleep(Timeout.Infinite);}
  }
- internal sealed class JobObserver : IDisposable {
+ internal sealed partial class JobObserver : IDisposable {
   IntPtr handle;
   [StructLayout(LayoutKind.Sequential)] struct Accounting {public long User,Kernel,PeriodUser,PeriodKernel;public uint PageFaults,Total,Active,Terminated;}
   [DllImport("kernel32.dll",SetLastError=true)] static extern bool DuplicateHandle(IntPtr sourceProcess,IntPtr source,IntPtr targetProcess,out IntPtr target,uint access,bool inherit,uint options);
@@ -91,7 +91,7 @@ namespace Azurite.Restricted {
   public void Terminate(uint code){if(!TerminateJobObject(handle,code))throw new Win32Exception(Marshal.GetLastWin32Error(),"Cannot terminate exact owned job");}
   public void Dispose(){if(handle!=IntPtr.Zero){CloseHandle(handle);handle=IntPtr.Zero;}}
  }
- public static class WindowProbe {
+ public static partial class WindowProbe {
   delegate bool EnumProc(IntPtr hwnd,IntPtr parameter);
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc callback,IntPtr parameter);
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
@@ -111,8 +111,10 @@ namespace Azurite.Restricted {
   public bool NoProcessCreated;
   public int RemainingOwnedProcesses=-1;public long CleanupMilliseconds;public string CleanupError;
   public string RunId;
+  public bool FullRestrictedMode,DesktopLeaseObserved,DesktopLeaseClosed,DesktopLeaseRetained,StreamCaptureComplete;
+  public bool FullJobObserverClosed,FullJobObserverRetained;public int FullJobObserverCloseError;
  }
- public static class ProcessPump {
+ public static partial class ProcessPump {
   sealed class Handshake {
    readonly object gate=new object();readonly Process process;readonly string runId;bool stopped;JobObserver observer;
    public volatile string Error;
