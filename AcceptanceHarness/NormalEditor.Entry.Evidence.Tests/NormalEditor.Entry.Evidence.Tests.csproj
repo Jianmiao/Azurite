@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../NormalEditor.Entry.Evidence/NormalEditor.Entry.Evidence.csproj" /><Reference Include="Azurite.NormalEditor.Entry.Core.PreparationOnly"><HintPath>../../artifacts/normal-editor-entry-20261113/snapshot/binaries/Azurite.NormalEditor.Entry.Core.PreparationOnly.dll</HintPath></Reference></ItemGroup>
+  <ItemGroup>
+    <Reference Include="Azurite.NormalEditor.Policy.PreparationOnly"><HintPath>../NormalEditor.Policy/bin/Release/net6.0/Azurite.NormalEditor.Policy.PreparationOnly.dll</HintPath></Reference>
+    <Reference Include="Azurite.EditorIsolation.Policy.LabOnly"><HintPath>../EditorIsolation.Policy/bin/Release/net6.0/Azurite.EditorIsolation.Policy.LabOnly.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>
