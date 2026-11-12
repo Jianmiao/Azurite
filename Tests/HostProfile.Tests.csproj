@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Remove="headless/FullRestrictedNative.Tests.cs" />
     <Compile Remove="headless/FullRestrictedOwnership.Tests.cs" />
+    <Compile Remove="headless/FullMonitorManagedHost.Tests.cs" />
     <Compile Include="../Plugin/Azurite/HostProfile.cs" Link="HostProfile.cs" />
     <Compile Include="../Plugin/Azurite/FpsLabelMapping.cs" Link="FpsLabelMapping.cs" />
     <Compile Include="../Plugin/Azurite/DisplayRatePolicy.cs" Link="DisplayRatePolicy.cs" />
