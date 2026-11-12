@@ -4,12 +4,43 @@ param(
  [Parameter(Mandatory)][ValidateSet('capabilities','schema')][string]$Command,
  [ValidateRange(10,300)][int]$TimeoutSeconds=120,
  [switch]$UseCurrentAccount,
- [switch]$PlanOnly
+ [switch]$PlanOnly,
+ [switch]$FullRestrictedCapabilities,
+ [string]$FullRunId,
+ [string]$FullPlanFactsPath,
+ [string]$FullAdmissionPath,
+ [string]$FullRuntimeGatePath,
+ [string]$FullEvidenceBundlePath,
+ [string]$FullApprovalPath,
+ [string]$FullExpectedApprovalSha256,
+ [string]$FullExpectedRuntimeGateSha256,
+ [string]$FullTransitionSourceManifestPath
 )
 $ErrorActionPreference='Stop';Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot 'HeadlessCore.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'RestrictedCliCore.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'CurrentAccountCli.psm1') -Force
+if($FullRestrictedCapabilities){
+ Import-Module (Join-Path $PSScriptRoot 'FullRestrictedCapabilitiesPlan.psm1') -Force
+ Import-Module (Join-Path $PSScriptRoot 'FullRestrictedCapabilitiesRuntime.psm1') -Force
+ if(-not $UseCurrentAccount -or $Command -cne 'capabilities' -or $LabRoot -cne 'F:\AzuriteLabs\Editor-20261108-normal'){throw 'Full restriction is only the fixed F current-account capabilities branch.'}
+ if(-not $FullRunId){if($PlanOnly){$FullRunId='0'*32}else{throw 'A separately admitted fresh full-restriction RunId is required.'}}
+ $fullContract=Read-AzuriteFullCapabilitiesContract
+ $cache=Read-AzuriteFullBoundedJson (Join-Path $PSScriptRoot '..\..\artifacts\aa-fr-cache-prerequisites\cache-prerequisites-contract.json') 131072
+ $facts=if($FullPlanFactsPath){Read-AzuriteFullBoundedJson $FullPlanFactsPath 1048576}else{$null}
+ $admission=if($FullAdmissionPath){Read-AzuriteFullBoundedJson $FullAdmissionPath 1048576}else{$null}
+ $bundle=if($FullEvidenceBundlePath){Read-AzuriteFullBoundedJson $FullEvidenceBundlePath 1048576}else{$null}
+ $approval=if($FullApprovalPath){Read-AzuriteFullApproval $FullApprovalPath $FullExpectedApprovalSha256}else{$null}
+ $planArgs=@{Contract=$fullContract;CachePrerequisites=$cache;RunId=$FullRunId;Facts=$facts;Admission=$admission}
+ foreach($required in @('EvidenceBundle','Approval','ExpectedApprovalSha256')){if(-not(Get-Command New-AzuriteFullCapabilitiesPlan).Parameters.ContainsKey($required)){throw 'Reviewed forward-only planner interface is required.'}}
+ $planArgs.EvidenceBundle=$bundle;$planArgs.Approval=$approval;$planArgs.ExpectedApprovalSha256=$FullExpectedApprovalSha256
+ $fullPlan=New-AzuriteFullCapabilitiesPlan @planArgs
+ if($PlanOnly){return $fullPlan}
+ if(-not $fullPlan.Ready -or -not $FullRuntimeGatePath){throw 'Full capabilities preparation is not runtime admission; exact transition, focused review and harmless lifecycle gate remain required.'}
+ if($FullExpectedRuntimeGateSha256 -cnotmatch '^[a-f0-9]{64}$' -or (Get-AzuriteSha256 $FullRuntimeGatePath).ToLowerInvariant() -cne $FullExpectedRuntimeGateSha256){throw 'Runtime gate must match an externally supplied reviewed digest.'}
+ $gate=Read-AzuriteFullBoundedJson $FullRuntimeGatePath 1048576
+ return Invoke-AzuriteFullCapabilitiesPreparedRun -Contract $fullContract -Plan $fullPlan -Facts $facts -Gate $gate -GateSha256 $FullExpectedRuntimeGateSha256 -Admission $admission -EvidenceBundle $bundle -Approval $approval -ExpectedApprovalSha256 $FullExpectedApprovalSha256 -TransitionSourceManifestPath $FullTransitionSourceManifestPath -ToolDirectory $PSScriptRoot -RuntimeTimeoutSeconds $TimeoutSeconds
+}
 $lab=Assert-AzuriteFullPath $LabRoot
 $controllerSid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $controllerProfile=[Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)

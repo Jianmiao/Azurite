@@ -1,13 +1,31 @@
 #requires -Version 5.1
-param([Parameter(Mandatory)][string]$ControlPath)
+param([Parameter(Mandatory)][string]$ControlPath,[string]$ReviewedControlSha256)
 $ErrorActionPreference='Stop';Set-StrictMode -Version Latest
+$fullBootstrapClock=[Diagnostics.Stopwatch]::StartNew()
 # Current-account launch inherits the controller's PSModulePath. Resolve these
 # built-ins from this machine-wide PS5.1 host, without rewriting its environment.
 foreach($name in @('Microsoft.PowerShell.Security','Microsoft.PowerShell.Management','Microsoft.PowerShell.Utility')){Import-Module (Join-Path $PSHOME ('Modules\'+$name+'\'+$name+'.psd1')) -Force -DisableNameChecking}
+# The full-mode control is pinned before loading any copied run module.
+if($ReviewedControlSha256){
+ if($ReviewedControlSha256 -cnotmatch '^[a-f0-9]{64}$' -or (Get-Item -LiteralPath $ControlPath).Length -gt 131072 -or (Get-FileHash -LiteralPath $ControlPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne $ReviewedControlSha256){throw 'Reviewed full control digest/size mismatch.'}
+ $fullRaw=[IO.File]::ReadAllText($ControlPath)|ConvertFrom-Json
+ if($fullRaw.schema -ne 2 -or $fullRaw.identityMode -cne 'CurrentAccountFullRestrictedCapabilities' -or $fullRaw.runId -cnotmatch '^[a-f0-9]{32}$' -or $fullRaw.command -cne 'capabilities' -or $fullRaw.labRoot -cne 'F:\AzuriteLabs\Editor-20261108-normal'){throw 'Fixed full bootstrap control identity mismatch.'}
+ $fullRun=Join-Path $fullRaw.labRoot ('runs\restricted-'+$fullRaw.runId)
+ if($PSScriptRoot -cne (Join-Path $fullRun 'tooling') -or $ControlPath -cne (Join-Path $PSScriptRoot 'control.json')){throw 'Full control/tooling paths differ from admitted run.'}
+ $fullTools=@('RestrictedCliCore.psm1','RestrictedCliNative.cs','RestrictedCliFullRestricted.cs','RestrictedCliNative.dll','RestrictedCliBootstrap.ps1','CurrentAccountCli.psm1','HeadlessCore.psm1','FullRestrictedCapabilitiesRuntime.psm1')
+ if(@($fullRaw.toolHashes.PSObject.Properties).Count -ne $fullTools.Count){throw 'Exact full tool hash set is required.'}
+ foreach($entry in $fullRaw.toolHashes.PSObject.Properties){if($entry.Name -cnotin $fullTools -or [string]$entry.Value -cnotmatch '^[a-f0-9]{64}$' -or (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $entry.Name) -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.Value){throw 'Full tooling bytes differ before module import.'}}
+}
 Import-Module (Join-Path $PSScriptRoot 'RestrictedCliCore.psm1') -Force -DisableNameChecking
 Import-Module (Join-Path $PSScriptRoot 'HeadlessCore.psm1') -Force -DisableNameChecking
 Import-Module (Join-Path $PSScriptRoot 'CurrentAccountCli.psm1') -Force -DisableNameChecking
 $control=Read-AzuriteBoundedJson $ControlPath 65536
+if($control.schema -eq 2 -and $control.identityMode -ceq 'CurrentAccountFullRestrictedCapabilities'){
+ if(-not $ReviewedControlSha256){throw 'Full bootstrap requires an independently passed reviewed control hash.'}
+ Import-Module (Join-Path $PSScriptRoot 'FullRestrictedCapabilitiesRuntime.psm1') -Force -DisableNameChecking
+ Invoke-AzuriteFullRestrictedBootstrap -Control $control -ToolDirectory $PSScriptRoot -ControlPath $ControlPath -ReviewedControlSha256 $ReviewedControlSha256 -BootstrapClock $fullBootstrapClock
+ throw 'Full bootstrap returned without terminating its owned Job.'
+}
 $contract=Read-AzuriteStartupContract
 if($control.schema -ne 1 -or $control.identityMode -cnotin @('CurrentAccount','DedicatedAccount') -or $control.command -cnotin @('capabilities','schema') -or $control.runId -cnotmatch '^[a-f0-9]{32}$' -or $control.labRoot -cne $contract.labRoot -or ($control.identityMode -ceq 'CurrentAccount' -and $control.targetSid -cne $control.controllerSid)){throw 'Invalid restricted bootstrap control.'}
 $runDir=Join-Path $control.labRoot ('runs\restricted-'+$control.runId)

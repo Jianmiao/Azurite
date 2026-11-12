@@ -1,0 +1,2914 @@
+{
+  "schema": 1,
+  "contractId": "aa-2023.2.22f1-azurite-1.0.38-current-account-full-restricted-capabilities-v1",
+  "ownerSid": "S-1-5-21-222280291-4039000738-1914192245-1001",
+  "labRoot": "F:\\AzuriteLabs\\Editor-20261108-normal",
+  "installRoot": "F:\\AzuriteLabs\\Editor-20261108-normal\\install",
+  "executable": "F:\\AzuriteLabs\\Editor-20261108-normal\\install\\AzureArchive.exe",
+  "profile": "AzuriteAcceptance",
+  "modName": "Azurite",
+  "modVersion": "1.0.38",
+  "operation": "capabilities",
+  "acceptance": "source-only dry planner; no AA launch or runtime admission",
+  "cliEnvironment": "AZUREARCHIVE_CLI_DIRECTORY",
+  "argv": [
+    "-batchmode",
+    "-nographics",
+    "-disableaudio",
+    "-logFile",
+    "<run>\\output\\unity.log"
+  ],
+  "sidecar": {
+    "directory": "<run>\\request",
+    "argumentsFile": "arguments.json",
+    "argv": [
+      "capabilities"
+    ],
+    "cwd": "<run>\\workspace",
+    "argumentsFileMask": "0x120089",
+    "argumentsProtected": true
+  },
+  "files": [
+    {
+      "sha256": "DF965F4BA87CE9976D55B0699671779E0EF921F75D5407689AC0DDD514FEF1BC",
+      "path": "UnityPlayer.dll"
+    },
+    {
+      "sha256": "0776516C59811C724C450E205930546C5D102975F279E33C46C96B878FA06C8B",
+      "path": "GameAssembly.dll"
+    },
+    {
+      "sha256": "260FC3ECC5F38DAB5230BA624A52E495708D861196DDA72486C1250760FE6EFF",
+      "path": "AzureArchive.exe"
+    },
+    {
+      "sha256": "667A8ABEB2F60ECDCDCBD8BA5E05E5E1083E760F07FB70660C9573024179CE94",
+      "path": "AzureArchive_Data/boot.config"
+    },
+    {
+      "sha256": "502B7F3797489EE9DB211AD16FFC53E9DEECB57DF2EC83A89B3194F7EF90A630",
+      "path": "AzureArchive_Data/level0"
+    },
+    {
+      "sha256": "D6868E99FF2656C99449273D7E68622321DB5012FDE96AC7A248A4760F188494",
+      "path": "AzureArchive_Data/globalgamemanagers"
+    },
+    {
+      "sha256": "D95062F3A49FBA645986DC7FE0CEE749197C9D0C84FF381FC3CA2D9D2823C013",
+      "path": "BepInEx/interop/Assembly-CSharp.dll"
+    },
+    {
+      "sha256": "E10DED59DD2A759552AB0002AD84825FB2D27D5D3332136E011162D4560D7234",
+      "path": "ActiveProfile.txt"
+    },
+    {
+      "sha256": "9FF1A41A5CDAB688C6D0C313AF4D162E2F473CC8F294B1BD77D66C5C8697CC6F",
+      "path": "profiles/AzuriteAcceptance/modconfig.json"
+    },
+    {
+      "sha256": "0D3CA42AE3AF63C8E147FC2657747F8E6A166CC4F472DF797C0AD43C6249BF38",
+      "path": "profiles/AzuriteAcceptance/configs/halocue.azurite.cfg"
+    },
+    {
+      "sha256": "7DAEBB02054747FAEE66C875A778E0E8D54DAD24DD460E1FB69AA31378D9EA8F",
+      "path": "doorstop_config.ini"
+    },
+    {
+      "sha256": "F2E0F930EFDA6A7FA292E872760A27CDC9BB1D232CD82D719446622C4DC6EF06",
+      "path": "BepInEx/config/BepInEx.cfg"
+    },
+    {
+      "sha256": "78AE604081828CB3F179AC1685F917B9B8671EA8D3518EBB1DCE765BDE28657B",
+      "path": "AzureArchive_Data/Plugins/x86_64/lib_burst_generated.dll"
+    },
+    {
+      "sha256": "8196E6AA6C04377585E3029DF7791F3DE1560C8B8BFE623C63A81E70BBD51653",
+      "path": "AzureArchive_Data/Plugins/x86_64/SpineSkeletonDataConverterLib.dll"
+    },
+    {
+      "sha256": "D04DA8FE58228B30456512E55D42ECC38941ECCC77289A39851DFF1FB49C297C",
+      "path": "AzureArchive_Data/Plugins/x86_64/sqlite3.dll"
+    },
+    {
+      "sha256": "76A46C4A896DFBDFFD66C2BE85E9A0E07D2D0523FAAEF0841763D997C65DF1A5",
+      "path": "mods/Azurite/1.0.38/Azurite.Core.dll"
+    },
+    {
+      "sha256": "3EBE51C8DDA16A98A89DD7D65AFAAA1281826F95B4CF3B52A845E72640956455",
+      "path": "mods/Azurite/1.0.38/Azurite.dll"
+    },
+    {
+      "sha256": "686137090217C88DF9AFF15DAA8B459A8D879CDA349705E8FB8427D3CD212D62",
+      "path": "mods/Azurite/1.0.38/icon.png"
+    },
+    {
+      "sha256": "098EAB14F853425C21FE9D9B785EBFD2541DD2F9B3B68A5481679BBC0CE61C21",
+      "path": "mods/Azurite/1.0.38/manifest.json"
+    },
+    {
+      "sha256": "A7144670221630323633F047A31BE8F63BFC5F0DC62920D0499DDECACE088FFC",
+      "path": "mods/Azurite/1.0.38/README.md"
+    },
+    {
+      "sha256": "2C98D43B5FED2C3882FC166601E137D14B9C521D9B000CFF6F74D78E23277CA5",
+      "path": "mods/Azurite/1.0.38/SHA256SUMS.txt"
+    },
+    {
+      "sha256": "0F7EFDFD2DB1F854154E887CB22286F05729E58935D47B1F956E217D830F380E",
+      "path": "mods/Azurite/1.0.38/SOURCE.md"
+    },
+    {
+      "sha256": "9E3F26880208F0DAF7443ABB146D69EC6C549FCA7D60141A68B4DA8BF368FAE7",
+      "path": "BepInEx/patchers/ModTheAzureArchive.dll"
+    },
+    {
+      "sha256": "40E0A84CDDE41559FAF938828F36914FBA3261E841A5C08966B77438A9D72CE5",
+      "path": "AzureArchive_Data/globalgamemanagers.assets"
+    },
+    {
+      "sha256": "751FE5247A2B298D9D0E7508ADD90843A312BE07015D608385B2DE714670B7B9",
+      "path": "AzureArchive_Data/resources.assets"
+    },
+    {
+      "sha256": "88BABBE4154727C7604AD03DCFB1884B36A97C3AB207E50470DC546886C030F4",
+      "path": "AzureArchive_Data/level1"
+    },
+    {
+      "sha256": "D4F5B9E48C3CA691217DCD486648717261C9A56B6380273FA478AE0E41EFA258",
+      "path": "AzureArchive_Data/level2"
+    },
+    {
+      "sha256": "FE149FA7DBF7DFDDC05B2A105444B07A9470BC415C4DAFFA7C7897A0E48C0FA5",
+      "path": "AzureArchive_Data/level3"
+    },
+    {
+      "sha256": "AE7E40EC0E789C5ED1F78CC97314E84986750832098C1954FEAB1101A07724B7",
+      "path": "AzureArchive_Data/level4"
+    },
+    {
+      "sha256": "7EB9729C662A4B52314F2E89F88008634758488F606C494A89B1578C114522BE",
+      "path": "AzureArchive_Data/sharedassets0.assets"
+    },
+    {
+      "sha256": "D970754C0232F70E9BB998328CA02EA0ED374C09A4EC7DA570BAF1EC34AD62A0",
+      "path": "AzureArchive_Data/sharedassets1.assets"
+    },
+    {
+      "sha256": "23D1E2BA923B8D04DA32E880BA3DDD9274E74DB9A2C539DBA3542B1806B279DC",
+      "path": "AzureArchive_Data/sharedassets2.assets"
+    },
+    {
+      "sha256": "EDE9BCA5F66D1CE7C9661AFC0F0BB72D1FDE59C7AE6A182AE5FC5A9EF4DC9F4B",
+      "path": "AzureArchive_Data/sharedassets3.assets"
+    },
+    {
+      "sha256": "0D3D70B8F0C0E84AFE813848F92F6C4BB239DC0B270597F80E38541630910B71",
+      "path": "AzureArchive_Data/sharedassets4.assets"
+    },
+    {
+      "sha256": "B4AEEE165E7E10E0F46F85E095FD94487FDB041215F6DCB7AE9DE5D28A364F43",
+      "path": "AzureArchive_Data/il2cpp_data/Metadata/global-metadata.dat"
+    },
+    {
+      "sha256": "1E0630594EAB2A11F83DB76EB156E02CD35B95F548C1B38375462B7ABDB9C619",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "baselib.dll"
+    },
+    {
+      "sha256": "0720B89F6FF8499AB07E698097BD40B5343C2A0F2B757367D98286A1AC655777",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "UnityCrashHandler64.exe"
+    },
+    {
+      "sha256": "8C6CDBC38836DEE87E3368F5DE1994D7C0CCEBF29E4CE7ABA3C0981F9375412C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "winhttp.dll"
+    },
+    {
+      "sha256": "6C898933B52149E8BCF6722305C7E4D94ADD47C9E53B364096F91721624C0877",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/0Harmony.dll"
+    },
+    {
+      "sha256": "64B50030B34654F12805EC4D2848551E431C5F0BCD65CD70D6FE2845F715FB12",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/AsmResolver.dll"
+    },
+    {
+      "sha256": "045BCDF32427F9BD39BEE2620C470372583935C8E89B360931E467DD191D46D1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/AsmResolver.DotNet.dll"
+    },
+    {
+      "sha256": "6BA6D56BF5FD3DD18233B56606A7ED1D42B8C93977B5375716771BF13EA36A1E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/AsmResolver.PE.dll"
+    },
+    {
+      "sha256": "8246433A1A6FB4C012C1814ACEE8A4FF24F3A4FAC593569F6A1E343E68C9D8EE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/AsmResolver.PE.File.dll"
+    },
+    {
+      "sha256": "1EEFF8D76DDA5D65E5145AB0D43A3DAC672E096E5692C47E0382EBB3C7C817F9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/AssetRipper.CIL.dll"
+    },
+    {
+      "sha256": "681BA26FD356D9263FDF6AFEB1B8F8506802A9503FFA80C9D21E0C4A46743A28",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/AssetRipper.Primitives.dll"
+    },
+    {
+      "sha256": "902A6E284952AF51756914FE5A5972BE40D8C949F8C55E4CD3B7B0FAE8D49251",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/AssetRipper.VersionUtilities.dll"
+    },
+    {
+      "sha256": "352AACC2D5356489A00891F76DB28B6463C81D25BCB02F90035171A669B7E35B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Core.dll"
+    },
+    {
+      "sha256": "6093581EDD3F53F496D0EBDC1505199B3C88E7C8A965D506CF4305BC1173862A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Core.xml"
+    },
+    {
+      "sha256": "EC168752C9A885D9FE035370AC2DBD8B52B91B24CB60FBC425CFCBEE5436DAE9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Preloader.Core.dll"
+    },
+    {
+      "sha256": "F7E68941A96A6BBB42237B428F0B38077AC139597AC24C7CBB51E661F51AE3F1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Preloader.Core.xml"
+    },
+    {
+      "sha256": "8A15FAF3191BA107D6A4AC7C61B89E2E030A23B9E74D74773F54572BAA3A39C7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Unity.Common.dll"
+    },
+    {
+      "sha256": "D3164C64D07FFFBD4E5A28DD4A7201D4971BF15F5D471FC919D4707009FC9114",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Unity.Common.xml"
+    },
+    {
+      "sha256": "62C8246A3076BFE459EC80C482381228D0EB1DDE3434FE97AE5255FEF406FE72",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Unity.IL2CPP.dll"
+    },
+    {
+      "sha256": "EA4436344D4CC4C29F3382655C99828ACE3DF659107CB2E6B985227027E48CD6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Unity.IL2CPP.dll.config"
+    },
+    {
+      "sha256": "2604E65CC0501AD399FBC8DFDECC64743860A6BFC155E1A393156BC549BD1FC0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/BepInEx.Unity.IL2CPP.xml"
+    },
+    {
+      "sha256": "A7AE866298472BFA5176C1B5B71ADFA9FE6E2F1DEEF7B8D50F063C0E2C0BA258",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Cpp2IL.Core.dll"
+    },
+    {
+      "sha256": "40E804C35369825884534734725D06831A534759478C8D9F3F908D80779A1A93",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Disarm.dll"
+    },
+    {
+      "sha256": "8015DE7D867245A1095D13947A63763878E4CF5FD3D3089B63CC39200B055DED",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/dobby.dll"
+    },
+    {
+      "sha256": "18F9CFBFD10B479143A46B3E417CCFCE4A62D4C2770DA9ED12D553A0B326302C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Gee.External.Capstone.dll"
+    },
+    {
+      "sha256": "F058C01321B4CDFC9B9151879E88E59571C8D0BA176FBCF95BC936A8F3D073ED",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Iced.dll"
+    },
+    {
+      "sha256": "070E04F2276A8963A6D2A7EB52D43B644F3AE9AA3816C34541124D3862F1B37F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Il2CppInterop.Common.dll"
+    },
+    {
+      "sha256": "95364BF2686F50D114784E482A0E78C472F6A649D07EA31A075328B2B756899D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Il2CppInterop.Generator.dll"
+    },
+    {
+      "sha256": "F7612EA2E5A4D473B771F34EE3B20CF32DC0C4ECEA0185416474999A17FBCC07",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Il2CppInterop.HarmonySupport.dll"
+    },
+    {
+      "sha256": "65AB051A681C2C1E52DF7596FF738BE401AAE72CFF882FF18241CF54A3EA38A4",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Il2CppInterop.Runtime.dll"
+    },
+    {
+      "sha256": "DD3BD5417CAC3FD203B906A90DBAE6719136E61F43C2B4EED55F56242BB10A14",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/LibCpp2IL.dll"
+    },
+    {
+      "sha256": "769A59793D4B8885BBBFBC5AEE8F57A0D4E34D275C56C60C03994309B87F67E9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Mono.Cecil.dll"
+    },
+    {
+      "sha256": "61637F9940E5E336571CBF945BE0F36D6D6050E06288DF0F0232D93B26F0BDE7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Mono.Cecil.Mdb.dll"
+    },
+    {
+      "sha256": "A5249A04AD8FD7DFD47E4D0A620AED0F7EB6051E1DDEC102C541CA3E12F6E2A8",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Mono.Cecil.Pdb.dll"
+    },
+    {
+      "sha256": "273292BABD45F9F34DE5054BD9CDFE1D859A7DBF6F4AD5974FE4EAD70698ED5B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/Mono.Cecil.Rocks.dll"
+    },
+    {
+      "sha256": "CDD6E9F7BCDB98D2C002F63BFBE85AE80EA36261190A741E64283D769A6C6502",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/MonoMod.Backports.dll"
+    },
+    {
+      "sha256": "0081403BDCEF3340F78C7CCDED0BE6AE0507B397EE8B9980B44F01BF9F93AED1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/MonoMod.ILHelpers.dll"
+    },
+    {
+      "sha256": "1B3D55F53CB9F9F2550DAED4DFD300B247D71698A0ACE82BC7B9FF38D563594F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/MonoMod.RuntimeDetour.dll"
+    },
+    {
+      "sha256": "72A5B4249985873D7ECB160CBBED7A1E6540A38EE7618C72C64B9CB068C1438A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/MonoMod.Utils.dll"
+    },
+    {
+      "sha256": "A5B57607225A0EBDE049E93469F49E5B2D07A7D602A03864CE3A72CCF57103A2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/SemanticVersioning.dll"
+    },
+    {
+      "sha256": "280373B93A140395489D714703AC61F8D02C7AA07AC6E34024F8F0E26901325A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/StableNameDotNet.dll"
+    },
+    {
+      "sha256": "F837036E0DB02D6F3DDE76DE573FD9A847A1175D61818607E40C46952F5C66C0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/core/WasmDisassembler.dll"
+    },
+    {
+      "sha256": "95F3F8C883D0FD57D256A0D0CB2FA5CCAFCB9FF6E6AA21C9A54DD7FE74E9F0D2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/__Generated.dll"
+    },
+    {
+      "sha256": "E93B46667AF8387BA6A203DF50EA6D2E5E81516004D42B48683175734350A09E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/assembly-hash.txt"
+    },
+    {
+      "sha256": "EF75E32570095FBE2FC9C679A6C9FB0A55E0734B970026847DA140B80E3C5FF2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/BestHTTP.dll"
+    },
+    {
+      "sha256": "C787B14E53C27C6BCF431AB77E9C549D6D1E212872A1AEB7AD06B93865529C53",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/ChineseConverter.dll"
+    },
+    {
+      "sha256": "780191D7C243192F822FF17E8CD229DD5CBB3933E1961C8E056A4D5CCB28F4ED",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Google.FlatBuffers.dll"
+    },
+    {
+      "sha256": "1802424A26AACA2D91AC9EA980A4C55F1D6A6492666DB0C2BFFB5604382058D4",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppMono.Security.dll"
+    },
+    {
+      "sha256": "07AC56BC73CAFAAF853010A1A2418BEB47CEAA792C2CEC0FC8692DB65F90491A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2Cppmscorlib.dll"
+    },
+    {
+      "sha256": "4416C54F6DA9AB6A60DF55AF9EA566822015B8E1B5082BAF7702F45792507C4E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.Configuration.dll"
+    },
+    {
+      "sha256": "444D4B53EAAAC6C754D89FAAB912C0F09E0351E400412269BC23642B169DA156",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.Core.dll"
+    },
+    {
+      "sha256": "7F4A97CF99363F5A580A39E27AF745E26409D64EE2AE2326CE49A539056A2842",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.Data.dll"
+    },
+    {
+      "sha256": "446307BF85AFFDEC0D2793ACC507BE83C3D87E708879A0527548D3E9CEB16E67",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.dll"
+    },
+    {
+      "sha256": "A16218105D5240B558E9687B6B2A4FACA84D7DDA4B02E728902051A0EED993DF",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.Drawing.dll"
+    },
+    {
+      "sha256": "1F59552FF0EB853A4AF6F5E81402FA5CDC18F7D4BF7EC790C34DBB79848272AE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.IO.Compression.dll"
+    },
+    {
+      "sha256": "CEB08EA8DF66C1C400406FC445AEA71D9A2BB6FBECD1680F31723654DFA2FD5C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.IO.Compression.FileSystem.dll"
+    },
+    {
+      "sha256": "A8CA72EC34AEA2C6DF953B8FAC091C3D445BA91CE3F599891329D2777E3DEBF5",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.Numerics.dll"
+    },
+    {
+      "sha256": "55B83AA28D3D2EBE695F674AD53DE9FAE745AA746D2E64D3E0BDAF1EDF94A2AD",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.Runtime.Serialization.dll"
+    },
+    {
+      "sha256": "8CCB0509329F71834DE3B91721144380EDD260FDA65984349432ACAA26CADD90",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.Xml.dll"
+    },
+    {
+      "sha256": "4CD8956440BE3A4F5D4357148054E9BF8F581FCDF9B9DC4C8BEDCF0DDB897F0B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Il2CppSystem.Xml.Linq.dll"
+    },
+    {
+      "sha256": "0F287BB0F5E0F56CC189CF2B830C07095317548D13EC1EDD7A28C9AF81EAE638",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/IngameDebugConsole.Runtime.dll"
+    },
+    {
+      "sha256": "B1180FD90527A637ED7850FB75F83D7C0C1AD9FD0AE85617C048DBC912BB4ECC",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/MethodAddressToToken.db"
+    },
+    {
+      "sha256": "3DD210EB16D46A776B57192934A7FC7C7ED9AD55A7F80C43116E4B18A91D5580",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/MethodXrefScanCache.db"
+    },
+    {
+      "sha256": "B7130E45DA18BE0C23E09D8BEEA755A51F5FD612DB195B1578B8E9A34101760F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Newtonsoft.Json.dll"
+    },
+    {
+      "sha256": "7B3A47B5F20E2B790C6D9AF68D8616F885288BAA625C433464F1A258346BEEFF",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/SimpleFileBrowser.Runtime.dll"
+    },
+    {
+      "sha256": "91F09E4315E4DC263864DD0EC20531FD4C29291A2F4AB2195B315A229A33D096",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/spine-csharp.dll"
+    },
+    {
+      "sha256": "24A429A2CCAF22E76DD94BC2BC026E003275D6D069B148EF94F0BA76ED71E852",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/spine-unity.dll"
+    },
+    {
+      "sha256": "3A5F615AFFD0A0D0E4216E329F5D57843B2394E4D4B3F5B65D77498714C5E10A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UniTask.Addressables.dll"
+    },
+    {
+      "sha256": "2B88D79604D4194FF93EBEEC11C7FCAE0E605A21F97CB2DCB19F20B77315E020",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UniTask.dll"
+    },
+    {
+      "sha256": "1E6B12E0F565135DC55DF55599979243A13CE029725BB2CD2CF2772E3778359F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UniTask.DOTween.dll"
+    },
+    {
+      "sha256": "20555A1FFA14B5A5326A431A90A99B89EC54A5C81F1725916852C3A7C2210F45",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UniTask.Linq.dll"
+    },
+    {
+      "sha256": "D95EB44C15E1AD68216DA7BEE8C7C819CB2BF6F25BCB488F721983F98DFD3AD0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UniTask.TextMeshPro.dll"
+    },
+    {
+      "sha256": "06C6CD741D28C5B19C8D22620D16B10D30122ABF4F7FFF7EC5A21EDA92102B5E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.Addressables.dll"
+    },
+    {
+      "sha256": "BC899B82A43507B88EB16A1318FE51E97AD427B354305B69E4CF703ADBC0006B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.Burst.dll"
+    },
+    {
+      "sha256": "A29C0BA7034115C9DF5D23859BA011C2B0B0B40C77DDF0B6C9A453444D0BFE3E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.Burst.Unsafe.dll"
+    },
+    {
+      "sha256": "E18468D338BBA9FD7F4FCA5351C17382044911691A9166204197B8C0DA198CE2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.Collections.dll"
+    },
+    {
+      "sha256": "51DDF815A124886F19C8E3DD460AD1B89518121D6D97B1A26CD9A95A16A40CA4",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.Collections.LowLevel.ILSupport.dll"
+    },
+    {
+      "sha256": "09CC723C186B907B1C31E6D80E67E8829FDE84D5D27FCD85862CF6B7D82EE7C8",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.Mathematics.dll"
+    },
+    {
+      "sha256": "76F57DAFBF75C89465C4440355CE5549DB8EE7D062998FBF89BABED77C9A664C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.Profiling.Core.dll"
+    },
+    {
+      "sha256": "2E194DF85C3AB2436421F11D2295877B66C864150DE33811972B125E1B449FFD",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.RenderPipeline.Universal.ShaderLibrary.dll"
+    },
+    {
+      "sha256": "6AEDBA735F9E8FD91B8B679BE24EEDE3C76FF813FDFD381670FA73570C49CDBE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.RenderPipelines.Core.Runtime.dll"
+    },
+    {
+      "sha256": "1E475E8B56AA14DC8D1DA3F389DA9DBAEAF9FC77F2ADA616945FBF3BD1CD1FA4",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.RenderPipelines.Universal.Runtime.dll"
+    },
+    {
+      "sha256": "DEB4598E5EB03B0DAE8F165016FFF8DED4445542F8926330B249E969E40608F6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.ResourceManager.dll"
+    },
+    {
+      "sha256": "5417B57EAB7C3D2BDB5B1E415310DC270D7A8F6D3DA151FDB4F3C85B81102FD0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/Unity.TextMeshPro.dll"
+    },
+    {
+      "sha256": "3F7BC8E10D4DCC277E3A85AC4CEDD8650DEE3C098B16F58E3AA99D130BF030B0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.AccessibilityModule.dll"
+    },
+    {
+      "sha256": "12622570121E82DE67C374863AEE6A0D06C4FFC8F9638319634E67178FD035DB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.AIModule.dll"
+    },
+    {
+      "sha256": "DAE50BBE7C5EEE449F52821521AAFD771867528459E6E4F0E5199705E8904098",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.AndroidJNIModule.dll"
+    },
+    {
+      "sha256": "7BA489B1BBDD932EA2BDDC7EBE7565D1AAE90FA460FBCED2C0B82DB1002E676E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.AnimationModule.dll"
+    },
+    {
+      "sha256": "BE463FCBBCDD68D3228ED24ADA27284B0FF0424C582A5AA718796DF331FC213F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.AssetBundleModule.dll"
+    },
+    {
+      "sha256": "A267F271C26E2072B46318C5F537185D5C09AD618D5EBC50D81BF14A0FDBEB07",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.AudioModule.dll"
+    },
+    {
+      "sha256": "EAA8A58D3DF659393A71F21C9A893A8A5399476D42C03E4ADA4002B07E4D1650",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.ClothModule.dll"
+    },
+    {
+      "sha256": "5A847D54BD982C95207D7C0E5E2C68FC3E2255D1B4C47562BAD3499F7F28F7BD",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.ClusterInputModule.dll"
+    },
+    {
+      "sha256": "1D0FFA2A26C9998AC53FA431FA7C9110A52D1920B2A8C68AE44FB95D6A9BDF4A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.ClusterRendererModule.dll"
+    },
+    {
+      "sha256": "377AF0473B46FD4384A07ADA55EF9E5863E6872108B60D9BC8D33525EE3A2304",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.CommandStateObserverModule.dll"
+    },
+    {
+      "sha256": "1D7F71556C3F79DE0B8B2BD09064F3786DF8631DF7197504B58A1B82C9E8F465",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.ContentLoadModule.dll"
+    },
+    {
+      "sha256": "FD65570BC81061E45FD9CE3BD162CD5839E0EFB8F4D76F6902EAD8232CD69E69",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.CoreModule.dll"
+    },
+    {
+      "sha256": "A0E7EA47647601B6076F15A77103B2C159DC5574E2A9F700CEA53708C62CE322",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.CrashReportingModule.dll"
+    },
+    {
+      "sha256": "3387382F347EF9FC85CDA6A011073F577BEF5F9A108C46A1A967CEC076A09D8E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.DirectorModule.dll"
+    },
+    {
+      "sha256": "D3EE1C4BA47673E3ADDB75D53A21892610079E9DF46D54F2B3C400E21BA23AF1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.dll"
+    },
+    {
+      "sha256": "0A081E6C6FF1B1D3F73A366CF058660FFF7CFE99723601A7E4EF5986F8459FEA",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.DSPGraphModule.dll"
+    },
+    {
+      "sha256": "14CBD540FFC4F1E4D87A5A3DF79F147DD4C0C52F44B178B8C68264EFC24C1777",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.GameCenterModule.dll"
+    },
+    {
+      "sha256": "A5FACEBF406DAAEF4B8FBB7DE5578C7EB681111BD36586935E0D288DAAEE3728",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.GIModule.dll"
+    },
+    {
+      "sha256": "48977FFF4EE3E15CC8F997BB0F412BC835B7E574D2A1E504CCDA4104AE9B5D65",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.GraphToolsFoundationModule.dll"
+    },
+    {
+      "sha256": "3DCEA4FD7D74C72BB20892D148D8776763651AB2CD28C774DFC9179443738D52",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.GridModule.dll"
+    },
+    {
+      "sha256": "D244D98B9DFAB355FE6C3323D8393DED55059C4CCE6D0DAC932FAA9750B9CBBE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.HierarchyCoreModule.dll"
+    },
+    {
+      "sha256": "458CE04093F6F341D60C3489F2E9DA05B6A0E3E9303744D4536A044ADA345344",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.HotReloadModule.dll"
+    },
+    {
+      "sha256": "C1DE4B14B17C619489C155E2F30D3796BB65115E1CB8A4956B264ECB65A63E42",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.ImageConversionModule.dll"
+    },
+    {
+      "sha256": "6C7E52E628735289F92959F47735250C1A616139939FCD7E5EEAD5CB1DD3632B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.IMGUIModule.dll"
+    },
+    {
+      "sha256": "DFCC2E4AE213ED50C44CAB3D6348C45ED461A4EF31126C33E0FF5744CEA67D55",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.InputForUIModule.dll"
+    },
+    {
+      "sha256": "35E5C2DE4EBF07A53245F4387D879FD0591BA9F4020E637AB2AA76B1455A1D28",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.InputLegacyModule.dll"
+    },
+    {
+      "sha256": "EB47C0C4F67EA6E3974C4510E8058E5296E7E3D7AE865136679836FFE5B9E99F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.InputModule.dll"
+    },
+    {
+      "sha256": "F36046DA0EECFC3D065EF21B47FA0667C2136F0F5689614FA97515C62D5B6036",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.JSONSerializeModule.dll"
+    },
+    {
+      "sha256": "1138999489689BCAB6F039B8FC53C422F3FDD41FD7DC3E6746ED7CB603E33255",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.LocalizationModule.dll"
+    },
+    {
+      "sha256": "941625C8B0B0293E531246757D5B7B4AF7F15FB2DEFD543477128F99BEDD3640",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.MarshallingModule.dll"
+    },
+    {
+      "sha256": "3DB7D5D046B59D06CFBCD996474A2163C8F008358787125EDFF4E0F7F7F6FD61",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.MultiplayerModule.dll"
+    },
+    {
+      "sha256": "4B3B1811A2C6B2252F3537F2E313B5D76733F078E8A0DD64BD1631FDFE8AF05B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.ParticleSystemModule.dll"
+    },
+    {
+      "sha256": "6DDD644D158D0F95D29AC84A40434B8995292F0978F4273D34469247AADF4601",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.PerformanceReportingModule.dll"
+    },
+    {
+      "sha256": "AD47944BB409878AF9C3DF3F8BD205E083F9BBCAB33091D1269A67F933A8CEA6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.Physics2DModule.dll"
+    },
+    {
+      "sha256": "BA019D8B957E1003FE70633E0CAA23CFF3A12C6EB876B6F35ADA93F367CB5E3A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.PhysicsModule.dll"
+    },
+    {
+      "sha256": "F753512BF33BA1BA37121369BB3286F029672545A8B633519BB72761D2B95959",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.ProfilerModule.dll"
+    },
+    {
+      "sha256": "9F82B039A475BE79476C6993792973C1EDFD68964191BB39AAF88E56FAD0443B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.PropertiesModule.dll"
+    },
+    {
+      "sha256": "5BB1BF7F282E47CBE329C9E1AE62E6D5F045923D6C88CD463AE010124F9FA20E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll"
+    },
+    {
+      "sha256": "2BEE90A57DFBE114E323D61B13E5C984A58AA1491EB0618BFB6E3B388A80977C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.ScreenCaptureModule.dll"
+    },
+    {
+      "sha256": "2B21DBE7509BCD3722C728A1F4859FC4427797BC91BDC19EA0A75D2C61931CC5",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.SharedInternalsModule.dll"
+    },
+    {
+      "sha256": "BD8CFA4CD1B633399B653188C3DDC599A551D451CE32D666C2156439E4FBB4E6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.SpriteMaskModule.dll"
+    },
+    {
+      "sha256": "31D82D48F43C2CF369C3870BA79528FF0E29D0E3D2D35FC042D82C035DFACCD6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.SpriteShapeModule.dll"
+    },
+    {
+      "sha256": "73C4398050B0B1F1E75826C7E6DA1D25960BA8FA2E35DAAAF1D3995EFA211173",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.StreamingModule.dll"
+    },
+    {
+      "sha256": "F179BFD53A3903DDFF7DA878BD8B4569F589DA09A0EF8D60D68D6181314A92BA",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.SubstanceModule.dll"
+    },
+    {
+      "sha256": "2A8B4BC4B5692A7360A182D37F27B64F44FF73D494D4302EC7E77635E4E6F5E7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.SubsystemsModule.dll"
+    },
+    {
+      "sha256": "EE4AA0CC2FC2BB541E6A6DADB9D62F0E31404255270E495C825C51B95737A158",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.TerrainModule.dll"
+    },
+    {
+      "sha256": "3E0D278C2191942A09CEE145D7C2BF5FE82695095EBB405439D39008DA8B79F9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.TerrainPhysicsModule.dll"
+    },
+    {
+      "sha256": "6E952C89232F41574C33EE2D940A480654478681CDE811E81E924C935927B566",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.TextCoreFontEngineModule.dll"
+    },
+    {
+      "sha256": "C72352F0B479C4A5EED0154EC0D75B6B586B885E640934A287F378AA18CD13D5",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.TextCoreTextEngineModule.dll"
+    },
+    {
+      "sha256": "47950E3CB970EE1692FD95F319427655DCA08D806B63B49C4DEC8952794BD2D3",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.TextRenderingModule.dll"
+    },
+    {
+      "sha256": "0A499B8029F1A2D26A1A8587F610DCFA91A09575C013EA19A6840573F803CDB0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.TilemapModule.dll"
+    },
+    {
+      "sha256": "838F5D4B2E81797113AFFA686ACB9669CE3AACA3DFFF0D62A85B86D444837EA5",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.TLSModule.dll"
+    },
+    {
+      "sha256": "D8268787B9DF6AF471D9AD97BF7AA9ED80C9E595F4BFDB29FDF25495EB17E341",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UI.dll"
+    },
+    {
+      "sha256": "54AD16798BAB32FBC96E51FBB921745CC8A466E1A593A7BCDA6E763BD90D9C37",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UIElementsModule.dll"
+    },
+    {
+      "sha256": "82A0941984C4E2CED9CA822AE577E8492B96F70ECC2302315DEECBE5E9192A9B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UIModule.dll"
+    },
+    {
+      "sha256": "80D8F1A56D8621C892B05C1223D77F4738365EED9219E53D0DAACD82740CA9EC",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UmbraModule.dll"
+    },
+    {
+      "sha256": "94BFCBF4D230E38A98C1C1453B4A4EDCF9B1BD617DAE35E861903315E8B76FE7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityAnalyticsCommonModule.dll"
+    },
+    {
+      "sha256": "3B47A99A4DAB6554B3242B5B3F577690E72EB1E1B045442481927CE933B54430",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityAnalyticsModule.dll"
+    },
+    {
+      "sha256": "3BEFF4F8EB71F69D8A4E80E41FE1F7D23913AA01498B25F43D8909E092469B8C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityConnectModule.dll"
+    },
+    {
+      "sha256": "36CD47C49B1E1126886D857F61404F85C4ED378A45BF8E7809BAA343A19EFF96",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityCurlModule.dll"
+    },
+    {
+      "sha256": "64AB102A548810ABADB8F38D390FA4C6DDA6F41B461914B82D680892C41E482B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityTestProtocolModule.dll"
+    },
+    {
+      "sha256": "913F2751494EDCD47F86BC495ACBD36147BD97F981AF2FEA4821E5A9C2CF7C3B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityWebRequestAssetBundleModule.dll"
+    },
+    {
+      "sha256": "157F9E1585767DA1FF998D135DA7E1D23C3A22B29ED3590106226AA9C7527D0C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityWebRequestAudioModule.dll"
+    },
+    {
+      "sha256": "C7082A228C543B3869F2C233590AC0CAE6243F2F1FEF5D291812FE1337B37F2D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityWebRequestModule.dll"
+    },
+    {
+      "sha256": "F65AC4CDEA03735F0C3D0104E092E4B886365A8F3FFF35DFAECA36B5F2067D7C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityWebRequestTextureModule.dll"
+    },
+    {
+      "sha256": "D4C937AE92670D2BC36CC9EF5E8D86FF1EB5B990E85751F54A4FAEB4F1B69371",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.UnityWebRequestWWWModule.dll"
+    },
+    {
+      "sha256": "D2119B04FA4C5E3AE78764272C67EE3EA5C443F895CD7E778458976E5E49D276",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.VehiclesModule.dll"
+    },
+    {
+      "sha256": "786715CF59FD5D206F0250017867627764FBC26E095AEFB653969788AF86A03D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.VFXModule.dll"
+    },
+    {
+      "sha256": "C0C9E71655B0E7882D128F47D728D999B397A881575EA57506DAF1C5E86387B7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.VideoModule.dll"
+    },
+    {
+      "sha256": "4BEFFFED5F2BC750ABE4E8989E4BFB08690089E01DFA3A80A31B130BEB0E128C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.VirtualTexturingModule.dll"
+    },
+    {
+      "sha256": "F6ED4CB39C1F915593B5CB98319BBB86767E1DF298614C4E095BC697E621EA53",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.VRModule.dll"
+    },
+    {
+      "sha256": "4BD6F42F715B4FE4D2DF146F3DA1F4D9A0AEDAAC52A44DB763043D494288BF6D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.WindModule.dll"
+    },
+    {
+      "sha256": "5A13418446CCC959EBC3A72A2EBA69896D85FB492DA443EA240FE1134C4090B5",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/interop/UnityEngine.XRModule.dll"
+    },
+    {
+      "sha256": "F252E994E34039220993B27A0B6A047A54764ABEC3300144F81597B24D15D4B6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/2023.2.22.zip"
+    },
+    {
+      "sha256": "8147489196C166D7B9D8BCBE8A6BB010C064E4744FAB281903D0E758F1C6D8F7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.AccessibilityModule.dll"
+    },
+    {
+      "sha256": "1111292643785DE1D94DA94A9536BCDF199234307AE9452694F3A2502113FDEC",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.AIModule.dll"
+    },
+    {
+      "sha256": "0A9E7F5D8493D7C7F2B9DF84F0A0229B6180A7EC1F4524A38282ECEF2A6B6EA0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.AndroidJNIModule.dll"
+    },
+    {
+      "sha256": "13854223569929C008952B58D270B3C5FC2FEC513A80656F8840C716B820886D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.AnimationModule.dll"
+    },
+    {
+      "sha256": "2DA252855D35B9763EFA83B44835DE9C19738680CC40C9F6D6A5259E7AFE1E20",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.AssetBundleModule.dll"
+    },
+    {
+      "sha256": "E176FD399A244C52A8F3761A2CF32E6C29C6841D1E297C17ED479EE9E5C029A1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.AudioModule.dll"
+    },
+    {
+      "sha256": "4C9CD4E3960B491C451030089BBD0AB29F56E430CD3B63BB1252917DFC7C77EC",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.ClothModule.dll"
+    },
+    {
+      "sha256": "06F32619ADD8CD5A3B8833CAE20FE8BC1B3654D4B812D04019632E7BE410FAB7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.ClusterInputModule.dll"
+    },
+    {
+      "sha256": "5EB8E0F49A193414F3FA31A31F57F05BF954E434AC2CE6AEF56A265BD3C57115",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.ClusterRendererModule.dll"
+    },
+    {
+      "sha256": "A9996FDD48F6D82BEBA23F10027913BBF017804EA6129481503B176FBF3C1EB4",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.CommandStateObserverModule.dll"
+    },
+    {
+      "sha256": "708BA570C625C17B3855FCFCCC3EDE2327F8CB8316F9CDED1E9B6FB82EAA2839",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.ContentLoadModule.dll"
+    },
+    {
+      "sha256": "2EBBC57D323AF190C08AE75919D45C2BB420AB32F334B72F050A937AB8DC22AE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.CoreModule.dll"
+    },
+    {
+      "sha256": "CFEBF9CB0C40ED1D483D06B9FF4BE09CC7E0A603CC0ACC34C886BFC3827F6750",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.CrashReportingModule.dll"
+    },
+    {
+      "sha256": "B3AE52B2ABD748DD499F0EEAE797D889A2CA0D467EBE4ECDDDC006681B8914F0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.DirectorModule.dll"
+    },
+    {
+      "sha256": "DDDDB080E8FDEFF79AD204CC9703108C81C1F4BC5442FB247940EF6077DCF74F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.dll"
+    },
+    {
+      "sha256": "17E6D46436D521851645EAC0C40F0ED1A2E929918FEDE4464CAB11DE4C432584",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.DSPGraphModule.dll"
+    },
+    {
+      "sha256": "42F1114D209A63D560776AC1CA167C0276BDBBB7D08DAE36B836A598CBB1576C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.GameCenterModule.dll"
+    },
+    {
+      "sha256": "030FB25095C066F66077DE268D391197C39E6C7251F25C0AB8DBBE502CCF06D9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.GIModule.dll"
+    },
+    {
+      "sha256": "0FFF182B3ED8D0D8BB8749449F119A78076477E19882887D54929CB86459F33D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.GraphToolsFoundationModule.dll"
+    },
+    {
+      "sha256": "A460013514E6C88A3BDDD79CF61419AE06B60757C42D3E1F1B2B881346F13407",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.GridModule.dll"
+    },
+    {
+      "sha256": "88566F5303DDA1B4DE9CFDD4BB25AA76499B727DDBCCAFE48D4C7BD923B82C25",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.HierarchyCoreModule.dll"
+    },
+    {
+      "sha256": "19104D0B6DCD11BDC693C5400CBBE065F7DCBC24CEFBCED24CAD02E4724AA93D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.HotReloadModule.dll"
+    },
+    {
+      "sha256": "BF82A3615F86F1DB95D4EC7177C6AD5045556100B506A353228089A6ABD58EBB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.ImageConversionModule.dll"
+    },
+    {
+      "sha256": "0956E67829FA4198A9AB62A3BE30586ADBD1384DE47893856967E49F1DB3A009",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.IMGUIModule.dll"
+    },
+    {
+      "sha256": "91A40BC13360C61B2D22A3CFEFB7224F520E3E48FF8E495CE6E3F17968D5CC9C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.InputForUIModule.dll"
+    },
+    {
+      "sha256": "480C26C43884369D097945786C785BCBBDABE61E65D2C2B1D4D40EC7C504E9CE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.InputLegacyModule.dll"
+    },
+    {
+      "sha256": "F556BFAAB46FC5BC747D792795600355D4AE9CDD3E55A056E0D9AE97A94C1F28",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.InputModule.dll"
+    },
+    {
+      "sha256": "BE34E0D873A5E6FD2FF1F7F07F5A2744B4B3FA6CF2529A2930E2EA37DAFA45E0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.JSONSerializeModule.dll"
+    },
+    {
+      "sha256": "07EAA3B63978A541E99CBA2790C2740091CDEC8A9D08D7B5415FD0EE7F37A5D3",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.LocalizationModule.dll"
+    },
+    {
+      "sha256": "4B8398176A1420ACE630D39D7B1CC2ECFD18AE9BB60647B2F87562C5C6C2567E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.MarshallingModule.dll"
+    },
+    {
+      "sha256": "D25B1D3D5E4E8AB039E9D1C46E22B0DF5B58E23F97D2CD6D4B66EA6172E96D25",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.MultiplayerModule.dll"
+    },
+    {
+      "sha256": "C996F6AAE0D62D2C2D76882D38D956528CC911E5F14FBA41B005705927B6B2F0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.ParticleSystemModule.dll"
+    },
+    {
+      "sha256": "548D391428CB7AE97425EFD3B0C7D0DAB7F0641269A5F8CC7646251BF1612164",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.PerformanceReportingModule.dll"
+    },
+    {
+      "sha256": "86BE47A80368718961A691269798E29D25D207A5DBC81EC00DC648FF4E59A52E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.Physics2DModule.dll"
+    },
+    {
+      "sha256": "F238BAFC9B989FF2BBC779144BF7A2464E572AD719F8894317A531510D94EFA8",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.PhysicsModule.dll"
+    },
+    {
+      "sha256": "EE1BA648E45A1B351C76AA47260BF3F5FC89AADF5C16A0C908CB0D8459C212C0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.ProfilerModule.dll"
+    },
+    {
+      "sha256": "6D7DB7368729BDE048DDEC71F9DB5CF8C7C34BAD94C49AB49914D5EE6B94EF61",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.PropertiesModule.dll"
+    },
+    {
+      "sha256": "9F109BF6923CA946E43EF686A1FF20A053E7D9A25CF9D1EEE2C367ECCFBC67DC",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll"
+    },
+    {
+      "sha256": "5C723138E6AE59679C3CFA0E7869B9A2AB17080D3067BCE9E3750AC86F083E5A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.ScreenCaptureModule.dll"
+    },
+    {
+      "sha256": "149B58552A5ABC41B56A428D55A903B60ABCD6BE1993380A1DC9A1FB0E910857",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.SharedInternalsModule.dll"
+    },
+    {
+      "sha256": "50A434FFE3287C16EE6F96CA0379F3DF4BF25E8E9540896C65F9787998D9A423",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.SpriteMaskModule.dll"
+    },
+    {
+      "sha256": "DB11A6EEB81A6726CE1D13F71698005E7901007F22E0794ADC036FAC7B755DDA",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.SpriteShapeModule.dll"
+    },
+    {
+      "sha256": "EFFDCA609ED1D0FC0AD1F971833E819176D9924A5419AFA98CC8932F75C65600",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.StreamingModule.dll"
+    },
+    {
+      "sha256": "929EEDB4269581CED745ACAD7B91A05C3339A44984119BA7484FAB5D8A349E96",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.SubstanceModule.dll"
+    },
+    {
+      "sha256": "17D7CA99C87F017E846FBB41E5498DF859938A984A741AA1BB2649A11A53CF62",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.SubsystemsModule.dll"
+    },
+    {
+      "sha256": "66F02CB4DE8FC2C166F760163068C56E548EB8BD4154DA22E4D3017519B4E426",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.TerrainModule.dll"
+    },
+    {
+      "sha256": "28DE4E096BA2AE924F3F59150B320531CAC620EEA176FE53D863925E4772FEDE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.TerrainPhysicsModule.dll"
+    },
+    {
+      "sha256": "DBAA932D7850A7B704AD80BD6F961B29F16BA768F9119D0C70055770678BC549",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.TextCoreFontEngineModule.dll"
+    },
+    {
+      "sha256": "4EE24B8125C58176E51310EA94144DD3EF57CE433BE2DE5035C739F38EF765B9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.TextCoreTextEngineModule.dll"
+    },
+    {
+      "sha256": "26A2A983C4D62074A8D6B6DD348EC3F27BDC78C7DA406CD4029A9EDACA0DB306",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.TextRenderingModule.dll"
+    },
+    {
+      "sha256": "5BAB2BB63211AB7E06FEAEA1E6F509BF217573727AD3A5F4B6E31368627D22FB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.TilemapModule.dll"
+    },
+    {
+      "sha256": "4D9744E1E67DE9CAE2DB06026C2A8B932FC4CC51C3A9896C30C6366E2A9800AE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.TLSModule.dll"
+    },
+    {
+      "sha256": "ED324590738EFF853737640B8C31F94EADEE8F496502F240B947C09006D890DC",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UIElementsModule.dll"
+    },
+    {
+      "sha256": "56862C20B09F7505BD4B293D883EE4C0D4A3962E4B0DE32CEAC7F29B0EA738E9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UIModule.dll"
+    },
+    {
+      "sha256": "0A922055C9C5CA8C9C1E07D73C82EFF9A720716EC070C88203BBBEDD17BFBCB8",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UmbraModule.dll"
+    },
+    {
+      "sha256": "E38245A5478CC75A3FE9F54CB665A8036A87FED3969918BED14AD0C367B0C66A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityAnalyticsCommonModule.dll"
+    },
+    {
+      "sha256": "B3F6C6A49F158AC7F820F1916D004B908625218359CCA721ED70524F6A929F08",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityAnalyticsModule.dll"
+    },
+    {
+      "sha256": "EA6515D744A3E9FF691F43F13CB045615667DB57BED17B2527C1A3F42EE987B0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityConnectModule.dll"
+    },
+    {
+      "sha256": "1FAADD0DEF97C5B980E89DC721F66969FF781521E8D8E33A9C7DFE89CB1B078A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityCurlModule.dll"
+    },
+    {
+      "sha256": "75CA1A1051A518832CCC113D633A0455CF686568AD7B923ECE0631D49A51AE24",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityTestProtocolModule.dll"
+    },
+    {
+      "sha256": "9C1BCF19C862F31097D23197F3EA3D2DEE60DDD61969D4BD46C5DE956ACF2723",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityWebRequestAssetBundleModule.dll"
+    },
+    {
+      "sha256": "E93EC0EC524073CE84EF6AACDC10D5F6614114B76F8E59F78CF06DFC314FFED1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityWebRequestAudioModule.dll"
+    },
+    {
+      "sha256": "3309FCA1F99D760CFB34AD2430BE26E91F3D74FD7F355127EB4C2E9A369F27B2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityWebRequestModule.dll"
+    },
+    {
+      "sha256": "10E941065BB869BED285D7A9B785760C9AF2A2BA71CD0475AC7A42F7DAB8F71F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityWebRequestTextureModule.dll"
+    },
+    {
+      "sha256": "7693FB393884B08AD9A2AF3BD8E246B96474F01F1B153A5783D5B25303E5B571",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.UnityWebRequestWWWModule.dll"
+    },
+    {
+      "sha256": "FCDE327F942833A3A9FCAAA9A425FBB77ECBF8D590E5A96BCD3559B50BAF3032",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.VehiclesModule.dll"
+    },
+    {
+      "sha256": "7818E99E7E0A82C63D42E2BE12D352493C3E46E8A08157C09414A1867F5C848E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.VFXModule.dll"
+    },
+    {
+      "sha256": "9B2C7CF7BDEC932D5BC139C92A3FA70EC6FEC20CFD35A1B045413416B0610076",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.VideoModule.dll"
+    },
+    {
+      "sha256": "79E9BA8744118468745B29FA32CF5DF6DC7E598F90CC1AACFB7F579789B6E3E2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.VirtualTexturingModule.dll"
+    },
+    {
+      "sha256": "41898F7E4FB8EC5135C960F98A422D17A889C658E5DC4F5799164F62EFC23444",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.VRModule.dll"
+    },
+    {
+      "sha256": "993FD04E201EB420B4DA0D2DB101FFEC0933D75C88E4F5BAF80D99D951BCA5D6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.WindModule.dll"
+    },
+    {
+      "sha256": "9FD353BDDCA8CA7E2E857CE5EEEA3EAD8300321CE2F7022EAEF8D9D6E0DFAAEB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "BepInEx/unity-libs/UnityEngine.XRModule.dll"
+    },
+    {
+      "sha256": "4052AB33B00D0411FC9CE103AC9D51564CF8630FDDB7464D82DDCC168D4D302C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/.version"
+    },
+    {
+      "sha256": "825E796BA50A5656B80AEFD3B53E44585F0CAA33C46AC115BAB0E09A67501354",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/clretwrc.dll"
+    },
+    {
+      "sha256": "6521495C6C1D0EB29402FA4A79667036D56BBFD902DAA4E7F3FC89A1C079EA54",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/clrjit.dll"
+    },
+    {
+      "sha256": "04377968C540F704AAE92ECB0EC9BBFD5FDDFE226DFCA30AA3EEB52006A44FD8",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/coreclr.dll"
+    },
+    {
+      "sha256": "8BA04CA88CDBB7ACEB134C12BD67ABD7FB2864C4008495F8224A084B9BA74C93",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/dbgshim.dll"
+    },
+    {
+      "sha256": "3EEE1BF88ACDAC74AEDEA15EB4BA2C4410D2082184266CD929C1310462115095",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/hostpolicy.dll"
+    },
+    {
+      "sha256": "5705D245072D3EB78400547B32147DBB6E2C8B02BA8BDA76729798F5EFDEAECB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Bcl.AsyncInterfaces.dll"
+    },
+    {
+      "sha256": "316A247FD993E03F0A4D1E7ACB89DC5BC602555B7078BFB60E11BA2E24D960C6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.CSharp.dll"
+    },
+    {
+      "sha256": "3AECC22ECECF784182883EBD2C2BF60BCDB25CC209DD64C32800B845EE8966E0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.DiaSymReader.Native.amd64.dll"
+    },
+    {
+      "sha256": "9CCD830351AA28BC683D4F8D1CEFD9E724161F972D25BFB64EEE5BF55C48C5E3",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+    },
+    {
+      "sha256": "2AA8182B5356A8CC5C35FC3641A87E814857D8D9BE399AC78F260343754D09E0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Extensions.DependencyInjection.dll"
+    },
+    {
+      "sha256": "D575C9D1543CA726CE14DBDFFD103E93EA527CD46BB28316DA1F4122DBC55D56",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Extensions.Logging.Abstractions.dll"
+    },
+    {
+      "sha256": "183650081B551DFAD967A7CBF79946A229CB79458B8D04A12DB7C44B03BB9AB7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Extensions.Logging.dll"
+    },
+    {
+      "sha256": "786112CB2F6646EF1170219A8C0BB813C9F14A6781E67C6266414F55A679565D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Extensions.Options.dll"
+    },
+    {
+      "sha256": "8CE9A85927EC7507B11FFE90080E7A811D51304A9E8B1DA20C350159BA403902",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Extensions.Primitives.dll"
+    },
+    {
+      "sha256": "879DC0CB9C9A7A41681E399FC4F18C15EF1AC9A3410F68B94A8D13DD0C6C391C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.NETCore.App.deps.json"
+    },
+    {
+      "sha256": "1B7AA545D9D3216979A9EFE8D72967F6E559A9C6A22288D14444D6C5C4C15738",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.NETCore.App.runtimeconfig.json"
+    },
+    {
+      "sha256": "5897C9FC711AEB67F0C0CB1DCF205035CD48EA6AA6E8C9A9DFD99874E7EF9EB1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.VisualBasic.Core.dll"
+    },
+    {
+      "sha256": "2EA09B137ECA6D0AAA01FC6746B56242F9BD4F9659A7FCDC78E64162D58752BB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.VisualBasic.dll"
+    },
+    {
+      "sha256": "E8F2611B0CDC077D5600CCE9E02C1BAC42A54C3574F6DC16C478B3E6A0AE217C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Win32.Primitives.dll"
+    },
+    {
+      "sha256": "E927CBBA4F097B165BC07B85DC8E6B8BAD6DF17FC1035F2AB54DAC844BF9C922",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/Microsoft.Win32.Registry.dll"
+    },
+    {
+      "sha256": "0CECEE158F8B762C8A3610A91CA099ABF7FB834984803EC7D4E0BAE09CCEC173",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/mscordaccore_amd64_amd64_6.0.722.32202.dll"
+    },
+    {
+      "sha256": "DD2DA6E841155C8869A68270D951246CBFE67943BB71082121FC5EA3D5439661",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/mscordaccore.dll"
+    },
+    {
+      "sha256": "ACAB4F32FB8CE65F535B2096C4556962DD271D40000FE688F19A04BDE93A2080",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/mscordbi.dll"
+    },
+    {
+      "sha256": "17D4B3D640A611585C6BAC2DADD22F76A68A667AE0CC90C446EDE02EDEFB506D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/mscorlib.dll"
+    },
+    {
+      "sha256": "587FB8810E8DED0BD1B33C4A8281EA2F288C58C1DD62AFCB33F30433F04B124E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/mscorrc.dll"
+    },
+    {
+      "sha256": "4101DCF2EDC42417FDC3F7DB048442BA0B0A05D376CAFA3ED6C85E1DC6B3B9F6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/msquic.dll"
+    },
+    {
+      "sha256": "2666C3D2972E95B2306CFAB72DFF26704CE89F1A25B55BA05DAEFAC2F7654575",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/netstandard.dll"
+    },
+    {
+      "sha256": "50646E8365BB6774C96843E2050607DAA727FE01C5AC0DC33F20078BBCA17800",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.AppContext.dll"
+    },
+    {
+      "sha256": "FCDD06FC669315988D2A27A6A2E78DEB03DFB5550C277B328D90A8B26ED81ADF",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Buffers.dll"
+    },
+    {
+      "sha256": "1314F85D88A247A8D3FC4A41F1735AF31E5E0C5324E93E3B167B331B46DE8019",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Collections.Concurrent.dll"
+    },
+    {
+      "sha256": "628A180F7C368A1011608B422DD1C8DE37064F21B59CBC26BD62E9B065C2E7BE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Collections.dll"
+    },
+    {
+      "sha256": "89743BC3E0B95132470C2C699ADD5CB5466FE7FB938725E09612B9BEE526EB9F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Collections.Immutable.dll"
+    },
+    {
+      "sha256": "AAD04CCE314CED4070B457A1638FA9BD85160B4148582483B4E317D7F2F92CEB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Collections.NonGeneric.dll"
+    },
+    {
+      "sha256": "6B3143AB53EF90285DB5C30DE82EAB03A78FF83CC53F62730408A3EB593FF026",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Collections.Specialized.dll"
+    },
+    {
+      "sha256": "C72AA4EFBB17D9C5C8BC03A69B963644652DA5B5B5B6CC8489D75379026511D2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ComponentModel.Annotations.dll"
+    },
+    {
+      "sha256": "ADE682D3E52B24E47D7B14B1E71AEB8DFF77F5063006E5CB1BF0CAF03629DB1A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ComponentModel.DataAnnotations.dll"
+    },
+    {
+      "sha256": "69E9429B032C853FCABD9DFC3BDF13701AC8C730CA40E1AFC949F935932846CD",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ComponentModel.dll"
+    },
+    {
+      "sha256": "F2533CB4E274CE9DFE702EA34AFFB2E32B220EE714FB8DC118B2339519227131",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ComponentModel.EventBasedAsync.dll"
+    },
+    {
+      "sha256": "ADAC36FEC73388CDBB349527BD81B84C0B88EC2B381B81CC97EFB4549CD471FD",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ComponentModel.Primitives.dll"
+    },
+    {
+      "sha256": "7126B16695D5A2E4A593CEC1B7CAB8EC10DF5CBD9F31F5FF7CC25671E41E82CF",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ComponentModel.TypeConverter.dll"
+    },
+    {
+      "sha256": "2C724A2A5B4E6926C5EBB56ADB3F33F27067E2E3D319E814A8537B9A579B32E1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Configuration.dll"
+    },
+    {
+      "sha256": "82F483F5B349F8F4F0BC6C651D1FAA2E78DD3F01528DC72C7AC387BA7246AE06",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Console.dll"
+    },
+    {
+      "sha256": "8B05CC2DFD7491B709CAAB31C5FA5D58DA1BC321210536360AD20D19BE39E508",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Core.dll"
+    },
+    {
+      "sha256": "48D8145EF5E96C016ADB303BD59A34BACDA6F94BAEEDD9DC548DED61DEFEBAB1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Data.Common.dll"
+    },
+    {
+      "sha256": "0F5E8441CE28F0771F8FDE9A5D1C6B65E6E25DFBF2C1B24420C2DFECE3A29631",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Data.DataSetExtensions.dll"
+    },
+    {
+      "sha256": "5566075CDA9658C248D506AEA051BCC120C94005BF14CF4BCC1B23FA7257F9EE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Data.dll"
+    },
+    {
+      "sha256": "ECCDAAAC1B9F2AF83A9F6B49786996D334F6CE7133C1C37C4647065B49EA8A63",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.Contracts.dll"
+    },
+    {
+      "sha256": "606E24A3BBC11942914FF4F60C3007FA737E0D5A2F4A5C021E0238F5403B66FE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.Debug.dll"
+    },
+    {
+      "sha256": "A939F33CCEA3A6731FDFB7791D32C3B518864F243211E39B6156DBB21CEB04BC",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.DiagnosticSource.dll"
+    },
+    {
+      "sha256": "B9E7B0073C546037A4F28439E8C3800C93F442E22CA706790D90AD71E7C319B6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.FileVersionInfo.dll"
+    },
+    {
+      "sha256": "98C318970936E1AC79CDE888E4CBFA455D91348881931FEFA6C84A2CB084D5E3",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.Process.dll"
+    },
+    {
+      "sha256": "7B7D3F408AE1AEFA8C78F9AF5E2300546A08BA49E198247FB6538B13BF0E5B0D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.StackTrace.dll"
+    },
+    {
+      "sha256": "655D26FCF394B8FF01C2E3ECC8A40271903C02A7E251EBF4D58B8D291EA5F488",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.TextWriterTraceListener.dll"
+    },
+    {
+      "sha256": "89B601E94E5BFD18C573DCBDD8AB2F6FA67F5C6B88E9B32888D79D70A2A3B2BD",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.Tools.dll"
+    },
+    {
+      "sha256": "A9138F26B1D866FA7179EAB0962D7B90DF61B39DBC088DDC951EAA0AB146B0A5",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.TraceSource.dll"
+    },
+    {
+      "sha256": "5407D3AC2FBDB47A25C34E84A7B679EC4F76791AE4C7CB7CC6312C20FFD04094",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Diagnostics.Tracing.dll"
+    },
+    {
+      "sha256": "9FB95A87AD50D6B0CAE05D9108382915144068034FBBD9F7F733C01DCC0CCFDB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.dll"
+    },
+    {
+      "sha256": "5176D9CBEE941DED09DC6C1AB8255241ABD07DCAA8B177F0C7F6FC1E99F498B3",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Drawing.dll"
+    },
+    {
+      "sha256": "D2AAFDB04C1AF629CDEB2798A189B23840CCF0630B8782920738CD928BC59121",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Drawing.Primitives.dll"
+    },
+    {
+      "sha256": "2A930D63F7020099F6B61733147AF4E38CBC3F80EA6EEA93C79421103751E6AA",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Dynamic.Runtime.dll"
+    },
+    {
+      "sha256": "26173E7E2970904164E8E3374EB225351453BA4D06D7CC3762ED2E610F9F8A7F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Formats.Asn1.dll"
+    },
+    {
+      "sha256": "9DF5237E78ABAE0EFD1D90849B6A94C88A73C5DA5CAB3302407472F886EAF057",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Globalization.Calendars.dll"
+    },
+    {
+      "sha256": "FF51C19E14E496EBD3C93A661190E1D6ED99D3F2CC7BEE4F9A826B7A46332E5A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Globalization.dll"
+    },
+    {
+      "sha256": "51EAA10853A4672F0ED9E673FF8D7AD154514A26A8C4B990C313F61787A9FC62",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Globalization.Extensions.dll"
+    },
+    {
+      "sha256": "DC1F71AFBC55F6A6C135CD135B89E461C580B73C619DAAAA91EF266EC0E4BCC1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.Compression.Brotli.dll"
+    },
+    {
+      "sha256": "2C70DB9227451B97F5F2C9CAD7E4A434895983450E5B653082C29D69AAF25292",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.Compression.dll"
+    },
+    {
+      "sha256": "FC11B8625F1E1A5382274494FE0F2459D9E67951217DDB965BA384B8F84A6001",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.Compression.FileSystem.dll"
+    },
+    {
+      "sha256": "B4E65C507F48F28E96E69247E47093B35D0B1A376AF4C052D504983E9C26AE44",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.Compression.Native.dll"
+    },
+    {
+      "sha256": "6237BBAE8BCD8E34273CA5AA59685701FAD22B6B6FCFF3E7DAE277942F254355",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.Compression.ZipFile.dll"
+    },
+    {
+      "sha256": "BB50FF8A1F9AFFD53107DDDC78A33CB656988D6842F5AAC628CECB0B15F634AB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.dll"
+    },
+    {
+      "sha256": "544DEEE0E7663D4C5D6091F1B2197ED27E2FC5222254682B3BFB76A01EAAA8BE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.FileSystem.AccessControl.dll"
+    },
+    {
+      "sha256": "91E0348A48B0D9A69E0FD8DB54B1BEE3B9465AE13F7FD95FBB4B25BDE3F80C16",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.FileSystem.dll"
+    },
+    {
+      "sha256": "CFC334386E491A0FA41409D2E7CFE9C8B27E18FA3193D101916F92D93D975984",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.FileSystem.DriveInfo.dll"
+    },
+    {
+      "sha256": "42A9D51D8FE5166FEF82AAC23C820ADCB354B822B5B74728FFB0E79093EA0D3A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.FileSystem.Primitives.dll"
+    },
+    {
+      "sha256": "DDBA64E364F20EF1472D39BBAF988073276C4F2ECF72B4F8196388DDB20BCC11",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.FileSystem.Watcher.dll"
+    },
+    {
+      "sha256": "A79B19F37DB340184F6A53A82B0E3410D7698BF1736EC479224EDF7EB3D508F9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.IsolatedStorage.dll"
+    },
+    {
+      "sha256": "958EB5C597368F194D334D0BFF479706C83A8A80C992EAC3B9BA5B94E5ECFE4C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.MemoryMappedFiles.dll"
+    },
+    {
+      "sha256": "D434A73F0B9368922BDC7D57E0BF7A80E3566CBD3A29665F4D868E5AAC1A1677",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.Pipes.AccessControl.dll"
+    },
+    {
+      "sha256": "FB75C1DD8C3A77641AB28058D32738551FCA2E5EC52FA6C123E3B42E5639126C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.Pipes.dll"
+    },
+    {
+      "sha256": "CF9C47E009E08695C200647DDF2B6757A8375FE3A74830137143C989864EBFD9",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.IO.UnmanagedMemoryStream.dll"
+    },
+    {
+      "sha256": "52E1CFBD54DE414A2B3C44DAD40BBBA10F72A8F9BA9CEE68323BDA0B4F417F69",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Linq.dll"
+    },
+    {
+      "sha256": "DF96691089EA41CB5A8DAFFC5E95324A5A5F3516083BFF2448A377FBFD61E918",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Linq.Expressions.dll"
+    },
+    {
+      "sha256": "920B3F087C615A7AD0057925B3FA6D9720690123075A6FE2AF07203F26786656",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Linq.Parallel.dll"
+    },
+    {
+      "sha256": "BA5E7F66011AC7F215518D46FF2A13F646489D5A89334C33D6B9C6F697E3E2D2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Linq.Queryable.dll"
+    },
+    {
+      "sha256": "108F424CA216F2D057C722F686BCC25DBC02B221B2CBCEEAE21DDB456FD97EAF",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Memory.dll"
+    },
+    {
+      "sha256": "50E883AE0CF45CD8D35EE4CDB83DBC3B6DA8284AFC4EF53352CCBA502FEBE6A2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.dll"
+    },
+    {
+      "sha256": "5B1CB786C6DA2C36E86F2079EEB22081C35BF951D5F286AE4A83154A3071EDFF",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Http.dll"
+    },
+    {
+      "sha256": "D0B4BC46949A090C1F30DFF8834EFDD7AB2CAE8FB888B60032F180E5C179AEBD",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Http.Json.dll"
+    },
+    {
+      "sha256": "4EFAB60ED73E5AE823610FDCD2DC66CC02C6C44244EEDFA8CE424BE7F62488AA",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.HttpListener.dll"
+    },
+    {
+      "sha256": "866B26900D30A29B174213E217E21A49D2BFD1E99B21E5AB33EA8E4D5AA1C88C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Mail.dll"
+    },
+    {
+      "sha256": "BC9F07B05893C03CD47FBC71176C3E89287A493EEA4A430D74193C841463181D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.NameResolution.dll"
+    },
+    {
+      "sha256": "4310EE56787D5CB17A908C6313C7D7C0BE7E66772AD43DCD384CC12940793067",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.NetworkInformation.dll"
+    },
+    {
+      "sha256": "76D2A89CFEAE149C1CEEA891B563527CAD6C4823E01185AA25824CF1C0AA931C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Ping.dll"
+    },
+    {
+      "sha256": "421FDCBD8EB0A744424995DBCDEE2E72ECA9EF1BFCDDB53187FB624499DCCC51",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Primitives.dll"
+    },
+    {
+      "sha256": "78C61D0EFDECA3DD6929E80083798DCDA9B557183F37D556397DAAD7241F83E7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Quic.dll"
+    },
+    {
+      "sha256": "9990E35B0AAFBDD58ACC4ED76DB1F4F8639C0F9CC9F02AA38B8FBBE8D173F340",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Requests.dll"
+    },
+    {
+      "sha256": "F591CE881A45FE77608F8B301853218DEC7CACCC7F1007A3C6D59EEEC8F8C7AE",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Security.dll"
+    },
+    {
+      "sha256": "15A4182BE2F2D7613F5240FD7805E197CD28B6E5DC85FF56A18438D2ADC0AE5E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.ServicePoint.dll"
+    },
+    {
+      "sha256": "0D00C303E305949A1543658E9E15477FBF6EB66B663C4CD2CF8C037E0265E7D7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.Sockets.dll"
+    },
+    {
+      "sha256": "2DAB6B8B9EFA86A7F0AF51CCFBCFD135D309E648C4D43223923D87F7BA983FED",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.WebClient.dll"
+    },
+    {
+      "sha256": "A62CB21ACCEBBB410308073BD1D7B177D91365AAF5AF63324E7446D4FD6155C4",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.WebHeaderCollection.dll"
+    },
+    {
+      "sha256": "21A3230F6D7A3D0BD307BE718ADE71E8F12D25D0C1F468D040F12F053680DE2E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.WebProxy.dll"
+    },
+    {
+      "sha256": "9C21E9AC3CAA811D28EC68B063079EEF2CF3AE889855D1D989360F53994ECA3E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.WebSockets.Client.dll"
+    },
+    {
+      "sha256": "2D92421344665A67179B8E0A6AD2FB74C233EC45673EB3CAB1E20C1CCEFD206C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Net.WebSockets.dll"
+    },
+    {
+      "sha256": "FB8C60330243A677CFF36E3EBCFD3DFB5AC0F2D739F92C7DCEBCF5C8C9E62DA2",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Numerics.dll"
+    },
+    {
+      "sha256": "5B4FE8F00F2C18936CE3BA3C22BA351E0D886B6BF071BB19EA1DEEDCE4D3624B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Numerics.Vectors.dll"
+    },
+    {
+      "sha256": "EE2A487CD7ABE5E08207426240E5EB981902EA894BAA6767A7F786BE8311E538",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ObjectModel.dll"
+    },
+    {
+      "sha256": "2CAA46D2AE726E135592033B6C682232A08698C23DBD1A9207F86C4CCA081AD7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Private.CoreLib.dll"
+    },
+    {
+      "sha256": "913461FDCA318C69540EC544619A52CF4865626DFD2054EBE075ECFA82BFF1EA",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Private.DataContractSerialization.dll"
+    },
+    {
+      "sha256": "4B80767452017DA1726302DF729D9918C95BA8B5B05EE75A4807B17D88EF96A6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Private.Uri.dll"
+    },
+    {
+      "sha256": "38A26C1F6510BE0F2371FBDBCC590B3D44FDB2B76807785FDDBE52336630F66A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Private.Xml.dll"
+    },
+    {
+      "sha256": "5166BFE1A33746892B87F09CCAD542396F9A23ED4A5E79427E3DFE764FC1AD42",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Private.Xml.Linq.dll"
+    },
+    {
+      "sha256": "86B297AE56EC792107F2649A4E5C54120064D88F40E5A4541331F653F7AC1E83",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.DispatchProxy.dll"
+    },
+    {
+      "sha256": "36194CB5F9821D7712E66C222E6A4D6DE7557344EAD607EEA6A6FF55D8A0A4F1",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.dll"
+    },
+    {
+      "sha256": "06B2AAB6E04FF1F2250C0636B90355D73E39E5A2B0ADA6065B475282C28153E0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.Emit.dll"
+    },
+    {
+      "sha256": "59E813FA039D140323B7BC2E51DEF90AA141C7F02CF45B6CAB45B9829DB9B993",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.Emit.ILGeneration.dll"
+    },
+    {
+      "sha256": "C63FBD51C1D794F1551E096A5A8ADFCCEDFBA4B6EE0B6AEAF966BF6EBB1A7223",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.Emit.Lightweight.dll"
+    },
+    {
+      "sha256": "71CAA3D1D16BF22AC4CD1672D200ACE3225BABCE1E2E889200F15EFA734B6222",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.Extensions.dll"
+    },
+    {
+      "sha256": "695365A6FB1C1B7762AE925BCBB5BD2827CED11C750D15DC5F88218D6FC4D8DF",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.Metadata.dll"
+    },
+    {
+      "sha256": "1DF428D05437F42DC1EE52EF3BE19A751CCE5A577B130425C8137FADE97C5CCC",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.Primitives.dll"
+    },
+    {
+      "sha256": "5BD856CFA8F30BEDDF9DB302F6ACF851F63661C7C753B9088266F9AC8DD09973",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Reflection.TypeExtensions.dll"
+    },
+    {
+      "sha256": "1CF8DAF7B1D834D48E95AF0E92D281ED18F0C40036008073AC61418F44B1C1A4",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Resources.Reader.dll"
+    },
+    {
+      "sha256": "BEF18F0CEDE69F1F3B889D7BF1BD00E90B7136CD9C4CE0D85FAE23B6F952885C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Resources.ResourceManager.dll"
+    },
+    {
+      "sha256": "752F89C066FC0D872654C6501DD6B89FA6E1A4FB649AB19BE00AC59A5D02052F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Resources.Writer.dll"
+    },
+    {
+      "sha256": "1F1269F45ED627B6DA1D02E668A5846FC8D89FD54BA541458FE3206CD261D4D3",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.CompilerServices.Unsafe.dll"
+    },
+    {
+      "sha256": "A4645622DB0FC9D3BC239B5136472C17CE738BECFC8C9875DC9CCFD1C153E51A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.CompilerServices.VisualC.dll"
+    },
+    {
+      "sha256": "5EE7ED5290D8B1F8E47854D4A9CAEFF68A503DEEACE7B36451988F80B5141504",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.dll"
+    },
+    {
+      "sha256": "F17FE826509283F6BDEF0789EEC192FBC811DA6A142B19F9E14E25A79D4C2403",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Extensions.dll"
+    },
+    {
+      "sha256": "581DD1B50B99F685B62F0CD79C7E0629B3841E371850686E78EB68D695E52633",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Handles.dll"
+    },
+    {
+      "sha256": "833CB735BA01762C8EC501D20936081C0FD75F267F45B4FE3C86BFD0321885C6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.InteropServices.dll"
+    },
+    {
+      "sha256": "00B0F34E391F998E0DF534D32E7ABCB62D524E84BD3276C8526924231EE22D6A",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.InteropServices.RuntimeInformation.dll"
+    },
+    {
+      "sha256": "7345861DB1327A1B748690E6952B1A153EF1340C36B9FB9390D149FE04148F85",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Intrinsics.dll"
+    },
+    {
+      "sha256": "4A3343C5602A5244883878DD2A2E3A354975094557BE888B093E08255E3B802B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Loader.dll"
+    },
+    {
+      "sha256": "19A0C0768273026E7CC01631ED0827665D1B603F10F536D786D8AB11B169B93B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Numerics.dll"
+    },
+    {
+      "sha256": "70757055150731E3451F81E22F5707B0BFDFF98C267B9E5783E9D4A6CD60EE4D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Serialization.dll"
+    },
+    {
+      "sha256": "33C6D92A36190E0D3ABE51746C8828A189D594159A636FF88BF76F51B057A416",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Serialization.Formatters.dll"
+    },
+    {
+      "sha256": "670E0C3A4969B800835B65780639EA85EF68A69C8F1B2D015863EEC96C2A8F1C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Serialization.Json.dll"
+    },
+    {
+      "sha256": "871FB41960257B1D1DC6F87E00B5DE822D9288C8B93E3F3E5B17BD25924BD80B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Serialization.Primitives.dll"
+    },
+    {
+      "sha256": "47586D335A3DBCF691043DF4670C741091B62B4F59E619F5A3CDC876EAB08521",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Runtime.Serialization.Xml.dll"
+    },
+    {
+      "sha256": "219A62E07AD0C1D56B1614D28B0B13BDBFBFCF6DADECF1E5FF69D858251DC3BB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.AccessControl.dll"
+    },
+    {
+      "sha256": "18579E03CB56973CB460CBD7C501FA3AA246EEDCC0F02B4F6775AFF286DB68C8",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Claims.dll"
+    },
+    {
+      "sha256": "667EF15B3831A6D7BC1A940911E428FE1344182D9FB14EFB5D429107BDA57D85",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Cryptography.Algorithms.dll"
+    },
+    {
+      "sha256": "A719D3969BF9B6DD451D66B7E046458EA945D8338B976E350C4B6813269C404C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Cryptography.Cng.dll"
+    },
+    {
+      "sha256": "3B7A3937F3FB40061A0D6E38B3F493A337E300C92746B8D2FC7B8CF1D9B59A4C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Cryptography.Csp.dll"
+    },
+    {
+      "sha256": "DCC9B161CF56A2BB2BFAF847D81DEF41C4EB417FA96A5C79F984747849BB8877",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Cryptography.Encoding.dll"
+    },
+    {
+      "sha256": "E74084306323376BAB22B4F878B2C9FDC12C43ED06653B3F9C73DB56B3591145",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Cryptography.OpenSsl.dll"
+    },
+    {
+      "sha256": "A65F2DC2405B377AA9AECDB3E892ADF3C8569CEB4452ADDC924C9B16045B0DA6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Cryptography.Primitives.dll"
+    },
+    {
+      "sha256": "CFDA448A05D9971CB03AE3FBDC4979B5E5651FD30B63557A2C74112900F82041",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Cryptography.X509Certificates.dll"
+    },
+    {
+      "sha256": "519F5338EA24E512A1D71FD96D18BACB85128FA094BA813317BB331B658BEC2D",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.dll"
+    },
+    {
+      "sha256": "2F1B9586D961C3EB0159271013BE873DFEEC4589C0674262EBE229EE06985A42",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Principal.dll"
+    },
+    {
+      "sha256": "6E25D5295C42307EC2DF0BB2F141CECBDB7E3EA5DC35D063E9FE7FD514700F0B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.Principal.Windows.dll"
+    },
+    {
+      "sha256": "D70F379E07A8A54647EF157558B60DE50EF6B4B0AD4ABEE41AD9C633E3D8FA6C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Security.SecureString.dll"
+    },
+    {
+      "sha256": "EE7335CF0974CBEA6D78768C524D5E7ACCD706CD99146F98727A457D207BD637",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ServiceModel.Web.dll"
+    },
+    {
+      "sha256": "0E2E25D61F605DB206C1FB57C2011564599D6B4750BDCC9D44719F81223F25D3",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ServiceProcess.dll"
+    },
+    {
+      "sha256": "AC1E98B77CEC783C34593A42BBBC4B97BF46CE738AED4933B804EF917BF3066C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Text.Encoding.CodePages.dll"
+    },
+    {
+      "sha256": "09CC4FFEC8AC09328C3C03964DFEA531E8F5536CEF566CFF51FB7DA50F885E7C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Text.Encoding.dll"
+    },
+    {
+      "sha256": "6CCAF501DC6E4B578FA8DB6E8EFDC549D405A63042FF916093BD8F84E8277032",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Text.Encoding.Extensions.dll"
+    },
+    {
+      "sha256": "276DFD56C6573B8E1F418C78043DC6606D986C66A1B78CF882C8D9AA7C51864E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Text.Encodings.Web.dll"
+    },
+    {
+      "sha256": "B1F14F11DD6F2BDF15705FAE316A945C9B97C5CE5DA67C29BF998353287B76DF",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Text.Json.dll"
+    },
+    {
+      "sha256": "581EE84E5CA9E283BF1B61B94C495732153B5FBEC98A51FC5D35C9865604ED0C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Text.RegularExpressions.dll"
+    },
+    {
+      "sha256": "52472CD978C808EBC3FD079F935CBC646B02C9EAB41B175F68CA4E136037748E",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.Channels.dll"
+    },
+    {
+      "sha256": "9ED389096339C7FD65A1B11B624AA72E939E23651D86BFC6A81227DB7AC91AB0",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.dll"
+    },
+    {
+      "sha256": "2385CA2D4D7DF73888EB7B943402EE90D68B0CC99D03A02C760B1C23A49F40C6",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.Overlapped.dll"
+    },
+    {
+      "sha256": "7C9EC6A8D77F2A2E8AA1F146DD75C4E1F3DFEB9D7033F9F95FFF84864FE2B73B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.Tasks.Dataflow.dll"
+    },
+    {
+      "sha256": "476884F230B4ACB4BA86F24C8105C3076A5C30CCE6B11275ACCF80C4E400A98F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.Tasks.dll"
+    },
+    {
+      "sha256": "7F292C1E8845374D4D27650E96BADF3E080C6B5CEF0A7EE37B7217509F6B732B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.Tasks.Extensions.dll"
+    },
+    {
+      "sha256": "83B2C4B665B58F993D4ABE80F0D26A9322F12B40F7D5F696392EFB637FB3A3FB",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.Tasks.Parallel.dll"
+    },
+    {
+      "sha256": "F11E17A820CCC7B084692C68411E1FFB6F506645D7994A956CCBD796ABBB873F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.Thread.dll"
+    },
+    {
+      "sha256": "718D35D92F5C055823D44599B0C049273FCD9D922EB46326B120A8D708FD6978",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.ThreadPool.dll"
+    },
+    {
+      "sha256": "32C4D5F583E36E0835D9898514615C43E58BFCF7AF7301644F49A17D18B6AC46",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Threading.Timer.dll"
+    },
+    {
+      "sha256": "BA6DEF1337EC434309B6A28A5653291F0CC9D411FC0DE73C0783D3199C1FC24B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Transactions.dll"
+    },
+    {
+      "sha256": "A12BA56A76034DEC5A5D4013556D49AE5F4FFAFBA9C78C08A9FEC808AA26BD30",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Transactions.Local.dll"
+    },
+    {
+      "sha256": "05F443AE382EFFFB5DA640D55C7C334243B559DE26349DA1D6A0B40CE1C11F30",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.ValueTuple.dll"
+    },
+    {
+      "sha256": "25B81B487B5B474E269CB4A7AEB75AEBA0CB2FF9E72B2923E4BC0B8FB01AF526",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Web.dll"
+    },
+    {
+      "sha256": "8DBE2A8D794F0AF632C49A8E9929CFEDCC68EC4ABF661A39B656974DA9FB7C2C",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Web.HttpUtility.dll"
+    },
+    {
+      "sha256": "07AE7C534940C94625C7C8CD86E9EADC6FCE3D750D308554EDB4E24BF4587D93",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Windows.dll"
+    },
+    {
+      "sha256": "57AF41B86E30D8EBAC3BE05C9D063E5371D62DE703E10AAF5A187908FF8AE6C7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.dll"
+    },
+    {
+      "sha256": "A5EE9219F397CB0DE7940C872C0F40E54D04A1DADE86E9322559009DC48FCB88",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.Linq.dll"
+    },
+    {
+      "sha256": "2F5D5B42B268F17A68657535CFBA174B350A39C0D70B8556DE67AAAA6AAA828B",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.ReaderWriter.dll"
+    },
+    {
+      "sha256": "C61362868EAAEE5D22D2DA10502FD751A0799647EA4A6C83FB1E4D994757B7B7",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.Serialization.dll"
+    },
+    {
+      "sha256": "F9A5602336E6F819F2E502670075B93AC9061B92DA7F43CAA6FC5AD8F3CD9395",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.XDocument.dll"
+    },
+    {
+      "sha256": "EA510537BDDC1F5B5F85B41D94300B4189D13F5605FAAD1A5BFECB04C9C45A38",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.XmlDocument.dll"
+    },
+    {
+      "sha256": "D060142ED17394F97E4536E06D466A39FCF2BFA85C0280E8997605489854D782",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.XmlSerializer.dll"
+    },
+    {
+      "sha256": "D4E78592333A130250E9FEC15D1FEA2A768B9C0FD25A7ADED3EC428AA1692F8F",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.XPath.dll"
+    },
+    {
+      "sha256": "B763654D251F0E7B32330DDCAC46DFF190D4EB784BB750BEA7651B7C7132ABE5",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/System.Xml.XPath.XDocument.dll"
+    },
+    {
+      "sha256": "B3E6DF643DD07A3BDDE2B6419DA7E7EE49C2C01BDCE7C758C9ABC20B8B8A6296",
+      "source": "trusted-platform initial-copy integrity",
+      "path": "dotnet/WindowsBase.dll"
+    }
+  ],
+  "exactDirectories": [
+    {
+      "files": [],
+      "path": "BepInEx/plugins"
+    },
+    {
+      "files": [
+        "ModTheAzureArchive.dll"
+      ],
+      "path": "BepInEx/patchers"
+    },
+    {
+      "files": [
+        "Azurite.Core.dll",
+        "Azurite.dll",
+        "icon.png",
+        "manifest.json",
+        "README.md",
+        "SHA256SUMS.txt",
+        "SOURCE.md"
+      ],
+      "path": "mods/Azurite/1.0.38"
+    },
+    {
+      "files": [
+        "x86_64/lib_burst_generated.dll",
+        "x86_64/SpineSkeletonDataConverterLib.dll",
+        "x86_64/sqlite3.dll"
+      ],
+      "path": "AzureArchive_Data/Plugins"
+    },
+    {
+      "files": [
+        "halocue.azurite.cfg"
+      ],
+      "path": "profiles/AzuriteAcceptance/configs"
+    },
+    {
+      "files": [
+        "0Harmony.dll",
+        "AsmResolver.dll",
+        "AsmResolver.DotNet.dll",
+        "AsmResolver.PE.dll",
+        "AsmResolver.PE.File.dll",
+        "AssetRipper.CIL.dll",
+        "AssetRipper.Primitives.dll",
+        "AssetRipper.VersionUtilities.dll",
+        "BepInEx.Core.dll",
+        "BepInEx.Core.xml",
+        "BepInEx.Preloader.Core.dll",
+        "BepInEx.Preloader.Core.xml",
+        "BepInEx.Unity.Common.dll",
+        "BepInEx.Unity.Common.xml",
+        "BepInEx.Unity.IL2CPP.dll",
+        "BepInEx.Unity.IL2CPP.dll.config",
+        "BepInEx.Unity.IL2CPP.xml",
+        "Cpp2IL.Core.dll",
+        "Disarm.dll",
+        "dobby.dll",
+        "Gee.External.Capstone.dll",
+        "Iced.dll",
+        "Il2CppInterop.Common.dll",
+        "Il2CppInterop.Generator.dll",
+        "Il2CppInterop.HarmonySupport.dll",
+        "Il2CppInterop.Runtime.dll",
+        "LibCpp2IL.dll",
+        "Mono.Cecil.dll",
+        "Mono.Cecil.Mdb.dll",
+        "Mono.Cecil.Pdb.dll",
+        "Mono.Cecil.Rocks.dll",
+        "MonoMod.Backports.dll",
+        "MonoMod.ILHelpers.dll",
+        "MonoMod.RuntimeDetour.dll",
+        "MonoMod.Utils.dll",
+        "SemanticVersioning.dll",
+        "StableNameDotNet.dll",
+        "WasmDisassembler.dll"
+      ],
+      "path": "BepInEx/core"
+    },
+    {
+      "files": [
+        "__Generated.dll",
+        "Assembly-CSharp.dll",
+        "assembly-hash.txt",
+        "BestHTTP.dll",
+        "ChineseConverter.dll",
+        "Google.FlatBuffers.dll",
+        "Il2CppMono.Security.dll",
+        "Il2Cppmscorlib.dll",
+        "Il2CppSystem.Configuration.dll",
+        "Il2CppSystem.Core.dll",
+        "Il2CppSystem.Data.dll",
+        "Il2CppSystem.dll",
+        "Il2CppSystem.Drawing.dll",
+        "Il2CppSystem.IO.Compression.dll",
+        "Il2CppSystem.IO.Compression.FileSystem.dll",
+        "Il2CppSystem.Numerics.dll",
+        "Il2CppSystem.Runtime.Serialization.dll",
+        "Il2CppSystem.Xml.dll",
+        "Il2CppSystem.Xml.Linq.dll",
+        "IngameDebugConsole.Runtime.dll",
+        "MethodAddressToToken.db",
+        "MethodXrefScanCache.db",
+        "Newtonsoft.Json.dll",
+        "SimpleFileBrowser.Runtime.dll",
+        "spine-csharp.dll",
+        "spine-unity.dll",
+        "UniTask.Addressables.dll",
+        "UniTask.dll",
+        "UniTask.DOTween.dll",
+        "UniTask.Linq.dll",
+        "UniTask.TextMeshPro.dll",
+        "Unity.Addressables.dll",
+        "Unity.Burst.dll",
+        "Unity.Burst.Unsafe.dll",
+        "Unity.Collections.dll",
+        "Unity.Collections.LowLevel.ILSupport.dll",
+        "Unity.Mathematics.dll",
+        "Unity.Profiling.Core.dll",
+        "Unity.RenderPipeline.Universal.ShaderLibrary.dll",
+        "Unity.RenderPipelines.Core.Runtime.dll",
+        "Unity.RenderPipelines.Universal.Runtime.dll",
+        "Unity.ResourceManager.dll",
+        "Unity.TextMeshPro.dll",
+        "UnityEngine.AccessibilityModule.dll",
+        "UnityEngine.AIModule.dll",
+        "UnityEngine.AndroidJNIModule.dll",
+        "UnityEngine.AnimationModule.dll",
+        "UnityEngine.AssetBundleModule.dll",
+        "UnityEngine.AudioModule.dll",
+        "UnityEngine.ClothModule.dll",
+        "UnityEngine.ClusterInputModule.dll",
+        "UnityEngine.ClusterRendererModule.dll",
+        "UnityEngine.CommandStateObserverModule.dll",
+        "UnityEngine.ContentLoadModule.dll",
+        "UnityEngine.CoreModule.dll",
+        "UnityEngine.CrashReportingModule.dll",
+        "UnityEngine.DirectorModule.dll",
+        "UnityEngine.dll",
+        "UnityEngine.DSPGraphModule.dll",
+        "UnityEngine.GameCenterModule.dll",
+        "UnityEngine.GIModule.dll",
+        "UnityEngine.GraphToolsFoundationModule.dll",
+        "UnityEngine.GridModule.dll",
+        "UnityEngine.HierarchyCoreModule.dll",
+        "UnityEngine.HotReloadModule.dll",
+        "UnityEngine.ImageConversionModule.dll",
+        "UnityEngine.IMGUIModule.dll",
+        "UnityEngine.InputForUIModule.dll",
+        "UnityEngine.InputLegacyModule.dll",
+        "UnityEngine.InputModule.dll",
+        "UnityEngine.JSONSerializeModule.dll",
+        "UnityEngine.LocalizationModule.dll",
+        "UnityEngine.MarshallingModule.dll",
+        "UnityEngine.MultiplayerModule.dll",
+        "UnityEngine.ParticleSystemModule.dll",
+        "UnityEngine.PerformanceReportingModule.dll",
+        "UnityEngine.Physics2DModule.dll",
+        "UnityEngine.PhysicsModule.dll",
+        "UnityEngine.ProfilerModule.dll",
+        "UnityEngine.PropertiesModule.dll",
+        "UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll",
+        "UnityEngine.ScreenCaptureModule.dll",
+        "UnityEngine.SharedInternalsModule.dll",
+        "UnityEngine.SpriteMaskModule.dll",
+        "UnityEngine.SpriteShapeModule.dll",
+        "UnityEngine.StreamingModule.dll",
+        "UnityEngine.SubstanceModule.dll",
+        "UnityEngine.SubsystemsModule.dll",
+        "UnityEngine.TerrainModule.dll",
+        "UnityEngine.TerrainPhysicsModule.dll",
+        "UnityEngine.TextCoreFontEngineModule.dll",
+        "UnityEngine.TextCoreTextEngineModule.dll",
+        "UnityEngine.TextRenderingModule.dll",
+        "UnityEngine.TilemapModule.dll",
+        "UnityEngine.TLSModule.dll",
+        "UnityEngine.UI.dll",
+        "UnityEngine.UIElementsModule.dll",
+        "UnityEngine.UIModule.dll",
+        "UnityEngine.UmbraModule.dll",
+        "UnityEngine.UnityAnalyticsCommonModule.dll",
+        "UnityEngine.UnityAnalyticsModule.dll",
+        "UnityEngine.UnityConnectModule.dll",
+        "UnityEngine.UnityCurlModule.dll",
+        "UnityEngine.UnityTestProtocolModule.dll",
+        "UnityEngine.UnityWebRequestAssetBundleModule.dll",
+        "UnityEngine.UnityWebRequestAudioModule.dll",
+        "UnityEngine.UnityWebRequestModule.dll",
+        "UnityEngine.UnityWebRequestTextureModule.dll",
+        "UnityEngine.UnityWebRequestWWWModule.dll",
+        "UnityEngine.VehiclesModule.dll",
+        "UnityEngine.VFXModule.dll",
+        "UnityEngine.VideoModule.dll",
+        "UnityEngine.VirtualTexturingModule.dll",
+        "UnityEngine.VRModule.dll",
+        "UnityEngine.WindModule.dll",
+        "UnityEngine.XRModule.dll"
+      ],
+      "path": "BepInEx/interop"
+    },
+    {
+      "files": [
+        "2023.2.22.zip",
+        "UnityEngine.AccessibilityModule.dll",
+        "UnityEngine.AIModule.dll",
+        "UnityEngine.AndroidJNIModule.dll",
+        "UnityEngine.AnimationModule.dll",
+        "UnityEngine.AssetBundleModule.dll",
+        "UnityEngine.AudioModule.dll",
+        "UnityEngine.ClothModule.dll",
+        "UnityEngine.ClusterInputModule.dll",
+        "UnityEngine.ClusterRendererModule.dll",
+        "UnityEngine.CommandStateObserverModule.dll",
+        "UnityEngine.ContentLoadModule.dll",
+        "UnityEngine.CoreModule.dll",
+        "UnityEngine.CrashReportingModule.dll",
+        "UnityEngine.DirectorModule.dll",
+        "UnityEngine.dll",
+        "UnityEngine.DSPGraphModule.dll",
+        "UnityEngine.GameCenterModule.dll",
+        "UnityEngine.GIModule.dll",
+        "UnityEngine.GraphToolsFoundationModule.dll",
+        "UnityEngine.GridModule.dll",
+        "UnityEngine.HierarchyCoreModule.dll",
+        "UnityEngine.HotReloadModule.dll",
+        "UnityEngine.ImageConversionModule.dll",
+        "UnityEngine.IMGUIModule.dll",
+        "UnityEngine.InputForUIModule.dll",
+        "UnityEngine.InputLegacyModule.dll",
+        "UnityEngine.InputModule.dll",
+        "UnityEngine.JSONSerializeModule.dll",
+        "UnityEngine.LocalizationModule.dll",
+        "UnityEngine.MarshallingModule.dll",
+        "UnityEngine.MultiplayerModule.dll",
+        "UnityEngine.ParticleSystemModule.dll",
+        "UnityEngine.PerformanceReportingModule.dll",
+        "UnityEngine.Physics2DModule.dll",
+        "UnityEngine.PhysicsModule.dll",
+        "UnityEngine.ProfilerModule.dll",
+        "UnityEngine.PropertiesModule.dll",
+        "UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll",
+        "UnityEngine.ScreenCaptureModule.dll",
+        "UnityEngine.SharedInternalsModule.dll",
+        "UnityEngine.SpriteMaskModule.dll",
+        "UnityEngine.SpriteShapeModule.dll",
+        "UnityEngine.StreamingModule.dll",
+        "UnityEngine.SubstanceModule.dll",
+        "UnityEngine.SubsystemsModule.dll",
+        "UnityEngine.TerrainModule.dll",
+        "UnityEngine.TerrainPhysicsModule.dll",
+        "UnityEngine.TextCoreFontEngineModule.dll",
+        "UnityEngine.TextCoreTextEngineModule.dll",
+        "UnityEngine.TextRenderingModule.dll",
+        "UnityEngine.TilemapModule.dll",
+        "UnityEngine.TLSModule.dll",
+        "UnityEngine.UIElementsModule.dll",
+        "UnityEngine.UIModule.dll",
+        "UnityEngine.UmbraModule.dll",
+        "UnityEngine.UnityAnalyticsCommonModule.dll",
+        "UnityEngine.UnityAnalyticsModule.dll",
+        "UnityEngine.UnityConnectModule.dll",
+        "UnityEngine.UnityCurlModule.dll",
+        "UnityEngine.UnityTestProtocolModule.dll",
+        "UnityEngine.UnityWebRequestAssetBundleModule.dll",
+        "UnityEngine.UnityWebRequestAudioModule.dll",
+        "UnityEngine.UnityWebRequestModule.dll",
+        "UnityEngine.UnityWebRequestTextureModule.dll",
+        "UnityEngine.UnityWebRequestWWWModule.dll",
+        "UnityEngine.VehiclesModule.dll",
+        "UnityEngine.VFXModule.dll",
+        "UnityEngine.VideoModule.dll",
+        "UnityEngine.VirtualTexturingModule.dll",
+        "UnityEngine.VRModule.dll",
+        "UnityEngine.WindModule.dll",
+        "UnityEngine.XRModule.dll"
+      ],
+      "path": "BepInEx/unity-libs"
+    },
+    {
+      "files": [
+        ".version",
+        "clretwrc.dll",
+        "clrjit.dll",
+        "coreclr.dll",
+        "dbgshim.dll",
+        "hostpolicy.dll",
+        "Microsoft.Bcl.AsyncInterfaces.dll",
+        "Microsoft.CSharp.dll",
+        "Microsoft.DiaSymReader.Native.amd64.dll",
+        "Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+        "Microsoft.Extensions.DependencyInjection.dll",
+        "Microsoft.Extensions.Logging.Abstractions.dll",
+        "Microsoft.Extensions.Logging.dll",
+        "Microsoft.Extensions.Options.dll",
+        "Microsoft.Extensions.Primitives.dll",
+        "Microsoft.NETCore.App.deps.json",
+        "Microsoft.NETCore.App.runtimeconfig.json",
+        "Microsoft.VisualBasic.Core.dll",
+        "Microsoft.VisualBasic.dll",
+        "Microsoft.Win32.Primitives.dll",
+        "Microsoft.Win32.Registry.dll",
+        "mscordaccore_amd64_amd64_6.0.722.32202.dll",
+        "mscordaccore.dll",
+        "mscordbi.dll",
+        "mscorlib.dll",
+        "mscorrc.dll",
+        "msquic.dll",
+        "netstandard.dll",
+        "System.AppContext.dll",
+        "System.Buffers.dll",
+        "System.Collections.Concurrent.dll",
+        "System.Collections.dll",
+        "System.Collections.Immutable.dll",
+        "System.Collections.NonGeneric.dll",
+        "System.Collections.Specialized.dll",
+        "System.ComponentModel.Annotations.dll",
+        "System.ComponentModel.DataAnnotations.dll",
+        "System.ComponentModel.dll",
+        "System.ComponentModel.EventBasedAsync.dll",
+        "System.ComponentModel.Primitives.dll",
+        "System.ComponentModel.TypeConverter.dll",
+        "System.Configuration.dll",
+        "System.Console.dll",
+        "System.Core.dll",
+        "System.Data.Common.dll",
+        "System.Data.DataSetExtensions.dll",
+        "System.Data.dll",
+        "System.Diagnostics.Contracts.dll",
+        "System.Diagnostics.Debug.dll",
+        "System.Diagnostics.DiagnosticSource.dll",
+        "System.Diagnostics.FileVersionInfo.dll",
+        "System.Diagnostics.Process.dll",
+        "System.Diagnostics.StackTrace.dll",
+        "System.Diagnostics.TextWriterTraceListener.dll",
+        "System.Diagnostics.Tools.dll",
+        "System.Diagnostics.TraceSource.dll",
+        "System.Diagnostics.Tracing.dll",
+        "System.dll",
+        "System.Drawing.dll",
+        "System.Drawing.Primitives.dll",
+        "System.Dynamic.Runtime.dll",
+        "System.Formats.Asn1.dll",
+        "System.Globalization.Calendars.dll",
+        "System.Globalization.dll",
+        "System.Globalization.Extensions.dll",
+        "System.IO.Compression.Brotli.dll",
+        "System.IO.Compression.dll",
+        "System.IO.Compression.FileSystem.dll",
+        "System.IO.Compression.Native.dll",
+        "System.IO.Compression.ZipFile.dll",
+        "System.IO.dll",
+        "System.IO.FileSystem.AccessControl.dll",
+        "System.IO.FileSystem.dll",
+        "System.IO.FileSystem.DriveInfo.dll",
+        "System.IO.FileSystem.Primitives.dll",
+        "System.IO.FileSystem.Watcher.dll",
+        "System.IO.IsolatedStorage.dll",
+        "System.IO.MemoryMappedFiles.dll",
+        "System.IO.Pipes.AccessControl.dll",
+        "System.IO.Pipes.dll",
+        "System.IO.UnmanagedMemoryStream.dll",
+        "System.Linq.dll",
+        "System.Linq.Expressions.dll",
+        "System.Linq.Parallel.dll",
+        "System.Linq.Queryable.dll",
+        "System.Memory.dll",
+        "System.Net.dll",
+        "System.Net.Http.dll",
+        "System.Net.Http.Json.dll",
+        "System.Net.HttpListener.dll",
+        "System.Net.Mail.dll",
+        "System.Net.NameResolution.dll",
+        "System.Net.NetworkInformation.dll",
+        "System.Net.Ping.dll",
+        "System.Net.Primitives.dll",
+        "System.Net.Quic.dll",
+        "System.Net.Requests.dll",
+        "System.Net.Security.dll",
+        "System.Net.ServicePoint.dll",
+        "System.Net.Sockets.dll",
+        "System.Net.WebClient.dll",
+        "System.Net.WebHeaderCollection.dll",
+        "System.Net.WebProxy.dll",
+        "System.Net.WebSockets.Client.dll",
+        "System.Net.WebSockets.dll",
+        "System.Numerics.dll",
+        "System.Numerics.Vectors.dll",
+        "System.ObjectModel.dll",
+        "System.Private.CoreLib.dll",
+        "System.Private.DataContractSerialization.dll",
+        "System.Private.Uri.dll",
+        "System.Private.Xml.dll",
+        "System.Private.Xml.Linq.dll",
+        "System.Reflection.DispatchProxy.dll",
+        "System.Reflection.dll",
+        "System.Reflection.Emit.dll",
+        "System.Reflection.Emit.ILGeneration.dll",
+        "System.Reflection.Emit.Lightweight.dll",
+        "System.Reflection.Extensions.dll",
+        "System.Reflection.Metadata.dll",
+        "System.Reflection.Primitives.dll",
+        "System.Reflection.TypeExtensions.dll",
+        "System.Resources.Reader.dll",
+        "System.Resources.ResourceManager.dll",
+        "System.Resources.Writer.dll",
+        "System.Runtime.CompilerServices.Unsafe.dll",
+        "System.Runtime.CompilerServices.VisualC.dll",
+        "System.Runtime.dll",
+        "System.Runtime.Extensions.dll",
+        "System.Runtime.Handles.dll",
+        "System.Runtime.InteropServices.dll",
+        "System.Runtime.InteropServices.RuntimeInformation.dll",
+        "System.Runtime.Intrinsics.dll",
+        "System.Runtime.Loader.dll",
+        "System.Runtime.Numerics.dll",
+        "System.Runtime.Serialization.dll",
+        "System.Runtime.Serialization.Formatters.dll",
+        "System.Runtime.Serialization.Json.dll",
+        "System.Runtime.Serialization.Primitives.dll",
+        "System.Runtime.Serialization.Xml.dll",
+        "System.Security.AccessControl.dll",
+        "System.Security.Claims.dll",
+        "System.Security.Cryptography.Algorithms.dll",
+        "System.Security.Cryptography.Cng.dll",
+        "System.Security.Cryptography.Csp.dll",
+        "System.Security.Cryptography.Encoding.dll",
+        "System.Security.Cryptography.OpenSsl.dll",
+        "System.Security.Cryptography.Primitives.dll",
+        "System.Security.Cryptography.X509Certificates.dll",
+        "System.Security.dll",
+        "System.Security.Principal.dll",
+        "System.Security.Principal.Windows.dll",
+        "System.Security.SecureString.dll",
+        "System.ServiceModel.Web.dll",
+        "System.ServiceProcess.dll",
+        "System.Text.Encoding.CodePages.dll",
+        "System.Text.Encoding.dll",
+        "System.Text.Encoding.Extensions.dll",
+        "System.Text.Encodings.Web.dll",
+        "System.Text.Json.dll",
+        "System.Text.RegularExpressions.dll",
+        "System.Threading.Channels.dll",
+        "System.Threading.dll",
+        "System.Threading.Overlapped.dll",
+        "System.Threading.Tasks.Dataflow.dll",
+        "System.Threading.Tasks.dll",
+        "System.Threading.Tasks.Extensions.dll",
+        "System.Threading.Tasks.Parallel.dll",
+        "System.Threading.Thread.dll",
+        "System.Threading.ThreadPool.dll",
+        "System.Threading.Timer.dll",
+        "System.Transactions.dll",
+        "System.Transactions.Local.dll",
+        "System.ValueTuple.dll",
+        "System.Web.dll",
+        "System.Web.HttpUtility.dll",
+        "System.Windows.dll",
+        "System.Xml.dll",
+        "System.Xml.Linq.dll",
+        "System.Xml.ReaderWriter.dll",
+        "System.Xml.Serialization.dll",
+        "System.Xml.XDocument.dll",
+        "System.Xml.XmlDocument.dll",
+        "System.Xml.XmlSerializer.dll",
+        "System.Xml.XPath.dll",
+        "System.Xml.XPath.XDocument.dll",
+        "WindowsBase.dll"
+      ],
+      "path": "dotnet"
+    },
+    {
+      "extensions": [
+        ".dll",
+        ".exe"
+      ],
+      "recurse": false,
+      "files": [
+        "AzureArchive.exe",
+        "baselib.dll",
+        "GameAssembly.dll",
+        "UnityCrashHandler64.exe",
+        "UnityPlayer.dll",
+        "winhttp.dll"
+      ],
+      "path": "."
+    }
+  ],
+  "evidence": [
+    {
+      "path": "artifacts/editor-normal-install-preparation/source-bound-manifest-v2.json",
+      "sha256": "0bddb4285f5cee0c79c3f2ab6f6ab8c346937ae8ff12b4f49f29a6f102bd33dd"
+    },
+    {
+      "path": "tools/headless/restricted-startup-contract.json",
+      "sha256": "5ced2b8185dfe43e94217f3b5d61f7b76d8dc5d70c817cabb50a098d46dc8362"
+    },
+    {
+      "path": "artifacts/editor-normal-install-postverify/verification-08a369f8f1e54fc58da8e0d2f72bf607.json",
+      "sha256": "806f4524aa7e7025e490be9aab9b87225195090149d9ede9727796b7ad0bf26d"
+    },
+    {
+      "path": ".superpowers/sdd/azurite-authoring-20261108/aa-fr-cache-prerequisites.md",
+      "sha256": "a71a4899ceb563f841928265bab8b634cfcdd2e5f8986cd6595e408b58ee8d36"
+    },
+    {
+      "path": "artifacts/aa-fr-cache-prerequisites/cache-prerequisites-contract.json",
+      "sha256": "11476211f744e7009fe1bd21b7bc4b786d3f73c89a747f6ecab955e43754c5f4"
+    },
+    {
+      "path": "artifacts/aa-fr-cache-prerequisites/evidence-index.json",
+      "sha256": "cdc6b6634288cd360eb9134dc0c24a8f211633fae56402dc9ded41fb2ffa98ae"
+    }
+  ],
+  "stage": {
+    "manifestSha256": "0bddb4285f5cee0c79c3f2ab6f6ab8c346937ae8ff12b4f49f29a6f102bd33dd",
+    "postverifySha256": "806f4524aa7e7025e490be9aab9b87225195090149d9ede9727796b7ad0bf26d",
+    "completionSha256": "15506ff9993a2c51f3d508a880e3e2f3ec4eeae5417124b2fc7d42a2f2a90c28",
+    "journalSha256": "2fa532b2c2a483e8645b52d97bc2c916f0d94c438680271ae1f510952b8de1c2",
+    "rootMarkerSha256": "8098538d54eadb7b6ee5cf07b514fb311a16ecdc97b80558fd30db565d9bd4fe",
+    "parentMarkerSha256": "8098538d54eadb7b6ee5cf07b514fb311a16ecdc97b80558fd30db565d9bd4fe",
+    "startReceiptSha256": "c4e73c894ec326c1736bd9f05aaec4d993d1b4927217775d31ff86ce138ca008",
+    "approvalSha256": "af273308a3e3b0103c8cfb17bb673b75432d5287ba58b311158d9fd5f6dbe356",
+    "sealPolicySha256": "abe2163a148bb825bd92edfd60a32a576bfa6dc583b7da24599617ae550ed454",
+    "sealCompletionSha256": "371ff1df832daba64dd8206c49a4b941f026943399cee702b1cdfc9cfbaa246f",
+    "destinationVolumeGuid": "\\\\?\\Volume{a7c77c39-d000-4faf-bbf8-cc8ca0c743cb}\\",
+    "status": "verified-install-staging-not-runtime-admitted",
+    "runtimeAllowed": false
+  },
+  "readEnvelope": {
+    "manifestPath": "artifacts/editor-normal-install-preparation/source-bound-manifest-v2.json",
+    "manifestSha256": "0bddb4285f5cee0c79c3f2ab6f6ab8c346937ae8ff12b4f49f29a6f102bd33dd",
+    "fileCount": 1062,
+    "directoryCount": 156,
+    "bytes": 3521516451,
+    "semanticPinCount": 451,
+    "readOnlyMask": "0x120089",
+    "readExecuteMask": "0x1200A9",
+    "directoryMask": "0x1200A9",
+    "directoryInheritance": "None",
+    "requestChildFileMask": "0x13019F",
+    "grantPrincipal": "ActualLogonSidOnly",
+    "crashHandlerRole": "RetainedReadOnlyInputNoLaunchApproval",
+    "systemInputGrant": "None"
+  },
+  "cachePrerequisites": {
+    "contractSha256": "11476211f744e7009fe1bd21b7bc4b786d3f73c89a747f6ecab955e43754c5f4",
+    "reportSha256": "a71a4899ceb563f841928265bab8b634cfcdd2e5f8986cd6595e408b58ee8d36",
+    "indexSha256": "cdc6b6634288cd360eb9134dc0c24a8f211633fae56402dc9ded41fb2ffa98ae",
+    "warmResultSha256": "ae20a85d28f254d14851deeb9d4ff0627bb7d821bd04154814c8fdfcca830fb6",
+    "stamp": "0d8a515d8dfe98c6f14aa4e86090dd51",
+    "orderedInputEvents": 147,
+    "inputFiles": 73,
+    "unityDllCount": 72,
+    "generatorVersion": "1.5.3.0",
+    "cpp2ilVersion": "2022.1.0.0",
+    "optionalRenameMapPresent": false,
+    "gameAssemblyOverride": "Absent",
+    "unhollowedPathArgument": "Absent",
+    "chainloaderSha256": "505f66cf08f9e0a02f5c9a79db5eacde445ebaee59f43ac509403a6710d9bc1e",
+    "modTheLeaf": "BepInEx/cache/mod-the-azure-archive-38F3AC6B852EB58403C65A45_typeloader.dat",
+    "seedSha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+  },
+  "mutableLeaves": [
+    {
+      "path": "BepInEx/config/BepInEx.cfg",
+      "role": "ExistingConfig",
+      "stageSha256": "f2e0f930efda6a7fa292e872760a27cdc9bb1d232cd82d719446622c4dc6ef06",
+      "creation": "ExistingOnly",
+      "fileMask": "0x12019F",
+      "parentCreateAllowed": false,
+      "beforeImageRequired": true,
+      "finalSha256": "f2e0f930efda6a7fa292e872760a27cdc9bb1d232cd82d719446622c4dc6ef06"
+    },
+    {
+      "path": "profiles/AzuriteAcceptance/configs/halocue.azurite.cfg",
+      "role": "ExistingAzuriteConfig",
+      "stageSha256": "0d3ca42ae3af63c8e147fc2657747f8e6a166cc4f472df797c0ad43c6249bf38",
+      "creation": "ExistingOnly",
+      "fileMask": "0x12019F",
+      "parentCreateAllowed": false,
+      "beforeImageRequired": true,
+      "finalSha256": "0d3ca42ae3af63c8e147fc2657747f8e6a166cc4f472df797c0ad43c6249bf38"
+    },
+    {
+      "path": "BepInEx/LogOutput.log",
+      "role": "ExistingPrimaryLoaderLog",
+      "stageSha256": "5a0e2bb16e5de1d7d718aa30d66cd5e9b2a7d594f960c9240d7da67c848b3cd3",
+      "creation": "ExistingOnly",
+      "fileMask": "0x12019F",
+      "parentCreateAllowed": false,
+      "beforeImageRequired": true,
+      "finalSha256": null
+    },
+    {
+      "path": "BepInEx/cache/chainloader_typeloader.dat",
+      "role": "ExistingChainloaderCache",
+      "stageSha256": "505f66cf08f9e0a02f5c9a79db5eacde445ebaee59f43ac509403a6710d9bc1e",
+      "creation": "ExistingOnly",
+      "fileMask": "0x12019F",
+      "parentCreateAllowed": false,
+      "beforeImageRequired": true,
+      "finalSha256": null
+    },
+    {
+      "path": "BepInEx/cache/mod-the-azure-archive-38F3AC6B852EB58403C65A45_typeloader.dat",
+      "role": "MissingModTheCache",
+      "stageSha256": null,
+      "creation": "ControllerCreateNewOnly",
+      "fileMask": "0x12019F",
+      "parentCreateAllowed": false,
+      "beforeImageRequired": true,
+      "seedSha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+      "seedHex": "00000000"
+    },
+    {
+      "path": "output/unity.log",
+      "role": "FreshRunUnityLog",
+      "stageSha256": null,
+      "creation": "ControllerPrecreateEmpty",
+      "fileMask": "0x12019F",
+      "parentCreateAllowed": false,
+      "beforeImageRequired": true
+    }
+  ],
+  "requestPolicy": {
+    "parentPath": "<run>\\request",
+    "principal": "ActualLogonSidOnly",
+    "parentMask": "0x1200AB",
+    "parentInheritance": "None",
+    "childFileMask": "0x13019F",
+    "childInheritance": "ObjectInheritOnly",
+    "argumentsFile": "arguments.json",
+    "argumentsFileMask": "0x120089",
+    "argumentsProtected": true,
+    "createSubdirectory": false,
+    "deleteChild": false,
+    "allowedOutputs": [
+      "response.json"
+    ],
+    "temporaryResponseRule": "NativeProtocolOnlyWithBoundedNameCountBytes",
+    "responseMaxBytes": 1048576,
+    "maxTemporaryFiles": 1,
+    "postrunValidationRequired": true,
+    "unexpectedOutput": "Reject"
+  },
+  "transitionPolicy": {
+    "owner": "ControllerOnly",
+    "cacheParent": "BepInEx/cache",
+    "creationDenyMask": "0x6",
+    "temporarySealTransition": "ExactCacheParentOnly",
+    "createLeaf": "BepInEx/cache/mod-the-azure-archive-38F3AC6B852EB58403C65A45_typeloader.dat",
+    "createMode": "CreateNewNoOverwrite",
+    "restoreSealBeforeAA": true,
+    "beforeImages": "ExistingMutableBytesAndAclPlusNewLeafAbsence",
+    "stageMarkerMutation": false,
+    "wholeTreeRecovery": false,
+    "sharedStateRestore": false,
+    "sharedDeltaAllowed": false,
+    "runtimeAllowed": false
+  }
+}
