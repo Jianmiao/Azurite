@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><AssemblyName>Azurite.NormalEditor.Entry.Host.PreparationOnly</AssemblyName><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../NormalEditor.Entry.Core/NormalEditor.Entry.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Reference Include="Azurite.NormalEditor.Adapter.Core.PreparationOnly"><HintPath>../NormalEditor.Adapter.Core/bin/Release/net6.0/Azurite.NormalEditor.Adapter.Core.PreparationOnly.dll</HintPath></Reference>
+    <Reference Include="Azurite.NormalEditor.Adapter.Host.PreparationOnly"><HintPath>../NormalEditor.Adapter.Host/bin/Release/net6.0/Azurite.NormalEditor.Adapter.Host.PreparationOnly.dll</HintPath></Reference>
+    <Reference Include="Azurite.NormalEditor.Policy.PreparationOnly"><HintPath>../NormalEditor.Policy/bin/Release/net6.0/Azurite.NormalEditor.Policy.PreparationOnly.dll</HintPath></Reference>
+    <Reference Include="Azurite.EditorIsolation.Policy.LabOnly"><HintPath>../EditorIsolation.Policy/bin/Release/net6.0/Azurite.EditorIsolation.Policy.LabOnly.dll</HintPath></Reference>
+    <Reference Include="0Harmony" Private="false"><HintPath>$(AAInstallPath)/BepInEx/core/0Harmony.dll</HintPath></Reference>
+    <Reference Include="Il2CppInterop.Runtime" Private="false"><HintPath>$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>
+    <Reference Include="Il2CppInterop.Common" Private="false"><HintPath>$(AAInstallPath)/BepInEx/core/Il2CppInterop.Common.dll</HintPath></Reference>
+    <Reference Include="Assembly-CSharp" Private="false"><HintPath>$(AAInstallPath)/BepInEx/interop/Assembly-CSharp.dll</HintPath></Reference>
+    <Reference Include="Il2Cppmscorlib" Private="false"><HintPath>$(AAInstallPath)/BepInEx/interop/Il2Cppmscorlib.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule" Private="false"><HintPath>$(AAInstallPath)/BepInEx/interop/UnityEngine.CoreModule.dll</HintPath></Reference>
+  </ItemGroup>
+  <Target Name="RequireExplicitHost" BeforeTargets="ResolveReferences"><Error Condition="'$(AAInstallPath)' == '' Or !Exists('$(AAInstallPath)/BepInEx/interop/Assembly-CSharp.dll')" Text="Supply the separately pinned C host compile-input directory through AAInstallPath." /></Target>
+</Project>
