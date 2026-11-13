@@ -1,0 +1,27 @@
+{
+  "line_id": "fixture-line-opaque",
+  "node_id": "719bc0eb-b7c8-49fa-a958-c00f15611471",
+  "text": "原文 [FF0000]色[-]\r\n第二行\n",
+  "mode": "dialogue",
+  "speaker": { "slot": 2 },
+  "stage": [
+    { "slot": 2, "resource_id": "fixture:actor-A", "face_id": "face-A", "starting_position": 4, "ending_position": 3, "display_order": 5, "action": "Greeting", "emoticon": "Heart", "effect": "Shot", "appear": "AR", "shape_overrides": ["Sig", "Black", "Closeup"], "curve": null },
+    { "slot": 5, "resource_id": "fixture:actor-B", "face_id": "face-B", "starting_position": 1, "ending_position": 5, "display_order": 1, "action": "Curve", "emoticon": "None", "effect": "None", "appear": "DL", "shape_overrides": [], "curve": {
+      "id": "fixture-curve-identity", "name": "Curve fixture; not a native runtime receipt", "duration": 1.25,
+      "tracks": { "PositionX": [ { "time": 0, "value": 0.125, "inTangent": -0.25, "outTangent": 0.75, "inLength": 0.3, "outLength": 0.4, "mode": "smooth", "animationName": null, "key_extension": { "kept": true } }, { "time": 1.25, "value": 2.5, "mode": "linear" } ], "ExtensionTrack": [] },
+      "curve_extension": { "nested": [null, true, "原样", {"opaque": 123.4567890123456789}] }
+    } }
+  ],
+  "highlighted_slots": [5, 2],
+  "place": "原地点",
+  "extra_script": "# 原生场景脚本\nopaque content; never executed here",
+  "scene": {
+    "background": { "action": "set", "resource_id": "fixture:background" },
+    "background_effect": { "action": "set", "resource_id": "fixture:background-effect" },
+    "transition": { "action": "set", "resource_id": "fixture:transition" },
+    "bgm": { "action": "set", "resource_id": "fixture:bgm" },
+    "sound": { "action": "set", "resource_id": "fixture:sound" },
+    "popup": { "action": "set", "resource_id": "fixture:popup" },
+    "voice": { "action": "set", "resource_id": "fixture:voice" }
+  }
+}
