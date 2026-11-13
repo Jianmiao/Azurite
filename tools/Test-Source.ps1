@@ -22,11 +22,14 @@ $portable=@('Tests/HostProfile.Tests.csproj','ScrollTests/ScrollTests.csproj','P
  'AuthoringHostBridgeChecks/AuthoringHostBridgeChecks.csproj',
  'AuthoringHostContentChecks/AuthoringHostContentChecks.csproj',
  'AuthoringHostSelectionChecks/AuthoringHostSelectionChecks.csproj',
- 'AuthoringHostResourceChecks/AuthoringHostResourceChecks.csproj')
+ 'AuthoringHostResourceChecks/AuthoringHostResourceChecks.csproj',
+ 'AuthoringHostViewChecks/AuthoringHostViewChecks.csproj')
 $hostProjects=@('DriverTests/DriverTests.csproj','SelectorTests/SelectorTests.csproj',
  'LoadingIntegrationTests/LoadingIntegrationTests.csproj','CpuTests/CpuTests.csproj')
 $classified=@($portable)+@($hostProjects)
-$discovered=@(Get-ChildItem -LiteralPath $root -Directory | Where-Object {$_.Name.EndsWith('Tests',[StringComparison]::Ordinal)} | ForEach-Object {
+$discovered=@(Get-ChildItem -LiteralPath $root -Directory | Where-Object {
+    $_.Name.EndsWith('Tests',[StringComparison]::Ordinal) -or $_.Name.EndsWith('Checks',[StringComparison]::Ordinal)
+} | ForEach-Object {
     Get-ChildItem -LiteralPath $_.FullName -File -Filter '*.csproj' | ForEach-Object {[IO.Path]::GetRelativePath($root,$_.FullName).Replace('\','/')}
 })
 $unclassified=@($discovered | Where-Object {$_ -notin $classified})

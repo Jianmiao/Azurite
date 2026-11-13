@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/Azurite.Core.csproj" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostContent.cs" Link="Production/Content.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostResourcePicker.cs" Link="Production/Picker.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostDraft.cs" Link="Production/Draft.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackPanel.cs" Link="Production/Panel.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostView.cs" Link="Production/View.cs" />
+    <Content Include="../AuthoringHostContentChecks/NativeSchemaResponse.json" Link="NativeSchemaResponse.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

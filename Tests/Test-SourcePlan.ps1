@@ -8,7 +8,8 @@ Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringHostBridgeChecks
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringHostContentChecks')) 'Portable suite must exercise native content projection through the production source.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringHostSelectionChecks')) 'Portable suite must exercise the production native selection adapter.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringHostResourceChecks')) 'Portable suite must exercise native resource choices and pure card draft construction.'
-Assert ($portable.Jobs.Count -eq 29) 'Portable suite must include Core plus all 28 classified portable test projects.'
+Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringHostViewChecks')) 'Portable suite must exercise the production card view and owned control lifecycle.'
+Assert ($portable.Jobs.Count -eq 30) 'Portable suite must include Core plus all 29 classified portable test projects.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'WheelSettingsControlTests')) 'Portable suite must exercise actual wheel control.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringSpeakerShortcutTests')) 'Portable suite must exercise actual shortcut mutation.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'HostActivityAuthoringTests')) 'Portable suite must exercise actual host authoring admission.'
@@ -31,6 +32,23 @@ try {
     $cpu=@($hostPlan.Jobs | Where-Object Name -eq 'CpuTests')[0]
     Assert ([bool]($cpu.Arguments | Where-Object {$_ -like '-p:AaveRenderControlSource=*RenderControlV1.cs'})) 'CPU test must receive resolved production source explicitly.'
     Assert (@(Get-ChildItem -LiteralPath $temporary -Recurse -Force).Count -eq $before) 'PlanOnly mutated the fixture tree.'
+
+    # Execute an exact copy of the production planner against a private tree.
+    # Both naming conventions must be classified instead of silently skipped.
+    $sourceTree=Join-Path $temporary 'source-tree'
+    foreach($relative in @('tools','UnclassifiedChecks','UnclassifiedTests')){
+        [void][IO.Directory]::CreateDirectory((Join-Path $sourceTree $relative))
+    }
+    $copiedPlanner=Join-Path $sourceTree 'tools/Test-Source.ps1'
+    [IO.File]::Copy($script,$copiedPlanner,$false)
+    foreach($name in @('UnclassifiedChecks','UnclassifiedTests')){
+        [IO.File]::WriteAllText((Join-Path $sourceTree ($name+'/'+$name+'.csproj')),'<Project />')
+    }
+    $classificationError=''
+    try { & $copiedPlanner -Suite Portable -PlanOnly | Out-Null }
+    catch { $classificationError=$_.Exception.Message }
+    Assert ($classificationError.Contains('UnclassifiedChecks/UnclassifiedChecks.csproj') -and
+        $classificationError.Contains('UnclassifiedTests/UnclassifiedTests.csproj')) 'New Checks and Tests projects must both be classified before validation.'
 } finally {
     $full=[IO.Path]::GetFullPath($temporary)
     if(!$full.StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()),[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($full) -notlike 'azurite-source-plan-*'){throw 'Unsafe temporary cleanup path.'}
