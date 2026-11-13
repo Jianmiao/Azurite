@@ -83,4 +83,7 @@
     <Error Condition="!Exists('$(AAInstallPath)/BepInEx/interop/Assembly-CSharp.dll')" Text="AAInstallPath must point to an AA installation with generated BepInEx IL2CPP interop assemblies." />
     <Error Condition="'$(AzuriteCoreMode)' == 'Original' and !Exists('$(MSBuildThisFileDirectory)../references/Azurite.Core.dll')" Text="The source bundle must include references/Azurite.Core.dll from the validated Azurite 0.7.0 package." />
   </Target>
+  <ItemGroup Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">
+    <Reference Include="UnityEngine.IMGUIModule" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\UnityEngine.IMGUIModule.dll</HintPath></Reference>
+  </ItemGroup>
 </Project>
