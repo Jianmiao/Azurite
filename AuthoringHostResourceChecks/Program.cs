@@ -1,0 +1,93 @@
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Azurite;
+using Azurite.Core;
+using AzureArchive.Automation;
+using Studio.Scripts;
+using Studio.Scripts.Nodes;
+
+static class Program
+{
+    static bool allowed;
+    static string Schema="";
+    const string Stage="[{\"slot\":2,\"resource_id\":\"fixture-character\",\"face_id\":\"00\",\"action\":\"Idle\",\"effect\":\"None\",\"emoticon\":\"None\",\"appear\":\"None\"}]";
+    static void Reset()
+    {
+        allowed=true;var studio=new StudioCommon();StudioCommon.instance=studio;
+        AuthoringEditorSession.Current=new(){studio=studio};AuthoringResourceCatalog.CatalogVersion="fixture-catalog";
+        var inspector=new ScriptNodeInspector{scriptNode=new ScriptNode()};ScriptNodeInspector.instance=inspector;
+        inspector.scriptNode.scripts.Add(new Script{LineId="anchor",StageJson=Stage});
+        var row=new ScriptListItem{inspector=inspector,scriptNode=inspector.scriptNode};inspector.selectedScriptItem=row;inspector.scriptNodeListItemsCache.Add(row);
+        AuthoringApiSchema.Schema=Schema;AuthoringApiSchema.Calls=0;
+        AuthoringResourceCatalog.Resources.Clear();AuthoringResourceCatalog.Calls.Clear();AuthoringResourceCatalog.Searches.Clear();AuthoringResourceCatalog.SearchResults.Clear();AuthoringResourceCatalog.AfterResolve=null;AuthoringResourceCatalog.AfterSearch=null;
+        AuthoringResourceCatalog.NullSearch=AuthoringResourceCatalog.NullResolve=false;
+        AuthoringLines.Stages.Clear();AuthoringLines.Previous.Clear();AuthoringLines.Creates=AuthoringLines.Reads=0;AuthoringLines.AfterCreate=null;
+        Resource("fixture-transition","transition");Resource("fixture-sound","sound");Resource("fixture-character","character");
+    }
+    static string Resource(string id,string kind,bool available=true)
+    {
+        var fields=new Dictionary<string,object?>{{"resource_id",id},{"kind",kind},{"catalog_version","fixture-catalog"},{"name","Fixture name"},{"source","project"},{"available",available},{"availability_check","fixture"},{"aliases",Array.Empty<string>()},{"metadata",new{}},{"native_key","not-an-id"}};
+        if(kind=="character")fields["capabilities"]=new{stage=true,faces_loaded=true,faces=new[]{"00"}};
+        string raw=JsonSerializer.Serialize(fields);AuthoringResourceCatalog.Resources[id]=raw;return raw;
+    }
+    static string Page(string kind,string[] ids,string? cursor=null,string version="fixture-catalog",bool available=true)=>JsonSerializer.Serialize(new{catalog_version=version,items=ids.Select(id=>new{resource_id=id,kind,name="Fixture name",source="project",available,availability_check="fixture",aliases=Array.Empty<string>(),metadata=new{}}),next_cursor=cursor,missing_ids=Array.Empty<string>()});
+    static AuthoringCardPackHostResourcePicker Picker(string key="transition",CardResourceKind kind=CardResourceKind.Transition)=>new(Environment.CurrentManagedThreadId,()=>allowed,key,kind);
+    static void Pick(AuthoringCardPackHostResourcePicker p,string kind,string id)
+    {
+        AuthoringResourceCatalog.SearchResults.Enqueue(Page(kind,new[]{id}));p.SearchFirst();p.Select(id);
+    }
+    static CardPackV2Snapshot Capture(string? locale,IReadOnlyList<AuthoringCardPackResourceChoice> choices)
+    {
+        var session=AuthoringEditorSession.Current!;var inspector=ScriptNodeInspector.instance!;
+        var identity=new CardPackContextIdentity(session.ProjectId,session.EditSession,session.Revision,AuthoringResourceCatalog.CatalogVersion,inspector.scriptNode.guid.ToString(),"anchor",inspector.selectedSlotNum is >=1 and <=5?inspector.selectedSlotNum:null);
+        return new(new AuthoringCardPackHostContent(Environment.CurrentManagedThreadId,()=>choices).Capture(identity,locale),42);
+    }
+    static AuthoringCardPackHostDraft Draft(params AuthoringCardPackHostResourcePicker[] pickers)=>new(Environment.CurrentManagedThreadId,()=>allowed,()=>pickers.Select(x=>x.ReadChoice()).Where(x=>x!=null).Cast<AuthoringCardPackResourceChoice>().ToArray(),"transition","sound");
+    static void Check(bool value,string message){if(!value)throw new Exception(message);}
+    static void Reject(Action action,string message){try{action();}catch(InvalidOperationException){return;}catch(FormatException){return;}throw new Exception(message);}
+    sealed class CaptureHost:ICardPackV2Host
+    {
+        internal bool RecoveryPending;internal int Captures,Commits;
+        internal Func<IReadOnlyList<AuthoringCardPackResourceChoice>> Choices=()=>Array.Empty<AuthoringCardPackResourceChoice>();
+        public CardPackV2Snapshot Capture(string? locale){Captures++;if(RecoveryPending)throw new CardPackRecoveryRequiredException("fixture native outcome remains uncertain");return Program.Capture(locale,Choices());}
+        public CardPackV2CommitResult Commit(CardPackNativePlan p,long revision){Commits++;throw new Exception("This draft fixture must not commit");}
+        public CardPackV2RecoveryResult Recover(){RecoveryPending=false;return new(true,"fixture inspected");}
+    }
+    static readonly (string Name,Action Test)[] Cases=
+    {
+        ("search uses explicit query and opaque cursor without automatic selection",()=>{var p=Picker();p.SetQuery(CardResourceKind.Transition,"fade");AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"fixture-transition"},"opaque:page2"));p.SearchFirst(7);Check(p.Candidates.Count==1&&p.ReadChoice()==null,"search auto-selected or lost candidate");AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"fixture-transition-2"}));p.SearchNext(7);Check(p.Candidates.Count==2&&p.NextCursor==null,"page aggregation wrong");Check(AuthoringResourceCatalog.Searches.SequenceEqual(new[]{("transition","fade",(string?)null,7,"fixture-catalog"),("transition","fade",(string?)"opaque:page2",7,"fixture-catalog")}),"native search arguments changed");}),
+        ("selection requires candidate and real Resolve identity",()=>{var p=Picker();Pick(p,"transition","fixture-transition");Check(p.ReadChoice()==new AuthoringCardPackResourceChoice("transition","fixture-transition",CardResourceKind.Transition),"binding did not use returned ID");Check(AuthoringResourceCatalog.Calls.Single()==("fixture-transition","transition","fixture-catalog",true),"selection did not resolve exact version");}),
+        ("fabricated IDs and native_key cannot be selected",()=>{var p=Picker();AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"fixture-transition"}));p.SearchFirst();Reject(()=>p.Select("not-an-id"),"native_key accepted");Check(AuthoringResourceCatalog.Calls.Count==0,"unseen ID reached Resolve");}),
+        ("query and kind changes notify and revoke choices and cursor",()=>{var p=Picker();int notices=0;p.Changed+=_=>notices++;Pick(p,"transition","fixture-transition");int before=notices;long revision=p.Revision;p.SetQuery(CardResourceKind.Sound,"boom");Check(notices>before&&p.Revision>revision&&p.Candidates.Count==0&&p.NextCursor==null&&p.ReadChoice()==null,"query rebind failed to invalidate");Check(AuthoringResourceCatalog.Searches.Count==1,"query mutation searched automatically");}),
+        ("two logical pickers retain independent explicit selections",()=>{var a=Picker();var b=Picker("sound",CardResourceKind.Sound);Pick(a,"transition","fixture-transition");Pick(b,"sound","fixture-sound");Check(a.ReadChoice()!=null&&b.ReadChoice()!=null,"changing picker erased another family");}),
+        ("catalog revision change clears selection before exposure",()=>{var p=Picker();Pick(p,"transition","fixture-transition");long r=p.Revision;AuthoringResourceCatalog.CatalogVersion="new-catalog";Check(p.ReadChoice()==null&&p.Revision>r&&p.Candidates.Count==0,"stale catalog selection escaped");}),
+        ("new session with same catalog invalidates selection",()=>{var p=Picker();Pick(p,"transition","fixture-transition");AuthoringEditorSession.Current!.EditSession="new-session";Check(p.ReadChoice()==null,"stale session choice escaped");}),
+        ("search context changes during native call are discarded",()=>{var p=Picker();AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"fixture-transition"}));AuthoringResourceCatalog.AfterSearch=()=>AuthoringEditorSession.Current!.ProjectId="another-project";Reject(()=>p.SearchFirst(),"changed project page accepted");Check(p.Candidates.Count==0&&p.ReadChoice()==null,"changed-context candidates survived");}),
+        ("wrong page version or duplicate IDs are rejected",()=>{foreach(string page in new[]{Page("transition",new[]{"fixture-transition"},version:"wrong"),Page("transition",new[]{"fixture-transition","fixture-transition"})}){var p=Picker();AuthoringResourceCatalog.SearchResults.Enqueue(page);Reject(()=>p.SearchFirst(),"ambiguous page accepted");Check(p.Candidates.Count==0,"bad page exposed");}}),
+        ("unavailable candidate does not reach Resolve",()=>{var p=Picker();AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"fixture-transition"},available:false));p.SearchFirst();Reject(()=>p.Select("fixture-transition"),"unavailable candidate selected");Check(AuthoringResourceCatalog.Calls.Count==0,"unavailable candidate resolved");}),
+        ("Resolve identity kind version and boolean availability must match",()=>{foreach(var change in new[]{("resource_id",(object)"wrong"),("kind",(object)"sound"),("catalog_version",(object)"wrong"),("available",(object)false),("available",(object)"true")}){var p=Picker();var raw=JsonNode.Parse(Resource("fixture-transition","transition"))!;raw[change.Item1]=JsonSerializer.SerializeToNode(change.Item2);AuthoringResourceCatalog.Resources["fixture-transition"]=raw.ToJsonString();AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"fixture-transition"}));p.SearchFirst();Reject(()=>p.Select("fixture-transition"),"bad Resolve accepted: "+change.Item1);Check(p.ReadChoice()==null,"failed Resolve retained binding");}}),
+        ("wrong thread and revoked qualification perform no native calls",()=>{var p=Picker();Task.Run(()=>Reject(()=>p.SearchFirst(),"wrong thread allowed")).GetAwaiter().GetResult();allowed=false;Reject(()=>p.SearchFirst(),"revoked guard allowed");Check(AuthoringResourceCatalog.Searches.Count==0&&AuthoringResourceCatalog.Calls.Count==0,"closed boundary called native");}),
+        ("null native search and resolve fail with explicit state errors",()=>{var p=Picker();AuthoringResourceCatalog.NullSearch=true;Reject(()=>p.SearchFirst(),"null Search accepted");AuthoringResourceCatalog.NullSearch=false;AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"fixture-transition"}));p.SearchFirst();AuthoringResourceCatalog.NullResolve=true;Reject(()=>p.Select("fixture-transition"),"null Resolve accepted");Check(p.ReadChoice()==null,"null Resolve kept a binding");}),
+        ("next-page failures revoke old selection without retry",()=>{var p=Picker();AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"fixture-transition"},"opaque-next"));p.SearchFirst();p.Select("fixture-transition");AuthoringResourceCatalog.SearchResults.Enqueue(Page("transition",new[]{"another"},"opaque-next"));Reject(()=>p.SearchNext(),"nonadvancing cursor accepted");Check(p.ReadChoice()==null&&p.Candidates.Count==0&&AuthoringResourceCatalog.Searches.Count==2,"failed page retried or retained stale state");}),
+        ("resource change notification exposes already-cleared UI state",()=>{var p=Picker();Pick(p,"transition","fixture-transition");bool cleared=false;p.Changed+=change=>{if(change.Reason=="QueryChanged")cleared=p.Candidates.Count==0&&p.NextCursor==null;};p.SetQuery(CardResourceKind.Transition,"different");Check(cleared&&p.ReadChoice()==null,"notification preceded invalidation");}),
+        ("five families compile from actual native-backed content",()=>{var a=Picker();var b=Picker("sound",CardResourceKind.Sound);Pick(a,"transition","fixture-transition");Pick(b,"sound","fixture-sound");var result=Draft(a,b).BuildFiveFamilyExample();var pack=CardPackV2Json.Deserialize(result.Draft.Json);Check(result.IsBuiltInExample&&result.Description.Contains("示例")&&pack.Cards.Count==5,"example not clearly labeled");Check(pack.Cards.Where(x=>x.TargetSlot!=null).All(x=>x.TargetSlot==2),"target did not use actual Inspector");var context=Capture(result.Draft.SelectedLocale,new[]{a.ReadChoice()!,b.ReadChoice()!});var compiled=CardPackV2Compiler.TryCompile(pack,context.Context,context.Context.Identity);Check(compiled.IsSuccess&&compiled.Plan!.OperationCount==5,"five-family template did not compile");}),
+        ("example language is detached editable zh-CN and en text",()=>{var a=Picker();var b=Picker("sound",CardResourceKind.Sound);Pick(a,"transition","fixture-transition");Pick(b,"sound","fixture-sound");var builder=Draft(a,b);var first=CardPackV2Json.Deserialize(builder.BuildFiveFamilyExample().Draft.Json);var variants=first.Cards.Single(x=>x.Kind==PresetCardKind.Language).Variants!;Check(variants["zh-CN"]=="老师，我们出发吧。"&&variants["en"]=="Sensei, let's go.","explicit supplied example changed");var edit=new Dictionary<string,string>{{"zh-CN","用户编辑[FF00FF]原文"},{"en","Edited exact text"}};var result=builder.BuildFiveFamilyExample(edit,"en");edit["en"]="late mutation";Check(CardPackV2Json.Deserialize(result.Draft.Json).Cards.Single(x=>x.Kind==PresetCardKind.Language).Variants!["en"]=="Edited exact text","draft retained mutable caller text");}),
+        ("single language card requires supplied locale text",()=>{var builder=Draft();Reject(()=>builder.Build(PresetCardKind.Language,locale:"en"),"language silently used sample text");var d=builder.Build(PresetCardKind.Language,variants:new Dictionary<string,string>{{"en","[literal] text"}},locale:"en");Check(CardPackV2Json.Deserialize(d.Json).Cards.Single().Variants!["en"]=="[literal] text","text changed");}),
+        ("missing resource fails in draft and missing capability fails in actual Workflow",()=>{var builder=Draft();Reject(()=>builder.Build(PresetCardKind.Transition),"missing resource accepted");var resource=JsonNode.Parse(AuthoringResourceCatalog.Resources["fixture-character"])!;resource["capabilities"]!["stage"]=false;AuthoringResourceCatalog.Resources["fixture-character"]=resource.ToJsonString();var draft=builder.Build(PresetCardKind.Action,"Greeting");Check(AuthoringResourceCatalog.Calls.Count==0,"data builder resolved native capabilities");var result=new CardPackV2Workflow(new CaptureHost()).Preview(draft);Check(!result.IsSuccess&&result.Code=="CAPTURE_FAILED"&&result.Message.Contains("stage/face"),"missing stage capability did not fail through Workflow");}),
+        ("actual Workflow refuses unoccupied real selected slot",()=>{ScriptNodeInspector.instance!.selectedSlotNum=4;var result=new CardPackV2Workflow(new CaptureHost()).Preview(Draft().Build(PresetCardKind.Action,"Greeting"));Check(!result.IsSuccess&&result.Code=="TARGET_SLOT","empty native target accepted");ScriptNodeInspector.instance!.selectedSlotNum=0;Reject(()=>Draft().Build(PresetCardKind.Action,"Greeting"),"invalid target accepted");}),
+        ("arbitrary action and missing selected language are rejected",()=>{Reject(()=>Draft().Build(PresetCardKind.Action,"fabricated_clip"),"arbitrary clip accepted");Reject(()=>Draft().Build(PresetCardKind.Language,variants:new Dictionary<string,string>{{"zh-CN","台词"}},locale:"en"),"missing selected locale accepted");})
+        ,("draft rechecks selected slot after reading explicit resource choices",()=>{var builder=new AuthoringCardPackHostDraft(Environment.CurrentManagedThreadId,()=>allowed,()=>{ScriptNodeInspector.instance!.selectedSlotNum=3;return Array.Empty<AuthoringCardPackResourceChoice>();},"transition","sound");Reject(()=>builder.Build(PresetCardKind.Action,"Greeting"),"changed target accepted");})
+        ,("draft construction must not hide persistent recovery from production Panel",()=>{var host=new CaptureHost{RecoveryPending=true};var workflow=new CardPackV2Workflow(host);var builder=Draft();var preview=new UIButton();var confirm=new UIButton();var recover=new UIButton();var status=new UILabel();using var panel=new AuthoringCardPackPanel(workflow,()=>builder.Build(PresetCardKind.Action,"Greeting"),preview,confirm,new(),recover,new(),status);preview.Click();Check(workflow.RecoveryRequired&&recover.isEnabled&&!confirm.isEnabled&&status.text.StartsWith("RECOVERY_REQUIRED:",StringComparison.Ordinal),"draft preflight hid recovery as "+status.text);Check(host.Captures==1&&host.Commits==0,"recovery UI retried or committed");})
+        ,("production Panel ticks do not recapture native content through readDraft",()=>{var host=new CaptureHost();var workflow=new CardPackV2Workflow(host);var builder=Draft();var preview=new UIButton();var confirm=new UIButton();using var panel=new AuthoringCardPackPanel(workflow,()=>builder.Build(PresetCardKind.Action,"Greeting"),preview,confirm,new(),new(),new(),new());preview.Click();Check(confirm.isEnabled,"valid preview missing");int captured=host.Captures;panel.Update();panel.Update();panel.Update();Check(host.Captures==captured&&captured==1,"Panel.Update performed native capture");})
+        ,("resource invalidation signal can revoke existing production Panel preview",()=>{var p=Picker();Pick(p,"transition","fixture-transition");var host=new CaptureHost{Choices=()=>new[]{p.ReadChoice()!}};var workflow=new CardPackV2Workflow(host);var builder=Draft(p);var preview=new UIButton();var confirm=new UIButton();using var panel=new AuthoringCardPackPanel(workflow,()=>builder.Build(PresetCardKind.Transition),preview,confirm,new(),new(),new(),new());preview.Click();Check(confirm.isEnabled,"resource preview missing");p.Changed+=change=>{if(change.Reason=="QueryChanged")panel.Dispose();};p.SetQuery(CardResourceKind.Sound,"new query");Check(!confirm.isEnabled&&confirm.onClick.Count==0&&host.Captures==1&&host.Commits==0,"notification failed to revoke preview or called native");})
+    };
+    static int Main()
+    {
+        string path=Path.Combine(AppContext.BaseDirectory,"NativeSchemaResponse.json");byte[] bytes=File.ReadAllBytes(path);
+        Check(Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant()=="b97d7bb5da9a86738a7d43eec79e5b26547bccb50d68400d92891741258f978d","native schema fixture changed");
+        Schema=JsonDocument.Parse(bytes).RootElement.GetProperty("data").GetRawText();int failed=0;
+        foreach(var c in Cases){Reset();try{c.Test();Console.WriteLine("PASS "+c.Name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+c.Name+": "+e.Message);}}
+        Console.WriteLine($"RESULT {Cases.Length-failed} passed / {failed} failed");return failed==0?0:1;
+    }
+}
