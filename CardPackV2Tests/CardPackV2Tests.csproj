@@ -5,6 +5,7 @@
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackPanel.cs" Link="Production/AuthoringCardPackPanel.cs" />
     <Compile Include="../Core/Azurite.Core/PresetCardPack.cs" Link="Production/PresetCardPack.cs" />
     <Compile Include="../Core/Azurite.Core/PresetCardPackNativePlan.cs" Link="Production/PresetCardPackNativePlan.cs" />
     <Compile Include="../Core/Azurite.Core/CardPackV2*.cs" Link="Production/%(Filename)%(Extension)" />

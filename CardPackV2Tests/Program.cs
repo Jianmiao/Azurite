@@ -30,7 +30,7 @@ static partial class Program
     static CardPackNativePlan Success(CardPackCompileResult r) { Require(r.IsSuccess && r.Plan != null, string.Join(";", r.Errors.Select(x => x.Code + ":" + x.Message))); return r.Plan!; }
     static void Reject(CardPackCompileResult r, string code) { Require(!r.IsSuccess && r.Plan is null, "invalid pack leaked a plan"); Require(r.Errors.Any(x => x.Code == code), "missing error " + code + "; actual: " + string.Join(",", r.Errors.Select(x => x.Code))); }
     static string Operation(CardPackNativePlan plan, int i = 0) => Json(plan.OperationsJson)[i].GetRawText();
-    static int Main() { Mapping(); Rejections(); SerializationAndMigration(); Hardening(); Console.WriteLine($"RESULT: {passed} passed; {failed} failed."); return failed == 0 ? 0 : 1; }
+    static int Main() { Mapping(); Rejections(); SerializationAndMigration(); Hardening(); Confirmation(); Panel(); Console.WriteLine($"RESULT: {passed} passed; {failed} failed."); return failed == 0 ? 0 : 1; }
     static void Mapping()
     {
         Test("transition literal native JSON preserves opaque IDs", () => EqualJson(

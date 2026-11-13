@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 namespace HarmonyLib
 {
@@ -16,12 +17,12 @@ namespace HarmonyLib
     public sealed class Patches { public List<string> Owners = new(); }
     public sealed class Harmony
     {
-        private record PatchRecord(string Owner, MethodInfo Prefix, MethodInfo Postfix);
+        private record PatchRecord(string Owner, MethodInfo Prefix, MethodInfo Postfix, MethodInfo Finalizer);
         private static readonly Dictionary<MethodInfo, PatchRecord> Registered = new();
         private readonly string _owner;
         public Harmony(string owner) => _owner = owner;
-        public void Patch(MethodInfo method, HarmonyMethod prefix = null, HarmonyMethod postfix = null) =>
-            Registered[method] = new PatchRecord(_owner, prefix?.Method, postfix?.Method);
+        public void Patch(MethodInfo method, HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod finalizer = null) =>
+            Registered[method] = new PatchRecord(_owner, prefix?.Method, postfix?.Method, finalizer?.Method);
         public static Patches GetPatchInfo(MethodInfo method) => Registered.TryGetValue(method, out var p) ? new Patches { Owners = new() { p.Owner } } : null;
         public void UnpatchSelf()
         {
@@ -32,17 +33,32 @@ namespace HarmonyLib
             MethodInfo method = AccessTools.Method(instance.GetType(), name);
             if (!Registered.TryGetValue(method, out var patch)) { original(); return; }
             object state = null;
-            bool run = InvokePatch(patch.Prefix, instance, ref state) is not false;
-            if (run) original();
-            InvokePatch(patch.Postfix, instance, ref state);
+            Exception error = null;
+            try
+            {
+                bool run = InvokePatch(patch.Prefix, instance, ref state, null) is not false;
+                if (run) original();
+                InvokePatch(patch.Postfix, instance, ref state, null);
+            }
+            catch (Exception caught) { error = caught; }
+            if (patch.Finalizer != null) error = (Exception)InvokePatch(patch.Finalizer, instance, ref state, error);
+            if (error != null) ExceptionDispatchInfo.Capture(error).Throw();
         }
-        private static object InvokePatch(MethodInfo method, object instance, ref object state)
+        private static object InvokePatch(MethodInfo method, object instance, ref object state, Exception error)
         {
             if (method == null) return null;
             var parameters = method.GetParameters();
             object currentState = state;
-            var args = parameters.Select(p => p.Name == "__instance" ? instance : currentState ?? (p.ParameterType.IsByRef ? Activator.CreateInstance(p.ParameterType.GetElementType()) : null)).ToArray();
-            object result = method.Invoke(null, args);
+            var args = parameters.Select(p => p.Name switch
+            {
+                "__instance" => instance,
+                "__exception" => error,
+                "__state" => currentState ?? (p.ParameterType.IsByRef ? Activator.CreateInstance(p.ParameterType.GetElementType()) : null),
+                _ => throw new NotSupportedException(p.Name)
+            }).ToArray();
+            object result;
+            try { result = method.Invoke(null, args); }
+            catch (TargetInvocationException caught) { ExceptionDispatchInfo.Capture(caught.InnerException).Throw(); throw; }
             for (int i = 0; i < parameters.Length; ++i) if (parameters[i].Name == "__state") state = args[i];
             return result;
         }
@@ -95,6 +111,10 @@ namespace Studio.Scripts.Window.BackgroundExplorer
         public int loadGeneration;
         public int NativeClosures, Requests, Releases;
         public bool CompleteSynchronously;
+        // Fault injection after native flags/generation change, before the
+        // resource provider accepts a callback. This is not measured host cost.
+        public Exception LoadFailure;
+        public Action AfterAccepted;
         public readonly List<__c__DisplayClass22_0> Callbacks = new();
         // Native AA: Update and UpdateLoadState share RVA 0x813b30.
         public void Update() => HarmonyLib.Harmony.Invoke(this, nameof(Update), UpdateLoadState);
@@ -112,6 +132,9 @@ namespace Studio.Scripts.Window.BackgroundExplorer
             unloaded = false;
             ++loadGeneration;
             ++Requests;
+            Exception failure = LoadFailure;
+            AfterAccepted?.Invoke();
+            if (failure != null) throw failure;
             var callback = new __c__DisplayClass22_0 { __4__this = this, generation = loadGeneration };
             Callbacks.Add(callback);
             if (CompleteSynchronously) callback._LoadBGAsync_b__0(new UnityEngine.Texture());

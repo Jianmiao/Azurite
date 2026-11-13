@@ -52,7 +52,7 @@ internal sealed class BackgroundGalleryLoadCulling : IDisposable
         try
         {
             _active = this;
-            Patch(typeof(BackgroundItem), "LoadBGAsync", nameof(BeforeLoad), nameof(AfterLoad));
+            Patch(typeof(BackgroundItem), "LoadBGAsync", nameof(BeforeLoad), nameof(AfterLoad), nameof(FinalizeLoad));
             Patch(typeof(BackgroundItem), "UnloadBg", null, nameof(AfterUnload));
             Patch(typeof(BackgroundItem.__c__DisplayClass22_0), "_LoadBGAsync_b__0", nameof(BeforeCompleted), null);
             _installed = true;
@@ -84,13 +84,14 @@ internal sealed class BackgroundGalleryLoadCulling : IDisposable
         }
     }
 
-    private void Patch(Type type, string name, string? prefix, string? postfix)
+    private void Patch(Type type, string name, string? prefix, string? postfix, string? finalizer = null)
     {
         MethodInfo? target = AccessTools.Method(type, name);
         if (target == null) throw new MissingMethodException(type.FullName, name);
         _harmony.Patch(target,
             prefix: prefix == null ? null : new HarmonyMethod(typeof(BackgroundGalleryLoadCulling), prefix),
-            postfix: postfix == null ? null : new HarmonyMethod(typeof(BackgroundGalleryLoadCulling), postfix));
+            postfix: postfix == null ? null : new HarmonyMethod(typeof(BackgroundGalleryLoadCulling), postfix),
+            finalizer: finalizer == null ? null : new HarmonyMethod(typeof(BackgroundGalleryLoadCulling), finalizer));
         if (Harmony.GetPatchInfo(target)?.Owners.Contains(Owner) != true)
             throw new InvalidOperationException("Background gallery hook not registered: " + name);
     }
@@ -148,6 +149,19 @@ internal sealed class BackgroundGalleryLoadCulling : IDisposable
             if (item != null) _active?.Release(item.Pointer, __instance!.generation);
         }
         catch { }
+    }
+
+    private static Exception? FinalizeLoad(BackgroundItem __instance, int __state, Exception? __exception)
+    {
+        // Postfixes do not run if the native submission throws. Release only
+        // this generation's bookkeeping; preserve native state and exception.
+        // An unload/reload inside the call may already own a newer generation.
+        if (__exception != null)
+        {
+            try { if (__instance != null) _active?.Release(__instance.Pointer, __state); }
+            catch { }
+        }
+        return __exception;
     }
 
     private static void AfterUnload(BackgroundItem __instance)

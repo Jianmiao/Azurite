@@ -16,6 +16,9 @@ var tests = new (string Name, Action Test)[]
     ("same-frame direct native calls obey admission budget", DirectCall),
     ("synchronous cache hits do not leak capacity", Synchronous),
     ("failed callbacks release capacity without rewriting native state", FailedCallback),
+    ("synchronous native failures release capacity and preserve their exceptions", FailedNativeLoad),
+    ("synchronous native failures retain the same-frame admission budget", FailedNativeFrameBudget),
+    ("failed old calls cannot release a reentrant newer generation", FailedNativeGeneration),
     ("lost callbacks cannot permanently block the gallery", MissingCallback),
     ("re-enable resumes admission without touching completed textures", Resume),
     ("disposing removes all admission hooks", Disposed),
@@ -133,6 +136,50 @@ static void FailedCallback()
     items[0].Callbacks.Single()._LoadBGAsync_b__0(null); Frame(items);
     Check(items.Sum(x => x.Requests) == 9, "failed callback occupied admission capacity");
     Check(!items[0].unloaded && items[0].texture.mainTexture == null, "native failure state was rewritten");
+}
+static void FailedNativeLoad()
+{
+    using var controller = Start(); var failed = Items(8);
+    var error = new InvalidOperationException("native resource submission failed");
+    foreach (var item in failed) item.LoadFailure = error;
+    int observed = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        ++Time.frameCount;
+        foreach (var item in failed)
+            try { item.LoadBGAsync(); }
+            catch (Exception actual) { Check(ReferenceEquals(actual, error), "native exception was replaced or wrapped"); ++observed; }
+    }
+    Check(observed == 8, "not all admitted native failures were observed");
+    var next = Items(2); Frame(next);
+    Check(next.Sum(x => x.Requests) == 2, "failed native submissions retained all eight admission slots");
+    Check(failed.All(x => !x.unloaded && x.loadGeneration == 1 && x.texture.mainTexture == null && x.Releases == 0),
+        "exception cleanup rewrote native flags, generation, or resource state");
+}
+static void FailedNativeFrameBudget()
+{
+    using var controller = Start(); var items = Items(3);
+    foreach (var item in items) item.LoadFailure = new InvalidOperationException("native resource submission failed");
+    foreach (var item in items) try { item.LoadBGAsync(); } catch (InvalidOperationException) { }
+    Check(items.Sum(x => x.Requests) == 2 && items[2].Requests == 0, "exceptions refunded the same-frame request budget");
+}
+static void FailedNativeGeneration()
+{
+    using var controller = Start(); var item = new BackgroundItem();
+    var error = new InvalidOperationException("outer native submission failed");
+    item.LoadFailure = error;
+    item.AfterAccepted = () =>
+    {
+        item.AfterAccepted = null; item.LoadFailure = null;
+        item.UnloadBg(); item.LoadBGAsync();
+    };
+    try { item.LoadBGAsync(); throw new Exception("outer native exception was swallowed"); }
+    catch (InvalidOperationException actual) { Check(ReferenceEquals(actual, error), "outer native exception identity changed"); }
+    var waiting = Items(10);
+    for (int i = 0; i < 4; ++i) Frame(waiting);
+    Check(waiting.Sum(x => x.Requests) == 7, "outer failure released the newer generation's admission slot");
+    Check(item.Requests == 2 && item.loadGeneration == 3 && item.Callbacks.Count == 1,
+        "reentrant native generation was changed by exception cleanup");
 }
 static void MissingCallback()
 {

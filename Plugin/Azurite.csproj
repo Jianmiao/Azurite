@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <AzuriteCoreMode Condition="'$(AzuriteCoreMode)' == ''">Original</AzuriteCoreMode>
     <AssemblyName>Azurite</AssemblyName>
+    <!-- Experimental source-built identity cannot be mistaken for the stable
+         Azurite assembly by the existing candidate/package validators. -->
+    <AssemblyName Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">Azurite.AuthoringSource</AssemblyName>
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <TargetFramework>netcoreapp6.0</TargetFramework>
     <Nullable>annotations</Nullable>
@@ -16,6 +20,8 @@
     <Compile Remove="Azurite/ProgressivePreloadEnumerator.cs" />
     <Compile Remove="Azurite/ProgressivePreloadBudget.cs" />
     <Compile Remove="Azurite/ProgressiveEditorGate.cs" />
+    <Compile Remove="Azurite/AuthoringCardPackPanel.cs" Condition="'$(AzuriteCoreMode)' != 'AuthoringSource'" />
+    <Compile Remove="Azurite/AuthoringCardPackHost*.cs" Condition="'$(AzuriteCoreMode)' != 'AuthoringSource'" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\Newtonsoft.Json.dll</HintPath></Reference>
@@ -50,9 +56,10 @@
     <Reference Include="Mono.Cecil" Private="false">
       <HintPath>$(AAInstallPath)\BepInEx\core\Mono.Cecil.dll</HintPath>
     </Reference>
-    <Reference Include="Azurite.Core">
+    <Reference Include="Azurite.Core" Condition="'$(AzuriteCoreMode)' == 'Original'">
       <HintPath>..\references\Azurite.Core.dll</HintPath>
     </Reference>
+    <ProjectReference Include="../Core/Azurite.Core.csproj" Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'" Private="true" />
     <Reference Include="BepInEx.Unity.IL2CPP" Private="false">
       <HintPath>$(AAInstallPath)\BepInEx\core\BepInEx.Unity.IL2CPP.dll</HintPath>
     </Reference>
@@ -63,8 +70,17 @@
       <HintPath>$(AAInstallPath)\BepInEx\interop\UnityEngine.InputLegacyModule.dll</HintPath>
     </Reference>
   </ItemGroup>
+  <Target Name="ValidateAzuriteBuildMode" BeforeTargets="PrepareForBuild;ResolveReferences">
+    <Error Condition="'$(AzuriteCoreMode)' != 'Original' and '$(AzuriteCoreMode)' != 'AuthoringSource'" Text="AzuriteCoreMode must be Original or AuthoringSource; no dependency fallback is allowed." />
+    <Error Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' and ('$(UseArtifactsOutput)' != 'true' or '$(ArtifactsPath)' == '')" Text="AuthoringSource requires --artifacts-path with a fresh independent output directory (SDK 8+). Use tools/Build-AuthoringSource.ps1." />
+    <Error Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' and '$(ArtifactsPath)' != '' and !$([System.IO.Path]::IsPathRooted('$(ArtifactsPath)'))" Text="AuthoringSource requires an absolute artifacts path." />
+    <Error Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' and '$(BuildProjectReferences)' == 'false'" Text="AuthoringSource must build its source Core; BuildProjectReferences=false cannot certify the pair." />
+  </Target>
+  <Target Name="RejectAuthoringPackaging" BeforeTargets="GenerateNuspec;Pack;PrepareForPublish;Publish" Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">
+    <Error Text="AuthoringSource is an isolated experimental build, not a release package. A separately reviewed authoring packaging and runtime acceptance path is required." />
+  </Target>
   <Target Name="CheckRecoveredHostReferences" BeforeTargets="ResolveReferences">
     <Error Condition="!Exists('$(AAInstallPath)/BepInEx/interop/Assembly-CSharp.dll')" Text="AAInstallPath must point to an AA installation with generated BepInEx IL2CPP interop assemblies." />
-    <Error Condition="!Exists('$(MSBuildThisFileDirectory)../references/Azurite.Core.dll')" Text="The source bundle must include references/Azurite.Core.dll from the validated Azurite 0.7.0 package." />
+    <Error Condition="'$(AzuriteCoreMode)' == 'Original' and !Exists('$(MSBuildThisFileDirectory)../references/Azurite.Core.dll')" Text="The source bundle must include references/Azurite.Core.dll from the validated Azurite 0.7.0 package." />
   </Target>
 </Project>

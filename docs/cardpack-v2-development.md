@@ -1,6 +1,24 @@
-# Card pack v2: offline model and compiler boundary
+# Card pack v2: compiler and guarded authoring integration
 
 Date: 2026-11-08. This is development syntax/mapping work, not a public card package or a native-readiness claim. No AA session, preview, save, Undo, audio or rendering was invoked. The public RenderControlV1/v1 protocol is unchanged.
+
+## Source integration checkpoint — 2026-11-14
+
+The production `CardPackV2Workflow` now implements preview, a one-use confirmation token, fresh identity/selection/resource validation and a single host commit. Draft or locale changes invalidate confirmation. Unknown commit outcomes require explicit, proven recovery before another preview; cancel or rebuilding a panel cannot turn an unknown write into a reported non-write.
+
+`AuthoringCardPackPanel` binds dedicated NGUI preview/confirm/cancel/recover controls. `AuthoringCardPackHost` binds the current host's real `Current.Check(..., true, true)` and one `Apply`. It checks Studio/session ownership, opaque project/node/line identities, model snapshots and history, and retains uncertainty across Host/Panel instances. Recover does not call Apply, Undo or Restore. It accepts only an unchanged complete before-state, or an already verified after-state following a normally returned nonempty Apply receipt. An exception followed by a history entry alone is not sufficient proof of completion.
+
+These components are **not registered or runtime-qualified**. The host still requires production native inheritance/resource-capability projection, the actual selection revision/reconciliation, a qualified Unity-thread callback and real activity/export guards. No test fixture or mandatory delegate constitutes those implementations. Complete five-family insertion, effects/audio, one Undo/Redo, save/reopen and failure recovery remain unaccepted.
+
+The default plugin build remains `AzuriteCoreMode=Original`, using the preserved original Core and excluding the new authoring panel/host. The explicit development mode `AuthoringSource` builds Core and Plugin together through a project reference, identifies the plugin as `Azurite.AuthoringSource`, and requires a separate artifacts directory. Use:
+
+```powershell
+./tools/Build-AuthoringSource.ps1 -AAInstallPath '<AA installation>' -OutputDirectory '<repository>/artifacts/<new directory>'
+```
+
+This produces a matching Core/Plugin pair and an input/output receipt with `releaseEligible=false`. It does not install or start AA. Existing release packaging rejects the experimental identity; pack/publish are guarded before output. Do not rename these files or replace the original Core to bypass that boundary.
+
+The current-host interop build passed with zero warnings/errors. `CardPackV2Tests` covers the workflow/panel and `AuthoringHostBridgeChecks` links the actual Host source with external native/Unity stubs. Both are included in `tools/Test-Source.ps1 -Suite Portable`; the integration checkpoint passed all 26 jobs, including 23 Host behavior checks. This is source/build evidence, not native execution or a released candidate.
 
 ## Entry points and result
 
