@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NormalEditor.Entry.Core/NormalEditor.Entry.Core.csproj" />
+    <ProjectReference Include="../NormalEditor.Adapter.Core/NormalEditor.Adapter.Core.csproj" />
+    <Reference Include="Azurite.NormalEditor.Policy.PreparationOnly"><HintPath>../NormalEditor.Policy/bin/Release/net6.0/Azurite.NormalEditor.Policy.PreparationOnly.dll</HintPath></Reference>
+    <Reference Include="Azurite.EditorIsolation.Policy.LabOnly"><HintPath>../EditorIsolation.Policy/bin/Release/net6.0/Azurite.EditorIsolation.Policy.LabOnly.dll</HintPath></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>../NormalEditor.Adapter.Tests/bin/Release/net6.0/Mono.Cecil.dll</HintPath></Reference>
+    <Compile Include="../NormalEditor.Adapter.Tests/Fixture.cs" Link="Fixture.cs" />
+  </ItemGroup>
+</Project>

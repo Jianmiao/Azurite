@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using AzureArchive.Automation;
 using Azurite.NormalEditor.Adapter;
+using Azurite.NormalEditor.Adapter.Host;
 using HarmonyLib;
 using Il2CppInterop.Runtime.InteropTypes;
 using UnityEngine;
@@ -16,9 +17,9 @@ public static class CatalogEntryHost
 {
     private sealed class State
     {
-        internal State(AdapterBinding binding,IAdapterAdmission admission,string evidence,CatalogNativeBindings native,CatalogReadiness gate,Harmony harmony,CatalogClockAnchor clock,long milliseconds){Binding=binding;Admission=admission;Evidence=evidence;Native=native;Gate=gate;Harmony=harmony;Clock=clock;LastMilliseconds=milliseconds;Ticks=new(gate);}
+        internal State(AdapterBinding binding,IAdapterAdmission admission,string evidence,CatalogNativeBindings native,CatalogReadiness gate,Harmony harmony,CatalogClockAnchor clock,long milliseconds){Binding=binding;Admission=admission;Evidence=evidence;Native=native;Gate=gate;Harmony=harmony;Clock=clock;LastMilliseconds=milliseconds;Ticks=new(gate);Shutdown=new(gate,Ticks);}
         internal readonly AdapterBinding Binding;internal readonly IAdapterAdmission Admission;internal readonly string Evidence;internal readonly CatalogNativeBindings Native;internal readonly CatalogReadiness Gate;internal readonly Harmony Harmony;internal readonly CatalogClockAnchor Clock;
-        internal readonly CatalogTickCallbacks Ticks;internal bool Registered;internal long LastMilliseconds;
+        internal readonly CatalogTickCallbacks Ticks;internal readonly CatalogShutdown Shutdown;internal bool Registered;internal long LastMilliseconds;
     }
     private static State? state;
     [DllImport("kernel32.dll",ExactSpelling=true)]private static extern uint GetCurrentThreadId();
@@ -36,8 +37,25 @@ public static class CatalogEntryHost
         try{
             state.Harmony.Patch(native.Bound["Start"],new HarmonyMethod(typeof(CatalogEntryHost),nameof(StartPrefix)),new HarmonyMethod(typeof(CatalogEntryHost),nameof(StartPostfix)),finalizer:new HarmonyMethod(typeof(CatalogEntryHost),nameof(StartFinalizer)));
             state.Harmony.Patch(native.Bound["Update"],new HarmonyMethod(typeof(CatalogEntryHost),nameof(UpdatePrefix)),new HarmonyMethod(typeof(CatalogEntryHost),nameof(UpdatePostfix)),finalizer:new HarmonyMethod(typeof(CatalogEntryHost),nameof(UpdateFinalizer)));
-            Verify();state.Registered=true;
+            Verify();if(!state.Shutdown.MarkRegistered())throw new InvalidOperationException("Catalog lifetime registration was refused.");state.Registered=true;
         }catch(Exception e){gate.Reject("Catalog registration failed: "+e.Message,LastStamp(0));throw;}
+    }
+    // Called only by a separately admitted normal-shutdown integration. A true
+    // return retires our managed evidence producer and the exact settings owner;
+    // only then may the external writer Seal. It is not proof of native exit.
+    public static bool Close()
+    {
+        var s=state;if(s is null)return false;
+        return s.Shutdown.TryClose(()=>FallbackStamp(0),()=>{
+            if(!s.Registered)throw new InvalidOperationException("Catalog registration is incomplete.");Verify();
+        },()=>NativeAdapterHost.Close(s.Binding,s.Admission));
+    }
+    private static bool EnterCallback(out IDisposable? scope)
+    {
+        scope=null;var s=state;if(s is null)return false;
+        // LastStamp only reads managed identity and the OS thread ID, not AA
+        // fields, a new clock sample, or a native owner. Stopped hooks are inert.
+        return s.Shutdown.TryEnter(LastStamp(0),out scope);
     }
     private static void Verify()
     {
@@ -65,20 +83,20 @@ public static class CatalogEntryHost
         if(Environment.ProcessId!=s.Binding.Policy.ProcessId||GetCurrentThreadId()!=s.Binding.Policy.NativeThreadId)throw new InvalidOperationException("Foreign Catalog callback process/native thread.");
     }
     private static void StartPrefix(global::Catalog __instance,MethodBase __originalMethod,out CatalogStartFrame? __state)
-    {__state=null;try{Callback(typeof(global::Catalog),__instance.Pointer,__originalMethod,"Start");__state=state!.Gate.StartEntered(Stamp(__instance.Pointer.ToInt64()));}catch(Exception e){Fail(e,Pointer(__instance));}}
+    {__state=null;if(!EnterCallback(out var scope))return;using(scope){try{Callback(typeof(global::Catalog),__instance.Pointer,__originalMethod,"Start");__state=state!.Gate.StartEntered(Stamp(__instance.Pointer.ToInt64()));}catch(Exception e){Fail(e,Pointer(__instance));}}}
     private static void StartPostfix(global::Catalog __instance,MethodBase __originalMethod,CatalogStartFrame? __state,bool __runOriginal)
-    {try{Callback(typeof(global::Catalog),__instance.Pointer,__originalMethod,"Start");state!.Gate.StartReturned(__state,Stamp(__instance.Pointer.ToInt64()),__runOriginal);}catch(Exception e){Fail(e,Pointer(__instance));}}
+    {if(!EnterCallback(out var scope))return;using(scope){try{Callback(typeof(global::Catalog),__instance.Pointer,__originalMethod,"Start");state!.Gate.StartReturned(__state,Stamp(__instance.Pointer.ToInt64()),__runOriginal);}catch(Exception e){Fail(e,Pointer(__instance));}}}
     private static Exception? StartFinalizer(global::Catalog __instance,MethodBase __originalMethod,CatalogStartFrame? __state,Exception? __exception)
-    {try{Callback(typeof(global::Catalog),__instance.Pointer,__originalMethod,"Start");return state!.Gate.StartFinalized(__state,Stamp(__instance.Pointer.ToInt64()),__exception);}catch(Exception e){Fail(e,Pointer(__instance));return __exception;}}
+    {if(!EnterCallback(out var scope))return __exception;using(scope){try{Callback(typeof(global::Catalog),__instance.Pointer,__originalMethod,"Start");return state!.Gate.StartFinalized(__state,Stamp(__instance.Pointer.ToInt64()),__exception);}catch(Exception e){Fail(e,Pointer(__instance));return __exception;}}}
     private static void UpdatePrefix(AuthoringWorkbench __instance,MethodBase __originalMethod,out CatalogTickFrame? __state)
-    {__state=null;try{Callback(typeof(AuthoringWorkbench),__instance.Pointer,__originalMethod,"Update");__state=state!.Ticks.Enter(Stamp(0),__instance.Pointer.ToInt64());}catch(Exception e){Fail(e,0);}}
+    {__state=null;if(!EnterCallback(out var scope))return;using(scope){try{Callback(typeof(AuthoringWorkbench),__instance.Pointer,__originalMethod,"Update");__state=state!.Ticks.Enter(Stamp(0),__instance.Pointer.ToInt64());}catch(Exception e){Fail(e,0);}}}
     private static void UpdatePostfix(AuthoringWorkbench __instance,MethodBase __originalMethod,CatalogTickFrame? __state,bool __runOriginal)
-    {try{Callback(typeof(AuthoringWorkbench),__instance.Pointer,__originalMethod,"Update");state!.Ticks.Returned(__state,Stamp(0),__instance.Pointer.ToInt64(),__runOriginal);}catch(Exception e){Fail(e,0);}}
+    {if(!EnterCallback(out var scope))return;using(scope){try{Callback(typeof(AuthoringWorkbench),__instance.Pointer,__originalMethod,"Update");state!.Ticks.Returned(__state,Stamp(0),__instance.Pointer.ToInt64(),__runOriginal);}catch(Exception e){Fail(e,0);}}}
     private static Exception? UpdateFinalizer(AuthoringWorkbench __instance,MethodBase __originalMethod,CatalogTickFrame? __state,Exception? __exception)
     {
-        try{Callback(typeof(AuthoringWorkbench),__instance.Pointer,__originalMethod,"Update");if(!state!.Ticks.TryComplete(__state,Stamp(0),__instance.Pointer.ToInt64(),__exception))return __exception;
+        if(!EnterCallback(out var scope))return __exception;using(scope){try{Callback(typeof(AuthoringWorkbench),__instance.Pointer,__originalMethod,"Update");if(!state!.Ticks.TryComplete(__state,Stamp(0),__instance.Pointer.ToInt64(),__exception))return __exception;
             state.Gate.ObserveTick(Stamp(0),()=>Observe(__instance),()=>{Verify();AuthoringWorkbench.RequireCatalogIdleForControl();return Observe(__instance);});
-        }catch(Exception e){Fail(e,0);}return __exception;
+        }catch(Exception e){Fail(e,0);}return __exception;}
     }
     private static CatalogObservation Observe(AuthoringWorkbench callbackOwner)
     {

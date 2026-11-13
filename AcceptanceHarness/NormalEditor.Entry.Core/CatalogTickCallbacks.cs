@@ -15,6 +15,8 @@ public sealed class CatalogTickCallbacks
     private bool returned;
     private long workbench,lastFrame=-1,lastMilliseconds=-1;
     public CatalogTickCallbacks(CatalogReadiness readiness){this.readiness=readiness??throw new ArgumentNullException(nameof(readiness));}
+    internal CatalogReadiness Readiness=>readiness;
+    internal void RequireQuiescentForClose(){lock(sync)Require(active is null&&!returned,"Native Update return/finalizer is still pending.");}
     private static void Require(bool value,string why){if(!value)throw new InvalidOperationException(why);}
     private void Context(CatalogStamp stamp,long owner)
     {

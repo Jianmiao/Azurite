@@ -15,8 +15,11 @@ public static class NativeAdapterHost
         internal readonly NativeBindings Bindings;
         internal readonly AdapterCoordinator Coordinator;
         internal readonly Harmony Harmony;
-        internal bool Ready;
-        internal State(NativeBindings b,AdapterCoordinator c,Harmony h){Bindings=b;Coordinator=c;Harmony=h;}
+        internal readonly AdapterBinding Binding;
+        internal readonly IAdapterAdmission Admission;
+        internal readonly int ManagedThread=Environment.CurrentManagedThreadId;
+        internal bool Ready,Closing,Closed;
+        internal State(NativeBindings b,AdapterCoordinator c,Harmony h,AdapterBinding binding,IAdapterAdmission admission){Bindings=b;Coordinator=c;Harmony=h;Binding=binding;Admission=admission;}
     }
     private static State? state;
     private static readonly PatchSpec[] patches={
@@ -35,7 +38,7 @@ public static class NativeAdapterHost
         InstallationAuthority.RequireUnownedAliases(Owners(bindings,"coroutine"),Owners(bindings,"coroutineAlias"));
         foreach(var method in bindings.Methods.Values)if(Harmony.GetPatchInfo(method.Managed)?.Owners.Any()==true)throw new InvalidOperationException("Another owner patches a normal adapter seam.");
         var fatal=new OwnLabFatal(binding);
-        state=new State(bindings,new AdapterCoordinator(binding,new NativeAccess(bindings),fatal,admission),new Harmony("lab.azurite.normal-settings."+binding.Policy.RunId));
+        state=new State(bindings,new AdapterCoordinator(binding,new NativeAccess(bindings),fatal,admission),new Harmony("lab.azurite.normal-settings."+binding.Policy.RunId),binding,admission);
         try
         {
             foreach(var patch in patches)
@@ -48,6 +51,24 @@ public static class NativeAdapterHost
             VerifyOwnership();state.Ready=true; // Registration evidence only; no native hit or startup claim.
         }
         catch(Exception error){state.Coordinator.Reject("Registration failed: "+error.Message);throw;}
+    }
+    // Explicit final owner-thread step only. It does not Quit, unpatch, seal
+    // evidence, or replace the actual settings lifecycle's close decision.
+    public static bool Close(AdapterBinding binding,IAdapterAdmission admission)
+    {
+        var s=state;if(s is null||s.Closed)return false;
+        bool entered=false;
+        try{
+            if(!s.Ready||s.Closing||!ReferenceEquals(binding,s.Binding)||!ReferenceEquals(admission,s.Admission)||
+                Environment.ProcessId!=s.Binding.Policy.ProcessId||Environment.CurrentManagedThreadId!=s.ManagedThread)
+                throw new InvalidOperationException("Close requires the same completely registered adapter binding, lease and owner thread without reentry.");
+            s.Closing=true;entered=true;VerifyOwnership();
+            // Core checks the actual native thread, renewed admission, original
+            // returns/finalizers, native settings snapshot and frozen Policy.Close.
+            if(!s.Coordinator.Close())return false;
+            s.Closed=true;return true;
+        }catch(Exception error){s.Coordinator.Reject("Normal adapter close failed: "+error.Message);return false;}
+        finally{if(entered)s.Closing=false;}
     }
     private static IEnumerable<string> Owners(NativeBindings bindings,string id)=>Harmony.GetPatchInfo(bindings.Methods[id].Managed)?.Owners??Enumerable.Empty<string>();
     private static void VerifyOwnership()

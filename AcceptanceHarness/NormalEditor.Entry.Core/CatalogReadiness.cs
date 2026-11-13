@@ -16,6 +16,16 @@ public sealed class CatalogReadiness
     public string? Failure {get;private set;}
     internal CatalogBinding Binding=>binding;
     internal bool RecordingEvidence=>emitting;
+    internal void RequireQuiescentForClose(CatalogStamp stamp)
+    {
+        lock(sync){
+            Require(Failure is null&&Ready&&completed&&active is null&&!emitting&&!reading&&!guardActive,"Catalog is failed, not ready, or still executing a lifecycle/read/evidence callback.");
+            Require(stamp.RunId==binding.RunId&&stamp.ProcessId==binding.ProcessId&&stamp.ManagedThreadId==binding.ManagedThreadId&&stamp.NativeThreadId==binding.NativeThreadId,"Foreign normal shutdown identity.");
+            Require(stamp.Milliseconds>=lastMilliseconds,"Normal shutdown clock reversed.");
+            // This is a shutdown context stamp, not a new native frame/sample.
+            // The readiness deadline does not become an application lifetime.
+        }
+    }
     private static void Require(bool value,string why){if(!value)throw new InvalidOperationException(why);}
     private void Stamp(CatalogStamp stamp,bool requireOwner)
     {
