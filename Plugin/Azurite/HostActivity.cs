@@ -122,9 +122,22 @@ internal sealed class HostActivity
 	// key activity while rejecting editor transitions and active preview work.
 	internal bool CanUseSingleSpeakerShortcut()
 	{
+		try { return !HasInputOrIme(out _) && CanUseAuthoringContext(); }
+		catch (Exception error)
+		{
+			ReportFailure("speaker authoring", error);
+			return false;
+		}
+	}
+
+	// Shared editor context, not mutation permission. Selection owns its drag/input
+	// rules; the shortcut and native authoring host retain their strict input guards.
+	// The caller must also enforce the editor thread, host identity and export state.
+	internal bool CanUseAuthoringContext()
+	{
 		try
 		{
-			if (!Application.isFocused || HasInputOrIme(out _)) return false;
+			if (!Application.isFocused) return false;
 			StudioCommon? studio = StudioCommon.instance;
 			ScriptNodeInspector? inspector = ScriptNodeInspector.instance;
 			if (studio == null || !studio.isActiveAndEnabled || !studio.gameObject.activeInHierarchy ||
@@ -155,7 +168,7 @@ internal sealed class HostActivity
 		}
 		catch (Exception error)
 		{
-			ReportFailure("speaker authoring", error);
+			ReportFailure("authoring context", error);
 			return false;
 		}
 	}

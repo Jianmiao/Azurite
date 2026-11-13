@@ -11,6 +11,8 @@ internal sealed class AzuriteDriver : MonoBehaviour
 
 	internal Action<double>? LateTick;
 
+	internal Action? GuiTick;
+
 	internal Action? Destroyed;
 
 	internal Action? Quitting;
@@ -35,6 +37,7 @@ internal sealed class AzuriteDriver : MonoBehaviour
 		catch (Exception value)
 		{
 			UnityEngine.Debug.LogWarning($"Azurite driver tick failed: {value}");
+			GuiTick = null;
 			Destroyed?.Invoke();
 			Tick = null;
 		}
@@ -49,9 +52,24 @@ internal sealed class AzuriteDriver : MonoBehaviour
 		catch (Exception value)
 		{
 			UnityEngine.Debug.LogWarning($"Azurite driver late tick failed: {value}");
+			GuiTick = null;
 			Destroyed?.Invoke();
 			Tick = null;
 			LateTick = null;
+		}
+	}
+
+	private void OnGUI()
+	{
+		try { GuiTick?.Invoke(); }
+		catch (Exception value)
+		{
+			UnityEngine.Debug.LogWarning($"Azurite driver GUI callback failed: {value}");
+			// Retire callbacks before restoration, which can itself report failure.
+			GuiTick = null;
+			Tick = null;
+			LateTick = null;
+			Destroyed?.Invoke();
 		}
 	}
 
@@ -60,6 +78,7 @@ internal sealed class AzuriteDriver : MonoBehaviour
 		Action? destroyed = Destroyed;
 		Tick = null;
 		LateTick = null;
+		GuiTick = null;
 		Destroyed = null;
 		Quitting = null;
 		destroyed?.Invoke();
@@ -73,6 +92,7 @@ internal sealed class AzuriteDriver : MonoBehaviour
 		Quitting = null;
 		Tick = null;
 		LateTick = null;
+		GuiTick = null;
 		quitting?.Invoke();
 	}
 }

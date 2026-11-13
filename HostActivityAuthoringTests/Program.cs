@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Azurite;
 using AzureArchive.Automation;
 using Studio.Scripts;
@@ -14,6 +15,7 @@ var tests = new (string Name, Action Test)[]
     ("actual scenario and embedded preview producers block mutation", Playback),
     ("resident static Test objects do not masquerade as playback", ResidentStatic),
     ("text input, IME and drag block mutation", InputFocus),
+    ("authoring context rechecks state without caching write permission", FreshContext),
 };
 int failed = 0;
 foreach (var (name, test) in tests)
@@ -28,10 +30,18 @@ static void Require(bool value, string message)
 {
     if (!value) throw new Exception(message);
 }
-static void Block(Action<Fixture> change, string reason)
+static bool Context(HostActivity activity)
+{
+    var method = typeof(HostActivity).GetMethod("CanUseAuthoringContext", BindingFlags.Instance | BindingFlags.NonPublic);
+    Require(method != null, "production authoring context boundary is missing");
+    return (bool)method!.Invoke(activity, null)!;
+}
+static void Block(Action<Fixture> change, string reason, bool contextAlsoBlocked = true)
 {
     var f = new Fixture(); change(f);
     Require(!f.Activity.CanUseSingleSpeakerShortcut(), reason + " was admitted");
+    Require(Context(f.Activity) != contextAlsoBlocked,
+        contextAlsoBlocked ? reason + " was admitted by the context gate" : reason + " incorrectly blocked the context shared with selection");
 }
 static void RawInputAllowed()
 {
@@ -39,6 +49,7 @@ static void RawInputAllowed()
     var rendering = f.Activity.Observe();
     Require(rendering.HasInteraction && !rendering.CanThrottle, "fixture should model raw-key render protection");
     Require(f.Activity.CanUseSingleSpeakerShortcut(), "raw Alt input incorrectly blocked a safe authoring chord");
+    Require(Context(f.Activity), "raw command input incorrectly blocked authoring context");
 }
 static void EditorIdentity()
 {
@@ -96,14 +107,30 @@ static void ResidentStatic()
     Require(f.Activity.CanUseSingleSpeakerShortcut(), "resident idle non-preview Test was treated as playback");
     f.Inspector.preview = new Test { previewMode = true };
     Require(f.Activity.CanUseSingleSpeakerShortcut(), "static embedded preview was treated as playback");
+    Require(Context(f.Activity), "static embedded preview was treated as context playback");
 }
 static void InputFocus()
 {
-    Block(_ => UICamera.inputHasFocus = true, "UI input focus");
-    Block(_ => UICamera.isDragging = true, "UI drag");
-    Block(_ => UIInput.current = new UIInput { isSelected = true }, "selected current input");
-    Block(_ => UIInput.selection = new UIInput { isSelected = true }, "selected input");
-    Block(_ => UIInput.mLastIME = "composition", "IME composition");
+    Block(_ => UICamera.inputHasFocus = true, "UI input focus", false);
+    Block(_ => UICamera.isDragging = true, "UI drag", false);
+    Block(_ => UIInput.current = new UIInput { isSelected = true }, "selected current input", false);
+    Block(_ => UIInput.selection = new UIInput { isSelected = true }, "selected input", false);
+    Block(_ => UIInput.mLastIME = "composition", "IME composition", false);
+}
+static void FreshContext()
+{
+    var f = new Fixture();
+    Require(Context(f.Activity), "initial context should be available");
+    f.Loading.loadingCount = 1;
+    Require(!Context(f.Activity), "context retained permission while loading started");
+    f.Loading.loadingCount = 0;
+    Require(Context(f.Activity), "context did not reopen after loading ended");
+    f.Inspector.preview = new Test { previewMode = true, hasVoice = true };
+    Require(!Context(f.Activity), "context retained permission when embedded voice started");
+    f.Inspector.preview.hasVoice = false;
+    Require(Context(f.Activity), "static context failed to recover");
+    UICamera.isDragging = true;
+    Require(Context(f.Activity) && !f.Activity.CanUseSingleSpeakerShortcut(), "selection drag and mutation permission were conflated");
 }
 
 sealed class WindowStub : IWindow

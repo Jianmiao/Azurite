@@ -6,6 +6,12 @@ using Mono.Cecil.Cil;
 int passed = 0;
 void Check(bool ok, string name) { if (!ok) throw new Exception(name); Console.WriteLine("PASS " + name); passed++; }
 void Call(AzuriteDriver driver, string name) => typeof(AzuriteDriver).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(driver, null);
+void SetGui(AzuriteDriver driver, Action action)
+{
+    var field = typeof(AzuriteDriver).GetField("GuiTick", BindingFlags.Instance | BindingFlags.NonPublic);
+    Check(field != null, "production driver exposes its owned GUI callback");
+    field!.SetValue(driver, action);
+}
 var events = new List<string>();
 var driver = new AzuriteDriver { Tick = _ => events.Add("tick"), LateTick = _ => events.Add("late"), Quitting = () => events.Add("quit"), Destroyed = () => events.Add("destroy") };
 Call(driver, "OnApplicationQuit"); Call(driver, "OnApplicationQuit"); Call(driver, "Update"); Call(driver, "LateUpdate");
@@ -15,6 +21,34 @@ Check(events.SequenceEqual(new[] { "quit", "destroy" }), "normal disposal still 
 var failing = new AzuriteDriver { Tick = _ => throw new InvalidOperationException("live failure"), Quitting = () => events.Add("unexpected quit"), Destroyed = () => events.Add("live restore") };
 Call(failing, "Update");
 Check(events.Last() == "live restore" && !events.Contains("unexpected quit"), "live failure requests restoration rather than terminal abandon");
+
+var guiEvents = new List<string>();
+var gui = new AzuriteDriver { Tick = _ => guiEvents.Add("tick"), LateTick = _ => guiEvents.Add("late"),
+    Destroyed = () => guiEvents.Add("destroy"), Quitting = () => guiEvents.Add("quit") };
+SetGui(gui, () => guiEvents.Add("gui"));
+Call(gui, "OnGUI");
+Check(guiEvents.SequenceEqual(new[] { "gui" }), "GUI is delivered only by the actual OnGUI callback");
+Call(gui, "OnApplicationQuit"); Call(gui, "OnGUI"); Call(gui, "Update"); Call(gui, "LateUpdate");
+Check(guiEvents.SequenceEqual(new[] { "gui", "quit" }), "quit retires GUI along with normal ticks");
+Call(gui, "OnDestroy"); Call(gui, "OnGUI"); Call(gui, "OnDestroy");
+Check(guiEvents.SequenceEqual(new[] { "gui", "quit", "destroy" }), "destroy retires GUI without replaying callbacks");
+foreach (string phase in new[] { "Update", "LateUpdate", "OnGUI" })
+{
+    var observed = new List<string>();
+    var d = new AzuriteDriver { Destroyed = () => observed.Add("restore") };
+    SetGui(d, phase == "OnGUI" ? () => throw new InvalidOperationException("GUI fixture failure") : () => observed.Add("unexpected GUI"));
+    if (phase == "Update") d.Tick = _ => throw new InvalidOperationException("tick fixture failure");
+    if (phase == "LateUpdate") d.LateTick = _ => throw new InvalidOperationException("late fixture failure");
+    Call(d, phase); Call(d, "OnGUI");
+    Check(observed.SequenceEqual(new[] { "restore" }), phase + " failure retires GUI before another rendering callback");
+}
+
+int guiFailures = 0, restoreFailures = 0;
+var restoreThrows = new AzuriteDriver { Destroyed = () => { restoreFailures++; throw new InvalidOperationException("restore fixture failure"); } };
+SetGui(restoreThrows, () => { guiFailures++; throw new InvalidOperationException("GUI fixture failure"); });
+try { Call(restoreThrows, "OnGUI"); } catch (TargetInvocationException) { }
+Call(restoreThrows, "OnGUI");
+Check(guiFailures == 1 && restoreFailures == 1, "GUI ownership is retired even when restoration reports failure");
 
 string aaInstallPath = args.FirstOrDefault() ?? Assembly.GetExecutingAssembly()
     .GetCustomAttributes<AssemblyMetadataAttribute>().Single(a => a.Key == "AAInstallPath").Value!;
