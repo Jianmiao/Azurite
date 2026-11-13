@@ -1,0 +1,65 @@
+using Azurite;
+using Azurite.Core;
+using AzureArchive.Automation;
+using Studio.Scripts;
+using Studio.Scripts.Nodes;
+using UnityEngine;
+
+static class Program
+{
+    static void Check(bool value,string message){if(!value)throw new Exception(message);}
+    static void Reject(Action action,string message){try{action();}catch(InvalidOperationException){return;}catch(ArgumentException){return;}throw new Exception(message);}
+    static UIButton Launcher()=>GameObject.All.Single(x=>x.name=="AzuriteCardPackLauncher"&&!x.IsDestroyed).GetComponent<UIButton>()!;
+    static CardPackV2Draft Data()=>new(CardPackV2Json.Serialize(new("2","fixture","Fixture",new[]{new CardV2("fade",PresetCardKind.Transition,ResourceKey:"transition")})),null);
+    sealed class Fixture:IDisposable
+    {
+        internal bool Ownership=true,Context=true,ExpectedCleanupFailure;internal int OwnershipReads,ContextReads;internal readonly List<string> Logs=new();
+        internal readonly GameObject Surface;internal readonly UIPanel Panel;internal readonly StudioCommon Studio;internal ScriptNodeInspector Inspector;internal AuthoringEditorSession Session;
+        internal readonly AuthoringCardPackHostRoot Root;
+        internal Fixture()
+        {
+            GameObject.All.Clear();GameObject.Added=0;GameObject.FailOnAdd=-1;GameObject.Destroyed=0;EventDelegate.Depth=0;
+            AuthoringEditorSession.ThrowOnCurrentRead=false;AuthoringEditorSession.CurrentReads=0;
+            AuthoringCardPackHostView.Instances.Clear();AuthoringCardPackHostView.FailConstruction=false;
+            AuthoringCardPackHostSelection.Instances.Clear();AuthoringCardPackHostSelection.FailInstall=false;RootBoundaryHost.Instances.Clear();
+            Surface=new(){name="NativeSurface"};Panel=Surface.AddComponent<UIPanel>();Studio=new();StudioCommon.instance=Studio;
+            Session=new(){studio=Studio};AuthoringEditorSession.Current=Session;Inspector=MakeInspector();
+            Root=new(Environment.CurrentManagedThreadId,()=>{OwnershipReads++;return Ownership;},()=>{ContextReads++;return Context;},Logs.Add);
+        }
+        internal ScriptNodeInspector MakeInspector()
+        {
+            var inspector=new ScriptNodeInspector{scriptNode=new ScriptNode()};inspector.gameObject.transform.SetParent(Surface.transform,false);
+            var input=inspector.gameObject.AddComponent<UIInput>();var label=inspector.gameObject.AddComponent<UILabel>();label.trueTypeFont=new Font();label.fontSize=16;label.color=Color.white;input.label=label;inspector.contentInput=input;
+            ScriptNodeInspector.instance=inspector;return inspector;
+        }
+        internal AuthoringCardPackHostView Open(){Root.Update(true);Root.RequestOpen(true);Root.Update(true);return AuthoringCardPackHostView.Instances.Last();}
+        public void Dispose(){AuthoringEditorSession.ThrowOnCurrentRead=false;if(!Root.IsDisposed&&!ExpectedCleanupFailure)Root.DisposeAtSafePoint();}
+    }
+    static void With(Action<Fixture> test){using var f=new Fixture();test(f);}
+    static readonly (string Name,Action Test)[] Cases=
+    {
+        ("unqualified update does not inspect editor or create owned objects",()=>With(f=>{f.Ownership=false;int reads=AuthoringEditorSession.CurrentReads;f.Root.Update(true);Check(AuthoringEditorSession.CurrentReads==reads&&!GameObject.All.Any(x=>x.name.StartsWith("AzuriteCardPack")),"closed outer guard touched editor or created UI");})),
+        ("first eligible tick creates a real launcher and installs selection once",()=>With(f=>{f.Root.Update(true);f.Root.Update(true);Check(Launcher().onClick.Count==1&&AuthoringCardPackHostSelection.Instances.Count==1&&AuthoringCardPackHostSelection.Instances[0].Installs==1,"launcher/selection ownership missing or duplicated");Check(AuthoringCardPackHostView.Instances.Count==0,"view opened without user request");})),
+        ("launcher callback only queues opening until next update",()=>With(f=>{f.Root.Update(true);Launcher().Click();Check(AuthoringCardPackHostView.Instances.Count==0,"callback created native view synchronously");f.Root.Update(true);Check(AuthoringCardPackHostView.Instances.Count==1&&AuthoringCardPackHostView.Instances[0].Enabled,"queued view did not open");})),
+        ("ordinary close preserves form and Workflow then reopens the same view",()=>With(f=>{var view=f.Open();view.FormText="unsent user text";var workflow=view.Workflow;Check(workflow.Preview(Data()).IsSuccess,"fixture preview missing");f.Root.RequestOpen(false);f.Root.Update(true);Check(!view.Enabled&&!view.Disposed,"ordinary close destroyed the form");f.Root.RequestOpen(true);f.Root.Update(true);Check(ReferenceEquals(view,AuthoringCardPackHostView.Instances.Last())&&ReferenceEquals(workflow,view.Workflow)&&view.FormText=="unsent user text","reopen replaced form or Workflow");})),
+        ("normal updates do not cancel every-frame pending preview",()=>With(f=>{var view=f.Open();var result=view.Workflow.Preview(Data());f.Root.Update(true);f.Root.Update(true);var committed=view.Workflow.Confirm(result.Preview!.ConfirmationToken,Data());Check(committed.IsSuccess,"healthy ticks invalidated preview");})),
+        ("export immediately closes fresh gate then hides without losing form",()=>With(f=>{var view=f.Open();view.FormText="keep";var host=RootBoundaryHost.Instances.Last();f.Root.SuspendForExport();Check(!host.Gate(),"export callback left write gate open");f.Root.Update(true);Check(!view.Enabled&&!view.Disposed&&view.FormText=="keep","export discarded form");f.Root.ResumeAfterExport();Check(!view.Enabled,"release reopened outside safe tick");f.Root.Update(true);Check(view.Enabled&&host.Gate(),"fresh post-export context did not reopen");})),
+        ("disable and reenable keep same form and recovery Workflow",()=>With(f=>{var view=f.Open();view.FormText="keep";var host=RootBoundaryHost.Instances.Last();host.Faulted=true;view.Workflow.Preview(Data());f.Root.Update(false);Check(!view.Enabled&&!view.Disposed&&view.Workflow.RecoveryRequired,"disable erased recovery or form");f.Root.Update(true);Check(view.Enabled&&view.FormText=="keep"&&view.Workflow.RecoveryRequired,"reenable recreated recovery state");})),
+        ("project sessions preserve separate uncertain Workflows",()=>With(f=>{var first=f.Open();RootBoundaryHost.Instances.Last().Faulted=true;first.Workflow.Preview(Data());var original=f.Session;f.Session=new(){studio=f.Studio,ProjectId="project-b",EditSession="session-b"};AuthoringEditorSession.Current=f.Session;f.Root.Update(true);f.Root.RequestOpen(true);f.Root.Update(true);var second=AuthoringCardPackHostView.Instances.Last();Check(!ReferenceEquals(first.Workflow,second.Workflow)&&first.Workflow.RecoveryRequired,"new project inherited or erased old recovery");Check(!first.Workflow.Recover().IsSuccess&&first.Workflow.RecoveryRequired,"old recovery ran against new project");AuthoringEditorSession.Current=original;f.Root.Update(true);f.Root.RequestOpen(true);f.Root.Update(true);Check(ReferenceEquals(first.Workflow,AuthoringCardPackHostView.Instances.Last().Workflow)&&first.Workflow.RecoveryRequired,"return to session replaced uncertain Workflow");})),
+        ("inspector replacement disposes old UI but keeps session Workflow",()=>With(f=>{var first=f.Open();var workflow=first.Workflow;f.Inspector=f.MakeInspector();f.Root.Update(true);Check(first.Disposed&&ReferenceEquals(workflow,AuthoringCardPackHostView.Instances.Last().Workflow),"inspector replacement lost session Workflow or used old UI");Check(f.Logs.Any(x=>x.Contains("表单",StringComparison.Ordinal)),"form loss was not reported");})),
+        ("retired view callback remains bound to its own session",()=>With(f=>{var first=f.Open();AuthoringEditorSession.Current=new(){studio=f.Studio,ProjectId="new-project",EditSession="new-session"};f.Root.Update(true);Check(!first.Context(),"retired view acquired the new session gate");})),
+        ("temporary invalid viewport does not lose parent ownership tracking",()=>With(f=>{var first=f.Open();f.Panel.worldCorners[0]=new(float.NaN,0,0);f.Root.Update(true);var parent=new GameObject{name="ReplacementNativeSurface"};parent.AddComponent<UIPanel>();f.Inspector.transform.SetParent(parent.transform,false);f.Root.Update(true);Check(first.Disposed&&AuthoringCardPackHostView.Instances.Last().Parent.parent==parent.transform,"old view was reused under a different parent after viewport failure");})),
+        ("partial launcher construction failure cleans its owned nodes",()=>With(f=>{GameObject.FailOnAdd=GameObject.Added+3;f.Root.Update(true);Check(GameObject.All.Where(x=>x.name.StartsWith("AzuriteCardPack",StringComparison.Ordinal)).All(x=>x.IsDestroyed),"partial launcher nodes survived failure");Check(!f.Surface.IsDestroyed,"failed launcher deleted native parent");})),
+        ("destroyed inspector retires retained UI without trying to update it",()=>With(f=>{var view=f.Open();view.FailUpdate=true;ScriptNodeInspector.instance=null;f.Root.Update(true);Check(view.Disposed&&!f.Root.IsDisposed,"lost inspector was neither retired nor kept as a recoverable root");})),
+        ("fresh guard changes after tick block interaction and selection drawing",()=>With(f=>{f.Open();var selection=AuthoringCardPackHostSelection.Instances.Single();int drawn=selection.Draws;f.Context=false;f.Root.DrawSelection();Check(selection.Draws==drawn&&!RootBoundaryHost.Instances.Last().Gate(),"stale tick qualification was reused");})),
+        ("read viewport and font place owned view in verified native parent",()=>With(f=>{var view=f.Open();Check(view.Parent.parent==f.Surface.transform&&view.Parent.localScale.x>0&&view.Parent.localScale.x<=1&&ReferenceEquals(view.Typography,f.Inspector.contentInput!.label),"view used guessed parent/font/scale");})),
+        ("nonfinite viewport does not create an offscreen view",()=>With(f=>{f.Panel.worldCorners[0]=new(float.NaN,0,0);f.Root.Update(true);f.Root.RequestOpen(true);f.Root.Update(true);Check(AuthoringCardPackHostView.Instances.Count==0,"invalid viewport was admitted");})),
+        ("selection installation failure cannot substitute fixed revision",()=>With(f=>{AuthoringCardPackHostSelection.FailInstall=true;f.Root.Update(true);f.Root.RequestOpen(true);f.Root.Update(true);Check(AuthoringCardPackHostView.Instances.Count==0&&AuthoringCardPackHostSelection.Instances.Sum(x=>x.Installs)==1,"failed hooks were retried or replaced with fake revision");})),
+        ("terminal cleanup touches only retained owners with no next tick",()=>With(f=>{var view=f.Open();var workflow=view.Workflow;RootBoundaryHost.Instances.Last().Faulted=true;workflow.Preview(Data());int reads=AuthoringEditorSession.CurrentReads;AuthoringEditorSession.ThrowOnCurrentRead=true;f.Root.AbandonForShutdown();Check(f.Root.IsDisposed&&view.Disposed&&workflow.RecoveryRequired&&AuthoringEditorSession.CurrentReads==reads,"terminal cleanup reread destroyed editor or cleared recovery");Check(AuthoringCardPackHostSelection.Instances.Single().Disposes==1&&!f.Surface.IsDestroyed,"terminal cleanup missed hooks or destroyed native parent");})),
+        ("wrong-thread cleanup throws without claiming disposal",()=>With(f=>{var view=f.Open();Task.Run(()=>Reject(f.Root.AbandonForShutdown,"wrong thread cleanup was accepted")).GetAwaiter().GetResult();Check(!f.Root.IsDisposed&&!view.Disposed,"wrong-thread cleanup claimed release");})),
+        ("cleanup failure is reported and never relabeled disposed",()=>With(f=>{var view=f.Open();view.FailDispose=true;f.ExpectedCleanupFailure=true;Reject(f.Root.AbandonForShutdown,"failed cleanup was accepted");Check(!f.Root.IsDisposed&&!view.Disposed,"failure was falsely reported released");Reject(f.Root.DisposeAtSafePoint,"unverified cleanup was silently retried as success");})),
+        ("terminal cleanup is idempotent without reopening gates",()=>With(f=>{var view=f.Open();f.Root.DisposeAtSafePoint();int reads=f.OwnershipReads+f.ContextReads;f.Root.AbandonForShutdown();Check(f.Root.IsDisposed&&view.Disposes==1&&f.OwnershipReads+f.ContextReads==reads,"repeat cleanup reopened gates or repeated ownership disposal");})),
+        ("constructor does not manufacture an editor thread",()=>{int thread=Environment.CurrentManagedThreadId;Task.Run(()=>Reject(()=>new AuthoringCardPackHostRoot(thread,()=>true,()=>true,_=>{}),"wrong construction thread accepted")).GetAwaiter().GetResult();})
+    };
+    static int Main(){int failed=0;foreach(var c in Cases)try{c.Test();Console.WriteLine("PASS "+c.Name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+c.Name+": "+e.Message);}Console.WriteLine($"RESULT {Cases.Length-failed} passed / {failed} failed");return failed==0?0:1;}
+}

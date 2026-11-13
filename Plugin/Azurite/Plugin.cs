@@ -18,7 +18,7 @@ namespace Azurite;
 
 [BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "1.0.40")]
 [BepInProcess("AzureArchive.exe")]
-public sealed class Plugin : BasePlugin
+public sealed partial class Plugin : BasePlugin
 {
 	public const string Id = "halocue.azurite";
 
@@ -260,6 +260,9 @@ public sealed class Plugin : BasePlugin
 
 	public override void Load()
 	{
+#if AZURITE_AUTHORING_SOURCE
+		BindCardPackAuthoring();
+#endif
 		_current = this;
 		_enabled = base.Config.Bind("Adaptive Rendering", "Enabled", defaultValue: true, "Enable Azurite scheduling and frame-rate mapping. Disable restores owned settings.");
 		_measuredCadence = base.Config.Bind("Adaptive Rendering", "UseMeasuredCadence", defaultValue: true, "Derive idle draw intervals from measured player-loop FPS. Works with 60, 120 and unlimited; CPU Power Saving independently lowers the player-loop cap only after confirmed quiet.");
@@ -491,13 +494,22 @@ public sealed class Plugin : BasePlugin
 			_driver = _driverObject.AddComponent<AzuriteDriver>();
 			_driver.Tick = Tick;
 			_driver.LateTick = LateTick;
+#if AZURITE_AUTHORING_SOURCE
+			BindCardPackDriver(_driver);
+#endif
 			_driver.Quitting = delegate
 			{
+#if AZURITE_AUTHORING_SOURCE
+				ShutdownCardPackAuthoring();
+#endif
 				_virtualization?.AbandonForShutdown();
 				_deferredSelectors?.AbandonForShutdown();
 			};
 			_driver.Destroyed = delegate
 			{
+#if AZURITE_AUTHORING_SOURCE
+				ShutdownCardPackAuthoring();
+#endif
 				DisableForSession("driver destroyed");
 			};
 			_summaryStarted = Now;
@@ -528,6 +540,9 @@ public sealed class Plugin : BasePlugin
 
 	private void Tick(double now)
 	{
+#if AZURITE_AUTHORING_SOURCE
+		if (!TickCardPackAuthoring()) return;
+#endif
 		_characterMeshAllowed = false;
 		_ambientObserved = false;
 		_requestedCpuFps = 0;
@@ -899,6 +914,9 @@ public sealed class Plugin : BasePlugin
 	{
 		// Block writers before restoring, including callbacks caused by restores.
 		_exportSuspended = true;
+#if AZURITE_AUTHORING_SOURCE
+		SuspendCardPackAuthoring();
+#endif
 		_mappingAllowed = false;
 		_backgroundGalleryCulling?.Update(Now, false);
 		_progressiveLoading?.SuspendForExport();
@@ -930,6 +948,9 @@ public sealed class Plugin : BasePlugin
 	{
 		_progressiveLoading?.ResumeAfterExport();
 		_exportSuspended = false;
+#if AZURITE_AUTHORING_SOURCE
+		ResumeCardPackAuthoring();
+#endif
 		_policy.Reset(Now);
 		_rate.Reset();
 		_visualCadence.Reset();
@@ -1210,11 +1231,15 @@ public sealed class Plugin : BasePlugin
 
 	public override bool Unload()
 	{
+#if AZURITE_AUTHORING_SOURCE
+		if (!TryUnloadCardPackAuthoring()) return false;
+#endif
 		DisableForSession("unload");
 		if (_driver != null)
 		{
 			_driver.Tick = null;
 			_driver.LateTick = null;
+			_driver.GuiTick = null;
 			_driver.Destroyed = null;
 			_driver.Quitting = null;
 		}

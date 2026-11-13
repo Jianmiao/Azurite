@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/Azurite.Core.csproj" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostRoot.cs" Link="Production/Root.cs" />
+  </ItemGroup>
+</Project>

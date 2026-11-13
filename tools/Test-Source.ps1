@@ -23,7 +23,9 @@ $portable=@('Tests/HostProfile.Tests.csproj','ScrollTests/ScrollTests.csproj','P
  'AuthoringHostContentChecks/AuthoringHostContentChecks.csproj',
  'AuthoringHostSelectionChecks/AuthoringHostSelectionChecks.csproj',
  'AuthoringHostResourceChecks/AuthoringHostResourceChecks.csproj',
- 'AuthoringHostViewChecks/AuthoringHostViewChecks.csproj')
+ 'AuthoringHostViewChecks/AuthoringHostViewChecks.csproj',
+ 'AuthoringHostRootChecks/AuthoringHostRootChecks.csproj',
+ 'AuthoringPluginWiringChecks/AuthoringPluginWiringChecks.csproj')
 $hostProjects=@('DriverTests/DriverTests.csproj','SelectorTests/SelectorTests.csproj',
  'LoadingIntegrationTests/LoadingIntegrationTests.csproj','CpuTests/CpuTests.csproj')
 $classified=@($portable)+@($hostProjects)

@@ -14,7 +14,7 @@ function Test([string]$Name,[scriptblock]$Body){try{& $Body; $script:passed++; W
 function Evaluate([string]$Mode){
     $arguments=@('msbuild',$project,'-nologo',"-p:AAInstallPath=$AAInstallPath",'-p:Configuration=Release',
         '-p:UseArtifactsOutput=true',"-p:ArtifactsPath=$evidence/artifacts",
-        '-getProperty:AssemblyName,AzuriteCoreMode,TargetPath','-getItem:Reference,ProjectReference,Compile')
+        '-getProperty:AssemblyName,AzuriteCoreMode,TargetPath,DefineConstants','-getItem:Reference,ProjectReference,Compile')
     if($Mode){$arguments+="-p:AzuriteCoreMode=$Mode"}
     $output=& dotnet @arguments 2>&1
     if($LASTEXITCODE -ne 0){throw ($output -join "`n")}
@@ -34,6 +34,7 @@ Test 'default keeps original Core and excludes authoring-only Panel' {
     $core=@($result.Items.Reference|Where-Object Identity -eq 'Azurite.Core')
     Check ($core.Count -eq 1 -and $core[0].HintPath -ceq '..\references\Azurite.Core.dll') 'Default did not bind original Core.'
     Check (@($result.Items.Compile|Where-Object Identity -match 'AuthoringCardPackPanel.cs$').Count -eq 0) 'Default includes new-API Panel.'
+    Check ('AZURITE_AUTHORING_SOURCE' -notin ($result.Properties.DefineConstants -split ';')) 'Default unexpectedly enables source-only Plugin registration.'
 }
 Test 'explicit authoring mode references real source Core with distinct identity' {
     $result=Evaluate 'AuthoringSource'; $result|ConvertTo-Json -Depth 10|Set-Content -LiteralPath (Join-Path $evidence 'authoring-evaluation.json')
@@ -42,6 +43,7 @@ Test 'explicit authoring mode references real source Core with distinct identity
     $core=@($result.Items.ProjectReference)
     Check ($core.Count -eq 1 -and [IO.Path]::GetFullPath($core[0].FullPath) -ceq [IO.Path]::GetFullPath((Join-Path $root 'Core/Azurite.Core.csproj'))) 'Wrong source Core project.'
     Check (@($result.Items.Compile|Where-Object Identity -match 'AuthoringCardPackPanel.cs$').Count -eq 1) 'Authoring Panel not compiled.'
+    Check ('AZURITE_AUTHORING_SOURCE' -in ($result.Properties.DefineConstants -split ';')) 'Authoring mode lacks its explicit Plugin registration symbol.'
     Check ([IO.Path]::GetFullPath($result.Properties.TargetPath).StartsWith($evidence+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)) 'Output escaped isolated artifacts root.'
 }
 Test 'unknown Core modes fail closed' { $result=Validate 'Orignal' $true; Check ($result.Code -ne 0 -and $result.Text.Contains('AzuriteCoreMode must be Original or AuthoringSource')) 'Unknown mode silently selected a dependency.' }

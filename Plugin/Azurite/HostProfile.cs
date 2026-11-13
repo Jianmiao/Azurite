@@ -16,6 +16,9 @@ internal sealed record HostProfile(string Name, bool Supported, bool NativePatch
     private static readonly HostProfile Release101 = new("1.0.1 (render handoff, FPS and scrolling)", true, false, true, false, false, false, false, false, false);
     internal bool EditorPatches => NativePatches || ProgressiveEditorLoading;
     internal bool SingleSpeakerAuthoring => ReferenceEquals(this, Release101);
+    // Known authoring ABI only. Source opt-in and fresh runtime/session gates
+    // remain separate from this capability and from deep performance patches.
+    internal bool CardPackAuthoring => ReferenceEquals(this, Release101);
 
 
     internal static HostProfile Resolve(string game, string interop, string unity)

@@ -5,6 +5,7 @@
     <!-- Experimental source-built identity cannot be mistaken for the stable
          Azurite assembly by the existing candidate/package validators. -->
     <AssemblyName Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">Azurite.AuthoringSource</AssemblyName>
+    <DefineConstants Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">$(DefineConstants);AZURITE_AUTHORING_SOURCE</DefineConstants>
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <TargetFramework>netcoreapp6.0</TargetFramework>
     <Nullable>annotations</Nullable>

@@ -20,6 +20,20 @@ var current = HostProfile.ResolvePortable(game, metadata, true);
 const string game101 = "0776516C59811C724C450E205930546C5D102975F279E33C46C96B878FA06C8B";
 const string metadata101 = "B4AEEE165E7E10E0F46F85E095FD94487FDB041215F6DCB7AE9DE5D28A364F43";
 var aa101 = HostProfile.ResolvePortable(game101, metadata101, true);
+bool CardPackAllowed(HostProfile profile) =>
+    (bool?)(typeof(HostProfile).GetProperty("CardPackAuthoring", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(profile)) ?? false;
+Check(CardPackAllowed(aa101), "card authoring admits the exact known AA 1.0.1 profile");
+Check(!CardPackAllowed(current) && !CardPackAllowed(legacy) && !CardPackAllowed(HostProfile.Unsupported),
+    "card authoring does not inherit legacy or fix-host performance permissions");
+Check(!CardPackAllowed(aa101 with { }) && !CardPackAllowed(HostProfile.ResolvePortable(game101, metadata101, false)),
+    "copied profile values and unverified bindings cannot grant card authoring");
+Check(!aa101.EditorPatches && !aa101.NativePatches && !aa101.ProgressiveEditorLoading,
+    "card authoring capability leaves deep performance patches closed");
+if (args.SequenceEqual(new[] { "--card-pack-profile" }))
+{
+    Console.WriteLine($"RESULT: {passed} passed; {failed} failed. Policy checks only, no native host execution.");
+    return failed == 0 ? 0 : 1;
+}
 Check(HostProfile.IsPortableCandidate(game101, metadata101) && aa101.Supported && aa101.FpsLabelPostfix,
     "installed AA 1.0.1 accepts verified scheduling and public export handoff");
 Check(!aa101.NativePatches && !aa101.LegacyExporter && !aa101.PreviewOwnership && !aa101.PreviewOptimization &&
