@@ -294,7 +294,21 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         void Resolve(JsonElement resource, string kind)
         {
             string? id = resource.GetString(); Require(!string.IsNullOrWhiteSpace(id), "Resource ID missing.");
-            if (resolved.Add(kind + "\n" + id)) Require(AuthoringResourceCatalog.Resolve(id!, kind, plan.Identity.CatalogVersion, true) != null, "Native resource Resolve returned no result.");
+            if (resolved.Add(kind + "\n" + id))
+            {
+                var nativeResource = AuthoringResourceCatalog.Resolve(id!, kind, plan.Identity.CatalogVersion, true);
+                Require(nativeResource != null, "Native resource Resolve returned no result.");
+                // Catalog.Resolve can return a normal object with available:false;
+                // unlike AuthoringLines.Resolve, it does not reject that state.
+                using var response = JsonDocument.Parse(nativeResource.ToString());
+                var value = response.RootElement;
+                Require(value.ValueKind == JsonValueKind.Object &&
+                    value.TryGetProperty("resource_id", out var resolvedId) && resolvedId.ValueKind == JsonValueKind.String && resolvedId.GetString() == id &&
+                    value.TryGetProperty("kind", out var resolvedKind) && resolvedKind.ValueKind == JsonValueKind.String && resolvedKind.GetString() == kind &&
+                    value.TryGetProperty("catalog_version", out var catalog) && catalog.ValueKind == JsonValueKind.String && catalog.GetString() == plan.Identity.CatalogVersion &&
+                    value.TryGetProperty("available", out var available) && available.ValueKind == JsonValueKind.True,
+                    "Native resource is unavailable or its identity/catalog changed before commit.");
+            }
         }
         for (int i = 0; i < plan.OperationCount; i++)
         {

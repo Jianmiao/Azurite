@@ -26,7 +26,7 @@ public class ProjectData : NativeObject
 namespace Il2CppSystem.Collections.Generic { public class Stack<T> : System.Collections.Generic.Stack<T> { } }
 namespace Newtonsoft.Json.Linq
 {
-    public class JObject { public override string ToString() => "{\"native_receipt\":true}"; }
+    public class JObject { public string Json = "{\"native_receipt\":true}"; public override string ToString() => Json; }
     public class JArray
     {
         public string Raw = "[]"; public int Count => JsonDocument.Parse(Raw).RootElement.GetArrayLength();
@@ -77,12 +77,12 @@ namespace AzureArchive.Automation
     public static class AuthoringResourceCatalog
     {
         public static string CatalogVersion = "fixture-catalog";
-        public static List<string> Resolved = new(); public static bool Missing;
+        public static List<string> Resolved = new(); public static bool Missing; public static string? ResponseOverride;
         public static JObject Resolve(string id, string kind, string version, bool includeCapabilities)
         {
             if (version != CatalogVersion || Missing) throw new Exception("CATALOG_CHANGED or missing resource");
             if (!includeCapabilities || kind != "transition") throw new Exception("wrong native Resolve arguments");
-            Resolved.Add(id); return new();
+            Resolved.Add(id); return new() { Json = ResponseOverride ?? JsonSerializer.Serialize(new { resource_id = id, kind, catalog_version = version, available = true }) };
         }
     }
     public class AuthoringEditorSession : NativeObject
@@ -136,7 +136,7 @@ public static class Fixture
         Studio.Scripts.OperationManagement.OperationManager.history.Push(new());
         Studio.Scripts.OperationManagement.OperationManager.saveDelta = Studio.Scripts.OperationManagement.OperationManager.compileDelta = 0;
         Studio.Scripts.OperationManagement.OperationManager.Working = Studio.Scripts.OperationManagement.OperationManager.needToLinkWithPrev = false;
-        AzureArchive.Automation.AuthoringResourceCatalog.CatalogVersion = "fixture-catalog"; AzureArchive.Automation.AuthoringResourceCatalog.Missing = false; AzureArchive.Automation.AuthoringResourceCatalog.Resolved.Clear();
+        AzureArchive.Automation.AuthoringResourceCatalog.CatalogVersion = "fixture-catalog"; AzureArchive.Automation.AuthoringResourceCatalog.Missing = false; AzureArchive.Automation.AuthoringResourceCatalog.ResponseOverride = null; AzureArchive.Automation.AuthoringResourceCatalog.Resolved.Clear();
         UnityEngine.Application.isFocused = true; UICamera.inputHasFocus = UICamera.isDragging = false; UIInput.current = UIInput.selection = null; UIInput.mLastIME = "";
         Rebind();
     }
