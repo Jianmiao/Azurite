@@ -156,7 +156,7 @@ public sealed class AdapterCoordinator
         });
     }
     public bool RejectFallback()=>Guard(()=>throw new InvalidOperationException("Native settings fallback/dialog initialization is forbidden."));
-    public bool Close()=>Guard(()=>{Callback(CallbackKind.Awake,owner);Require(stack.Count==0 && !awaitingFinalizer.Keys.Any(f=>f.Disposition==CallbackDisposition.Tracked),"Original callback return/finalizer is missing.");Policy.Close(Observe());});
+    public bool Close()=>Guard(()=>{Callback(CallbackKind.Awake,owner);Require(stack.Count==0 && awaitingFinalizer.Count==0 && completionStacks.Count==0,"Original callback return/finalizer is missing.");Policy.Close(Observe());});
     public bool Reject(string reason)=>Guard(()=>throw new InvalidOperationException(reason));
     private AdapterFrame Push(CallbackKind kind,long pointer,InitInvocation? initToken=null,SaveInvocation? saveToken=null,WritePermit? write=null)
     { var frame=Issue(new AdapterFrame(++ordinal,kind,pointer,initToken,saveToken,write));stack.Add(frame);return frame; }

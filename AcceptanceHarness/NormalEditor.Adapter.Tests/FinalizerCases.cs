@@ -11,6 +11,11 @@ static class FinalizerCases
             check(f.Adapter.Failure is not null && f.Adapter.Policy.Failure is not null && f.Fatal.Calls>0,"malformed finalizer did not latch both failures/fatal sink");
             check(!next(),"following bound original was admitted after finalizer refusal");
         }
+        void OnOtherThread(Action body)
+        {
+            Exception? error=null;var thread=new Thread(()=>{try{body();}catch(Exception e){error=e;}});
+            thread.Start();thread.Join();if(error is not null)throw new Exception("Shared callback worker failed.",error);
+        }
         foreach(var exceptional in new[]{false,true})
         {
             test("common finalizer rejects missing bound token "+(exceptional?"with exception":"without exception"),()=>{
@@ -90,6 +95,42 @@ static class FinalizerCases
             var f=new Fixture(output);f.Start();Fixture.Must(f.Adapter.IteratorEntered(400,NativeKind.Save,out var token));
             Fixture.Must(f.Adapter.Returned(token,CallbackKind.Save,400,true,true));
             check(!f.Adapter.Close() && f.Adapter.Failure is not null,"close accepted a missing finalizer");
+        });
+        test("close refuses active unrelated shared callback on the owning thread",()=>{
+            var f=new Fixture(output);f.Start();var snapshot=f.Native.Settings;var writes=f.Native.Writes.Count;var routes=f.Admission.Routes.Count;
+            Fixture.Must(f.Adapter.CoroutineEntered(999,-999,out var token));check(token?.Disposition==CallbackDisposition.UnrelatedShared,"expected issued shared token");
+            check(!f.Adapter.Close(),"close accepted an active shared callback");
+            check(f.Adapter.Failure is not null && f.Adapter.Policy.Failure is not null && f.Fatal.Calls>0,"close refusal did not retain existing failure behavior");
+            check(f.Native.Settings==snapshot && f.Native.Writes.Count==writes && f.Admission.Routes.Count==routes,"close refusal changed settings or routing");
+        });
+        foreach(var returned in new[]{false,true})test("close refuses other-thread shared callback "+(returned?"awaiting finalizer":"before original return"),()=>{
+            var f=new Fixture(output);f.Start();AdapterFrame? token=null;
+            OnOtherThread(()=>{Fixture.Must(f.Adapter.CoroutineEntered(999,-999,out token));if(returned)Fixture.Must(f.Adapter.Returned(token,CallbackKind.Coroutine,999,true));});
+            check(token is not null && token.ManagedThreadId!=Environment.CurrentManagedThreadId,"shared token did not originate on another managed thread");
+            check(!f.Adapter.Close() && f.Adapter.Failure is not null,"close overlooked another thread's unfinished shared callback");
+        });
+        test("close still refuses retained outer shared callback after inner finalizer",()=>{
+            var f=new Fixture(output);f.Start();Fixture.Must(f.Adapter.CoroutineEntered(999,-999,out _));Fixture.Must(f.Adapter.CoroutineEntered(998,-998,out var inner));
+            f.Return(inner,CallbackKind.Coroutine,998,true);
+            check(!f.Adapter.Close() && f.Adapter.Failure is not null,"inner finalizer concealed an active outer shared callback");
+        });
+        test("close succeeds after shared normal finalizer retires the invocation",()=>{
+            var f=new Fixture(output);f.Start();Fixture.Must(f.Adapter.CoroutineEntered(999,-999,out var token));f.Return(token,CallbackKind.Coroutine,999,true);
+            check(f.Adapter.Close() && f.Adapter.Failure is null && f.Fatal.Calls==0,"completed shared callback prevented close");
+        });
+        test("close succeeds after shared exceptional finalizer preserves the original exception",()=>{
+            var f=new Fixture(output);f.Start();Fixture.Must(f.Adapter.CoroutineEntered(999,-999,out var token));var original=new InvalidOperationException("unrelated original failure");
+            check(ReferenceEquals(FinalizerDispatch.Complete(f.Adapter,CallbackKind.Coroutine,999,token,original),original),"shared original exception changed");
+            check(f.Adapter.Close() && f.Adapter.Failure is null && f.Fatal.Calls==0,"exceptionally finalized shared callback prevented close");
+        });
+        test("close succeeds after another thread's shared finalizer retires its completion stack",()=>{
+            var f=new Fixture(output);f.Start();OnOtherThread(()=>{Fixture.Must(f.Adapter.CoroutineEntered(999,-999,out var token));f.Return(token,CallbackKind.Coroutine,999,true);});
+            check(f.Adapter.Close() && f.Adapter.Failure is null && f.Fatal.Calls==0,"retired other-thread completion stack prevented close");
+        });
+        test("close succeeds only after all nested shared callbacks finalize",()=>{
+            var f=new Fixture(output);f.Start();Fixture.Must(f.Adapter.CoroutineEntered(999,-999,out var outer));Fixture.Must(f.Adapter.CoroutineEntered(998,-998,out var inner));
+            f.Return(inner,CallbackKind.Coroutine,998,true);f.Return(outer,CallbackKind.Coroutine,999,true);
+            check(f.Adapter.Close() && f.Adapter.Failure is null && f.Fatal.Calls==0,"fully finalized nested shared callbacks prevented close");
         });
         test("pending finalizer blocks next bound original before its native effects",()=>{
             var f=new Fixture(output);f.BeforeYield();f.NativeYield();Fixture.Must(f.Adapter.Returned(f.InitFrame,CallbackKind.Init,250,true,true));
