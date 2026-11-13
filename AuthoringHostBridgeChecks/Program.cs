@@ -30,7 +30,11 @@ static partial class Program
         {
             ResourceAvailability();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
         }
-        if(args.Length!=0){Console.Error.WriteLine("Use --recovery-ui, --resource-availability or no arguments.");return 2;}
+        if(args.SequenceEqual(new[]{"--panel-invalidation"}))
+        {
+            PanelInvalidation();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        }
+        if(args.Length!=0){Console.Error.WriteLine("Use --recovery-ui, --resource-availability, --panel-invalidation or no arguments.");return 2;}
         Test("capture maps native opaque identities and verifies live/snapshot ownership", () => {
             var host=Host(); var s=host.Capture("zh-CN"); var native=AuthoringEditorSession.Current!;
             Check(s.Context.Identity.ProjectId==native.ProjectId && s.Context.Identity.EditSession==native.EditSession && s.Context.Identity.Revision=="r1" && s.Context.Identity.AnchorLineId=="opaque-anchor" && s.SelectionRevision==7, "native identity lost");
@@ -153,6 +157,6 @@ static partial class Program
             Check(host.Commit(plan,7).Disposition==CardPackV2CommitDisposition.Applied,"new writes being blocked after Apply prevented readonly completion proof");
             Reject(()=>Host().Capture("zh-CN"),"closed write guard was bypassed for a new preview");
         });
-        RecoveryUi();ResourceAvailability();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        RecoveryUi();ResourceAvailability();PanelInvalidation();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
     }
 }

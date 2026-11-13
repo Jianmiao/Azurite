@@ -16,6 +16,7 @@ internal sealed class AuthoringCardPackPanel : IDisposable
     private readonly List<(UIButton Button, EventDelegate.Callback Callback, Action Managed)> _bindings = new();
     private CardPackV2Draft? _previewDraft;
     private Guid? _token;
+    private long _draftGeneration;
     private bool _disposed;
 
     // The composition root supplies four dedicated buttons, an existing scrollable
@@ -53,21 +54,54 @@ internal sealed class AuthoringCardPackPanel : IDisposable
         if (_disposed) return;
         Invoke(() =>
         {
-            if (_token.HasValue && _previewDraft != _readDraft())
+            if (_token.HasValue)
             {
-                ClearPreview();
-                _workflow.Cancel();
-                _status.text = "DRAFT_CHANGED: 卡包内容或语言已改变，请重新预览。";
+                var draft = _readDraft();
+                if (_disposed) return;
+                if (_token.HasValue && _previewDraft != draft) InvalidateDraft();
             }
             RefreshButtons();
         });
     }
 
+    /// <summary>
+    /// Revoke a visible or pending preview after resource/context changes without
+    /// rebuilding controls or clearing uncertain native outcomes. This does not
+    /// interrupt an Apply that has already entered the synchronous host boundary.
+    /// </summary>
+    internal void InvalidateDraft() => Invoke(() =>
+    {
+        unchecked { _draftGeneration++; }
+        CancelInvalidatedPreview();
+    });
+
+    private void CancelInvalidatedPreview()
+    {
+        var result = _workflow.Cancel();
+        if (_disposed) return;
+        ClearPreview();
+        if (_workflow.RecoveryRequired) Present(result);
+        else
+        {
+            _status.text = "DRAFT_CHANGED: 资源、参数或编辑上下文已改变，请重新预览。";
+            RefreshButtons();
+        }
+    }
+
     private void Preview()
     {
+        long generation = _draftGeneration;
         ClearPreview();
         var draft = _readDraft();
+        if (_disposed || generation != _draftGeneration) return;
         var result = _workflow.Preview(draft);
+        if (_disposed || generation != _draftGeneration)
+        {
+            // Cancel may have been refused while Workflow's capture was busy.
+            // It has now returned, so retire its newly produced stale preview.
+            CancelInvalidatedPreview();
+            return;
+        }
         if (result.Preview != null)
         {
             _token = result.Preview.ConfirmationToken;
@@ -80,11 +114,13 @@ internal sealed class AuthoringCardPackPanel : IDisposable
     private void Confirm()
     {
         if (!_token.HasValue) return;
+        long generation = _draftGeneration;
         var token = _token.Value;
-        // Re-read current controls even when Update has not yet observed an edit.
-        var draft = _readDraft();
+        // Consume the UI token before callbacks can reenter while reading controls.
         _token = null;
         _previewDraft = null;
+        var draft = _readDraft();
+        if (_disposed || generation != _draftGeneration) return;
         Present(_workflow.Confirm(token, draft));
     }
 
@@ -109,6 +145,7 @@ internal sealed class AuthoringCardPackPanel : IDisposable
 
     private void Present(CardPackV2WorkflowResult result)
     {
+        if (_disposed) return;
         _status.text = result.Code + ": " + result.Message;
         RefreshButtons();
     }
@@ -139,8 +176,9 @@ internal sealed class AuthoringCardPackPanel : IDisposable
         {
             // UI/read failures never trigger a second host call. The workflow itself
             // retains uncertain-commit recovery state, independently of this view.
-            ClearPreview();
             _workflow.Cancel();
+            if (_disposed) return;
+            ClearPreview();
             if (_status != null) _status.text = "PANEL_FAILED: " + error.GetType().Name + ": " + error.Message;
             RefreshButtons();
         }
@@ -150,6 +188,7 @@ internal sealed class AuthoringCardPackPanel : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        unchecked { _draftGeneration++; }
         _token = null;
         _previewDraft = null;
         _workflow.Cancel();
