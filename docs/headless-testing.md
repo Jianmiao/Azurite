@@ -1,5 +1,17 @@
 # Azurite headless lab preparation
 
+## Current account requirement
+
+The user changed the account requirement on 2026-11-08: use the current unelevated Windows account and do not create a dedicated or one-time account. Do not run the account-creation or credentialed launch commands retained below for this implementation. The current authority is `plans/azurite-progress-20261108.md`; the initial current-account results are recorded separately in `current-account-cli-validation-20261108.md`.
+
+The current ordinary-Editor lab is `F:\AzuriteLabs\Editor-20261108-normal`. Keep the daily installation and Profile unchanged. Current-account runs must verify shared user files and typed registry settings independently; environment-variable overrides are not an account boundary. Each AA test must remain headless, silent, low priority and uniquely owned, with no system input or foreground switching. Never run concurrently with another AA instance. Native CLI, ordinary Editor, offscreen graphics/audio and performance acceptance remain separate requirements.
+
+The full-restricted launch path and its preparation records are described in `full-restricted-cli-native-preparation.md`, `full-restricted-cli-integration-preparation.md`, `full-restricted-stage-baseline.md` and `full-restricted-inputs-assembly.md`. These documents describe preparation, not proof that all Editor or application gates passed. Every execution must use current source/artifact identities and a fresh run record; never reuse an old runtime approval.
+
+## Superseded dedicated-account design — historical reference only
+
+The remaining material records the earlier account-based design. Its account setup, E-drive lab and status statements are not the current execution instructions.
+
 Use the independent lab at `E:\aamod\labs\Azurite-20261108-stable`. Its `install` directory must be a full AA copy with `AzureArchive.exe`, `ActiveProfile.txt` containing `AzuriteAcceptance`, and `profiles\AzuriteAcceptance\modconfig.json` and `configs`. The lab must have no reparse links to daily writable state. Its existing `lab.marker.json` identifies the lab GUID, the controller SID, the daily install path and the creation time:
 
 ```json
