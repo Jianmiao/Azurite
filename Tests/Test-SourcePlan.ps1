@@ -4,7 +4,9 @@ $root=Split-Path -Parent $PSScriptRoot
 $script=Join-Path $root 'tools/Test-Source.ps1'
 function Assert([bool]$value,[string]$message){if(!$value){throw $message}}
 $portable=& $script -Suite Portable -PlanOnly
-Assert ($portable.Jobs.Count -eq 25) 'Portable suite must include Core plus all 24 classified portable test projects.'
+Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringHostBridgeChecks')) 'Portable suite must exercise the production authoring host bridge.'
+Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringHostContentChecks')) 'Portable suite must exercise native content projection through the production source.'
+Assert ($portable.Jobs.Count -eq 27) 'Portable suite must include Core plus all 26 classified portable test projects.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'WheelSettingsControlTests')) 'Portable suite must exercise actual wheel control.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'AuthoringSpeakerShortcutTests')) 'Portable suite must exercise actual shortcut mutation.'
 Assert ([bool]($portable.Jobs | Where-Object Name -eq 'HostActivityAuthoringTests')) 'Portable suite must exercise actual host authoring admission.'
