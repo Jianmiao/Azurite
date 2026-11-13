@@ -16,27 +16,28 @@ public static class CatalogEntryHost
 {
     private sealed class State
     {
-        internal State(AdapterBinding binding,IAdapterAdmission admission,string evidence,CatalogNativeBindings native,CatalogReadiness gate,Harmony harmony){Binding=binding;Admission=admission;Evidence=evidence;Native=native;Gate=gate;Harmony=harmony;Ticks=new(gate);}
-        internal readonly AdapterBinding Binding;internal readonly IAdapterAdmission Admission;internal readonly string Evidence;internal readonly CatalogNativeBindings Native;internal readonly CatalogReadiness Gate;internal readonly Harmony Harmony;internal readonly Stopwatch Clock=Stopwatch.StartNew();
-        internal readonly CatalogTickCallbacks Ticks;internal bool Registered;
+        internal State(AdapterBinding binding,IAdapterAdmission admission,string evidence,CatalogNativeBindings native,CatalogReadiness gate,Harmony harmony,CatalogClockAnchor clock,long milliseconds){Binding=binding;Admission=admission;Evidence=evidence;Native=native;Gate=gate;Harmony=harmony;Clock=clock;LastMilliseconds=milliseconds;Ticks=new(gate);}
+        internal readonly AdapterBinding Binding;internal readonly IAdapterAdmission Admission;internal readonly string Evidence;internal readonly CatalogNativeBindings Native;internal readonly CatalogReadiness Gate;internal readonly Harmony Harmony;internal readonly CatalogClockAnchor Clock;
+        internal readonly CatalogTickCallbacks Ticks;internal bool Registered;internal long LastMilliseconds;
     }
     private static State? state;
     [DllImport("kernel32.dll",ExactSpelling=true)]private static extern uint GetCurrentThreadId();
-    public static void Register(AdapterBinding binding,IAdapterAdmission admission,string entryHostSha256,string entryCoreSha256,Action<CatalogEvidence> record,long timeoutMilliseconds=120000)
+    public static void Register(AdapterBinding binding,IAdapterAdmission admission,string entryHostSha256,string entryCoreSha256,Action<CatalogEvidence> record,CatalogClockAnchor clock,long timeoutMilliseconds=120000)
     {
-        ArgumentNullException.ThrowIfNull(admission);ArgumentNullException.ThrowIfNull(record);
+        ArgumentNullException.ThrowIfNull(admission);ArgumentNullException.ThrowIfNull(record);ArgumentNullException.ThrowIfNull(clock);
         if(state is not null)throw new InvalidOperationException("Catalog observer registration is single-use.");
+        var milliseconds=clock.ElapsedMillisecondsAt(Stopwatch.GetTimestamp(),Stopwatch.Frequency);
         var proof=admission.EvidenceSha256;InstallationAuthority.RequireEvidence(proof,admission.EvidenceSha256);admission.RequireInstallation(binding);
         if(binding.Policy.ProcessId!=Environment.ProcessId||binding.Policy.NativeThreadId!=GetCurrentThreadId())throw new InvalidOperationException("Catalog observer must register on admitted native main thread.");
         var native=CatalogNativeBindings.Bind(binding,admission,proof,entryHostSha256,entryCoreSha256);
         foreach(var method in native.Bound.Values)if(Harmony.GetPatchInfo(method)?.Owners.Any()==true)throw new InvalidOperationException("A Catalog observer/idle seam is already patched.");
         var gate=new CatalogReadiness(new(binding.Policy.RunId,Environment.ProcessId,Environment.CurrentManagedThreadId,GetCurrentThreadId(),timeoutMilliseconds),record);
-        state=new(binding,admission,proof,native,gate,new Harmony("lab.azurite.catalog-observer."+binding.Policy.RunId));
+        state=new(binding,admission,proof,native,gate,new Harmony("lab.azurite.catalog-observer."+binding.Policy.RunId),clock,milliseconds);
         try{
             state.Harmony.Patch(native.Bound["Start"],new HarmonyMethod(typeof(CatalogEntryHost),nameof(StartPrefix)),new HarmonyMethod(typeof(CatalogEntryHost),nameof(StartPostfix)),finalizer:new HarmonyMethod(typeof(CatalogEntryHost),nameof(StartFinalizer)));
             state.Harmony.Patch(native.Bound["Update"],new HarmonyMethod(typeof(CatalogEntryHost),nameof(UpdatePrefix)),new HarmonyMethod(typeof(CatalogEntryHost),nameof(UpdatePostfix)),finalizer:new HarmonyMethod(typeof(CatalogEntryHost),nameof(UpdateFinalizer)));
             Verify();state.Registered=true;
-        }catch(Exception e){gate.Reject("Catalog registration failed: "+e.Message,FallbackStamp(0));throw;}
+        }catch(Exception e){gate.Reject("Catalog registration failed: "+e.Message,LastStamp(0));throw;}
     }
     private static void Verify()
     {
@@ -49,9 +50,15 @@ public static class CatalogEntryHost
         if(Harmony.GetPatchInfo(s.Native.Bound["RequireCatalogIdleForControl"])?.Owners.Any()==true)throw new InvalidOperationException("Native catalog idle guard was patched.");
     }
     private static long Pointer(Il2CppObjectBase? value)=>value?.Pointer.ToInt64()??0;
-    private static CatalogStamp FallbackStamp(long catalog)=>new(state!.Binding.Policy.RunId,Environment.ProcessId,Environment.CurrentManagedThreadId,GetCurrentThreadId(),0,state.Clock.ElapsedMilliseconds,catalog);
+    private static CatalogStamp LastStamp(long catalog)=>new(state!.Binding.Policy.RunId,Environment.ProcessId,Environment.CurrentManagedThreadId,GetCurrentThreadId(),0,state.LastMilliseconds,catalog);
+    private static CatalogStamp FallbackStamp(long catalog)
+    {
+        var s=state!;var milliseconds=s.Clock.ElapsedMillisecondsAt(Stopwatch.GetTimestamp(),Stopwatch.Frequency);
+        if(milliseconds<s.LastMilliseconds)throw new InvalidOperationException("Observer monotonic clock reversed.");
+        s.LastMilliseconds=milliseconds;return LastStamp(catalog);
+    }
     private static CatalogStamp Stamp(long catalog)=>FallbackStamp(catalog) with{Frame=Time.frameCount};
-    private static void Fail(Exception e,long catalog){state?.Gate.Reject(e.Message,FallbackStamp(catalog));}
+    private static void Fail(Exception e,long catalog){state?.Gate.Reject(e.Message,LastStamp(catalog));}
     private static void Callback(Type type,IntPtr pointer,MethodBase method,string name)
     {
         var s=state??throw new InvalidOperationException("Catalog observer is absent.");if(!s.Registered)throw new InvalidOperationException("Catalog callback before full registration.");Verify();if(method!=s.Native.Bound[name])throw new InvalidOperationException("Foreign Catalog callback method.");s.Native.Instance(type,pointer);

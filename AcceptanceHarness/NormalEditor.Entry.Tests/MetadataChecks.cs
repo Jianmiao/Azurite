@@ -24,6 +24,26 @@ static class MetadataChecks
         });
         IEnumerable<TypeDefinition> All(TypeDefinition t)=>new[]{t}.Concat(t.NestedTypes.SelectMany(All));var types=host.MainModule.Types.SelectMany(All).ToArray();var methods=types.SelectMany(t=>t.Methods).Where(m=>m.HasBody).ToArray();var callsites=methods.SelectMany(m=>m.Body.Instructions).Where(i=>i.OpCode.Code is Code.Call or Code.Callvirt or Code.Newobj).Select(i=>i.Operand).OfType<MethodReference>().ToArray();
         var callbacks=types.Single(t=>t.Name=="CatalogEntryHost");
+        test("registration requires the caller's shared clock anchor",()=>{
+            var registrations=callbacks.Methods.Where(m=>m.Name=="Register").ToArray();
+            check(registrations.Length==1&&registrations[0].Parameters.Any(p=>p.Name=="clock"&&p.ParameterType.FullName=="Azurite.NormalEditor.Entry.CatalogClockAnchor"&&!p.IsOptional),"Registration can start an uncorrelated observer clock");
+        });
+        test("host stamps use the supplied anchor without starting another clock",()=>{
+            check(!callsites.Any(m=>m.DeclaringType.FullName=="System.Diagnostics.Stopwatch"&&(m.Name=="StartNew"||m.Name==".ctor")),"Host creates an independent stopwatch");
+            check(!callsites.Any(m=>m.DeclaringType.FullName=="Azurite.NormalEditor.Entry.CatalogClockAnchor"&&(m.Name=="Capture"||m.Name==".ctor")),"Host replaces the caller's clock anchor");
+            check(callsites.Any(m=>m.DeclaringType.FullName=="Azurite.NormalEditor.Entry.CatalogClockAnchor"&&m.Name=="ElapsedMillisecondsAt"),"Host does not derive stamps from the shared anchor");
+        });
+        test("invalid clock is checked before native binding can initialize classes",()=>{
+            var il=callbacks.Methods.Single(m=>m.Name=="Register").Body.Instructions;
+            var clockAt=Enumerable.Range(0,il.Count).Single(i=>il[i].Operand is MethodReference m&&m.DeclaringType.Name=="CatalogClockAnchor"&&m.Name=="ElapsedMillisecondsAt");
+            var bindAt=Enumerable.Range(0,il.Count).Single(i=>il[i].Operand is MethodReference m&&m.DeclaringType.Name=="CatalogNativeBindings"&&m.Name=="Bind");
+            check(clockAt<bindAt,"Invalid clock can reach native binding");
+        });
+        test("failure evidence does not sample the clock that may have failed",()=>{
+            var fail=callbacks.Methods.Single(m=>m.Name=="Fail");var last=callbacks.Methods.Single(m=>m.Name=="LastStamp");
+            check(fail.Body.Instructions.Any(i=>i.Operand is MethodReference m&&m.Name=="LastStamp"),"Failure evidence does not preserve its last valid timestamp");
+            check(!fail.Body.Instructions.Concat(last.Body.Instructions).Select(i=>i.Operand).OfType<MethodReference>().Any(m=>m.DeclaringType.Name is "CatalogClockAnchor" or "Stopwatch"||m.Name=="FallbackStamp"),"Failure reporting reads a failed clock again");
+        });
         test("host has no automatic entry or permitting admission",()=>{
             check(!types.SelectMany(t=>t.CustomAttributes).Any(a=>a.AttributeType.Name.Contains("BepInPlugin"))&&!methods.SelectMany(m=>m.CustomAttributes).Any(a=>a.AttributeType.Name.Contains("ModuleInitializer")),"Automatic entry exists");check(!host.MainModule.Types.Single(t=>t.Name=="<Module>").Methods.Any(m=>m.Name==".cctor"),"Module initializer exists");check(!types.SelectMany(t=>t.Interfaces).Any(i=>i.InterfaceType.FullName=="Azurite.NormalEditor.Adapter.IAdapterAdmission"),"Observer grants its own admission");
         });

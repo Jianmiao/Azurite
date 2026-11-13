@@ -4,7 +4,7 @@ This component implements item 2 of the 2026-11-13 normal Editor checklist. It r
 
 ## Components and API
 
-- `NormalEditor.Entry.Core` contains `CatalogReadiness`, the immutable observation/evidence records, and `CatalogTickCallbacks`. These are the same managed coordinators used by the thin host and exercised by behavioral tests. Core has no Unity, native, filesystem or policy dependency.
+- `NormalEditor.Entry.Core` contains `CatalogReadiness`, the immutable observation/evidence records, `CatalogTickCallbacks`, and `CatalogClockAnchor`. These are the same managed components used by the thin host and exercised by behavioral tests. Core has no Unity, native, filesystem or policy dependency.
 - `NormalEditor.Entry.Host` binds the pinned IL2CPP/Harmony seams and forwards actual callback parameters. It references the existing frozen adapter and policy DLLs. It has no plugin attribute, automatic loader, permitting admission implementation, process launcher or project opener.
 - `NormalEditor.Entry.Tests` runs the real coordinators with controlled observations, then reads the compiled Host and copied interop as PE/IL data through the pinned Cecil reader. It never CLR-loads the Host or target interop assemblies.
 
@@ -17,10 +17,23 @@ CatalogEntryHost.Register(
     string entryHostSha256,
     string entryCoreSha256,
     Action<CatalogEvidence> record,
+    CatalogClockAnchor clock,
     long timeoutMilliseconds = 120000);
 ```
 
-The existing admission object remains an external requirement. Its installation evidence identity must remain unchanged on registration and callbacks. The entry Host/Core hashes must be supplied externally. Registration is single-use and runs on the admitted native main thread. The stopwatch begins with the observer state; the allowed readiness deadline is 1–300000 milliseconds. This library neither implements resource/cache/discovery/NoSound admission nor replaces those gates with observed ready flags.
+The caller captures one clock before constructing the journal identity and registering the observer:
+
+```csharp
+var clock = CatalogClockAnchor.Capture();
+var identity = new CatalogRunIdentity(catalogBinding, actualProcessStartUtc,
+    clock.ObserverStartedUtc);
+// Create the existing evidence writer with this identity, then pass the same
+// clock object and writer.Record to CatalogEntryHost.Register.
+```
+
+`Capture` samples `Stopwatch.GetTimestamp()` and UTC together in one call. The immutable anchor exposes that timestamp, the counter frequency, and the exact UTC value to use as `ObserverStartedUtc`; the host never creates another stopwatch or estimates the origin. The pair is sampled sequentially, not an atomic operating-system correlation, and does not prove the accuracy of the system wall clock. The explicit constructor also accepts an already collected UTC/timestamp/frequency pair. Such values are caller-supplied data, not physical provenance or admission evidence. Non-UTC/missing origins, negative counters, nonpositive or changed frequencies, samples before the origin and unrepresentable elapsed milliseconds are rejected. The host validates the source frequency and current counter before binding native classes. Its readiness deadline starts at the supplied anchor, so time spent constructing the writer and registering hooks remains included. A clock failure is recorded with the last valid elapsed value without sampling the failing clock again.
+
+There were no C# callers of the previous preparation-only signature. The clock is required; no overload starts a private replacement clock. The existing admission object remains an external requirement. Its installation evidence identity must remain unchanged on registration and callbacks. The entry Host/Core hashes must be supplied externally. Registration is single-use and runs on the admitted native main thread; the allowed readiness deadline is 1–300000 milliseconds. This library neither implements resource/cache/discovery/NoSound admission nor replaces those gates with observed ready flags.
 
 ## Observed lifecycle
 
@@ -54,7 +67,7 @@ The record callback must persist evidence and return synchronously. It must not 
 
 Timeouts are checked on actual callbacks and ticks. If the main thread stops or no callback occurs, this component cannot wake itself or terminate the process. A separately admitted external watchdog and normal close wiring remain outstanding item-1 work. Partial registration failure latches failure and throws; it does not restore or retry partially installed observer patches. Such a process must not be reused as a qualified run. This observer does not perform shutdown or cleanup.
 
-The final local suite has **103 passing checks: 49 readiness coordinator, 20 Update callback coordinator, 14 deferred observation bridge, and 20 metadata checks**. It covers real success/evidence, same/later frame, pre-Start updates, run/process/thread/owner identity, repetition/order/missing callbacks, original suppression/exceptions, all readiness predicates, guard readback drift/error/reentry, evidence failure/reentry, clock reversal and deadlines. The bridge tests run the same coordinator used by the Host and prove that early/terminal/foreign ticks do not invoke the field delegate. Metadata checks establish signatures, pointer/token initialization, backing accessor shape, callback forwarding and absence of prohibited entry/writes.
+The shared-clock revision has **125 passing checks: 49 readiness coordinator, 20 Update callback coordinator, 14 deferred observation bridge, 18 clock-anchor checks, and 24 metadata checks**. It retains the original 103 checks and adds UTC/monotonic origin sharing, elapsed conversion and overflow boundaries, registration delay, erroneous clocks, required host wiring, validation before native binding, and failure reporting without rereading the clock. The original suite covers real success/evidence, same/later frame, pre-Start updates, run/process/thread/owner identity, repetition/order/missing callbacks, original suppression/exceptions, all readiness predicates, guard readback drift/error/reentry, evidence failure/reentry, clock reversal and deadlines. The bridge tests run the same coordinator used by the Host and prove that early/terminal/foreign ticks do not invoke the field delegate. Metadata checks establish signatures, pointer/token initialization, backing accessor shape, callback forwarding and absence of prohibited entry/writes.
 
 Those results do not establish native patch hits, runtime argument conversion, native offsets/MethodInfo values, actual resource readiness, catalog-idle guard effects, scene timing, native exception propagation, sound/cache/discovery boundaries, process exit, project entry, session identity/snapshot correctness, native edits or performance. No Host registration, AA launch, plugin installation, project open, registry read or global lease acquisition was performed.
 

@@ -42,6 +42,7 @@ Test("failure reason is preserved after late callbacks",()=>{var f=new Fixture()
 
 TickCallbackChecks.Run(Test,Need);
 ObservationBridgeChecks.Run(Test,Need);
+ClockAnchorChecks.Run(Test,Need);
 if(args.Length==2)MetadataChecks.Run(args[0],args[1],Test,Need);
 var json=JsonSerializer.Serialize(checks);Console.WriteLine(json);var failed=checks.Count(x=>!(bool)x.GetType().GetProperty("passed")!.GetValue(x)!);Console.WriteLine($"RESULT passed={checks.Count-failed} failed={failed}; nativeExecuted=false; hostExecuted=false");return failed==0?0:1;
 
