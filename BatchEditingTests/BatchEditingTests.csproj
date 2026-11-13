@@ -8,5 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Core/Azurite.Core/DialogueBatchEditing.cs" Link="Production/DialogueBatchEditing.cs" />
+    <Compile Include="../Core/Azurite.Core/AuthoringBatchPlan.cs" Link="Production/AuthoringBatchPlan.cs" />
   </ItemGroup>
 </Project>

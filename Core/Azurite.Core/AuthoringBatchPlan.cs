@@ -55,7 +55,7 @@ public sealed record AuthoringBatchSelection
         if (rows is null) throw new ArgumentNullException(nameof(rows));
         Revision = revision;
         NodeId = nodeId;
-        Rows = rows;
+        Rows = new ReadOnlyCollection<AuthoringBatchRow>(rows.ToArray());
     }
 
     public long Revision { get; }
