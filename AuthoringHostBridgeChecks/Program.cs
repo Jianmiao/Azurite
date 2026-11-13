@@ -5,7 +5,7 @@ using Studio.Scripts;
 using Studio.Scripts.OperationManagement;
 using System.Text.Json;
 
-static class Program
+static partial class Program
 {
     static int passed, failed;
     static long selectionRevision; static bool allowed; static string resourceId = "fixture:transition"; static Action? invalidate;
@@ -20,8 +20,13 @@ static class Program
         var context = host.Capture("zh-CN").Context;
         return CardPackV2Compiler.TryCompile(new("2", "pack", "Test", Enumerable.Range(0,count).Select(i => new CardV2("c" + i, PresetCardKind.Transition, ResourceKey: "fade")).ToArray()), context, context.Identity).Plan!;
     }
-    static int Main()
+    static int Main(string[] args)
     {
+        if(args.SequenceEqual(new[]{"--recovery-ui"}))
+        {
+            RecoveryUi();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        }
+        if(args.Length!=0){Console.Error.WriteLine("Use --recovery-ui or no arguments.");return 2;}
         Test("capture maps native opaque identities and verifies live/snapshot ownership", () => {
             var host=Host(); var s=host.Capture("zh-CN"); var native=AuthoringEditorSession.Current!;
             Check(s.Context.Identity.ProjectId==native.ProjectId && s.Context.Identity.EditSession==native.EditSession && s.Context.Identity.Revision=="r1" && s.Context.Identity.AnchorLineId=="opaque-anchor" && s.SelectionRevision==7, "native identity lost");
@@ -144,6 +149,6 @@ static class Program
             Check(host.Commit(plan,7).Disposition==CardPackV2CommitDisposition.Applied,"new writes being blocked after Apply prevented readonly completion proof");
             Reject(()=>Host().Capture("zh-CN"),"closed write guard was bypassed for a new preview");
         });
-        Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        RecoveryUi();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
     }
 }

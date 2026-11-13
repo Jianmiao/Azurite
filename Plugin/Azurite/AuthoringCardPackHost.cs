@@ -65,7 +65,7 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         {
             _captured = null;
             var state = ReadState(true, out _);
-            Require(!Uncertainty.ContainsKey(state.Identity.EditSession), "RECOVERY_REQUIRED: this native session has an unresolved Apply.");
+            if (Uncertainty.ContainsKey(state.Identity.EditSession)) throw new CardPackRecoveryRequiredException("This native session has an unresolved Apply; explicit recovery is required.");
             var content = CaptureContent(state.Identity, selectedLocale);
             var current = ReadState(false, out _);
             Require(SameState(state, current), "Native state changed while capturing card content.");

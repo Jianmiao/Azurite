@@ -13,6 +13,12 @@ public sealed record CardPackV2RecoveryResult(bool Recovered, string Message);
 public sealed record CardPackV2Preview(Guid ConfirmationToken, string DisplayName, int OperationCount, string Text);
 public sealed record CardPackV2WorkflowResult(bool IsSuccess, string Code, string Message, CardPackV2Preview? Preview = null);
 
+/// <summary>Structured host signal for a persistent unresolved native submission; never an automatic recovery instruction.</summary>
+public sealed class CardPackRecoveryRequiredException : InvalidOperationException
+{
+    public CardPackRecoveryRequiredException(string message) : base(message) { }
+}
+
 /// <summary>
 /// Synchronous owner-thread boundary. Capture verifies the active Studio/Current ownership,
 /// input/save/export guards, persistent selection and fresh catalog/inherited stage.
@@ -119,7 +125,7 @@ public sealed class CardPackV2Workflow
         if (result?.Recovered != true) return Failure("RECOVERY_FAILED", result?.Message ?? "宿主未确认恢复结果。");
         _recoveryRequired = false;
         _pending = null;
-        return new(true, "RECOVERED", result.Message + " 请重新预览后再确认。");
+        return new(true, "RECOVERED", result.Message + " 后续新操作须重新预览并确认。");
     });
 
     private CardPackV2WorkflowResult? Capture(CardPackV2Draft draft, out CardPackV2Snapshot? snapshot)
@@ -133,6 +139,12 @@ public sealed class CardPackV2Workflow
                 return Failure("CAPTURE_FAILED", "宿主未提供有效的选择、原生上下文或指定语言。");
             snapshot = captured;
             return null;
+        }
+        catch (CardPackRecoveryRequiredException error)
+        {
+            _pending = null;
+            _recoveryRequired = true;
+            return Failure("RECOVERY_REQUIRED", error.Message);
         }
         catch (Exception error) { return Failure("CAPTURE_FAILED", error.GetType().Name + ": " + error.Message); }
     }
