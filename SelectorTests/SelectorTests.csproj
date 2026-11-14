@@ -6,6 +6,11 @@
   </PropertyGroup>
   <ItemGroup><Reference Include="Mono.Cecil"><HintPath>$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll</HintPath></Reference></ItemGroup>
   <ItemGroup><Compile Include="../Plugin/Azurite/DeferredEditorSelectors.cs" Link="Production/DeferredEditorSelectors.cs" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Plugin/Azurite/DeferredSelectorPolicy.cs" Link="Production/DeferredSelectorPolicy.cs" />
+    <Compile Include="../Plugin/Azurite/HostProfile.cs" Link="Production/HostProfile.cs" />
+    <Compile Include="../Plugin/Azurite/HostCompatibilitySnapshot.cs" Link="Production/HostCompatibilitySnapshot.cs" />
+  </ItemGroup>
   <Target Name="RequireAAInstallPath" BeforeTargets="ResolveReferences">
     <Error Condition="'$(AAInstallPath)' == '' Or !Exists('$(AAInstallPath)/BepInEx/interop/Assembly-CSharp.dll')" Text="Set AAInstallPath to an AA installation with generated IL2CPP bindings; no machine-specific path is assumed." />
   </Target>

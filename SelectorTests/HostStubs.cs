@@ -18,13 +18,30 @@ namespace HarmonyLib
     public sealed class PatchInfo { public HashSet<string> Owners = new(); }
     public sealed class Harmony
     {
+        internal static Action<MethodInfo>? AfterPatch;
         internal static readonly Dictionary<MethodInfo, (string Owner, HarmonyMethod? Prefix, HarmonyMethod? Postfix, HarmonyMethod? Finalizer)> Patches = new();
         private readonly string _owner;
         public Harmony(string owner) => _owner = owner;
-        public void Patch(MethodInfo method, HarmonyMethod? prefix = null, HarmonyMethod? postfix = null, object? transpiler = null, HarmonyMethod? finalizer = null) =>
-            Patches[method] = (_owner, prefix, postfix, finalizer);
+        public void Patch(MethodInfo method, HarmonyMethod? prefix = null, HarmonyMethod? postfix = null, object? transpiler = null, HarmonyMethod? finalizer = null)
+        { Patches[method] = (_owner, prefix, postfix, finalizer); AfterPatch?.Invoke(method); }
         public static PatchInfo? GetPatchInfo(MethodInfo method) => Patches.TryGetValue(method, out var p) ? new() { Owners = new() { p.Owner } } : null;
         public void UnpatchSelf() { foreach (var key in Patches.Where(p => p.Value.Owner == _owner).Select(p => p.Key).ToArray()) Patches.Remove(key); }
+    }
+}
+namespace BepInEx.Configuration
+{
+    // Only the Bind/Value dependency used by the real policy is modeled here.
+    // Disk persistence and BepInEx change notifications are not simulated.
+    public sealed class ConfigEntry<T> { public T Value; public ConfigEntry(T value) => Value = value; }
+    public sealed class ConfigFile
+    {
+        public readonly Dictionary<string,object> Entries = new();
+        public ConfigEntry<T> Bind<T>(string section, string key, T defaultValue, string description)
+        {
+            string name = section + "/" + key;
+            if (!Entries.TryGetValue(name, out var entry)) Entries[name] = entry = new ConfigEntry<T>(defaultValue);
+            return (ConfigEntry<T>)entry;
+        }
     }
 }
 internal static class Hooks

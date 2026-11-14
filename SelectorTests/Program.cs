@@ -29,7 +29,8 @@ Check(Method(character, "Init", "Script", "System.Int32", "System.Boolean").Retu
 Check(Method(HostType("Studio.Scripts.Window.CharacterExplorer.CharacterList"), "LoadCharacters").ReturnType.FullName == "System.Void", "native character list load signature");
 Check(Method(HostType("Studio.Scripts.ScriptNodeInspector"), "OpenCharacterSelector", "System.Int32").ReturnType.FullName == "System.Void", "inspector character selector entry signature");
 
-string source = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Plugin", "Azurite", "DeferredEditorSelectors.cs"));
+string repositoryRoot = args.Length > 2 ? Path.GetFullPath(args[2]) : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+string source = File.ReadAllText(Path.Combine(repositoryRoot, "Plugin", "Azurite", "DeferredEditorSelectors.cs"));
 Check(!source.Contains("Task.Run", StringComparison.Ordinal) && !source.Contains("Thread.", StringComparison.Ordinal), "selector deferral stays on Unity main thread");
 Check(source.Contains("entry.View", StringComparison.Ordinal) && source.Contains("entry.Ready", StringComparison.Ordinal), "per-instance readiness state");
 
@@ -108,5 +109,8 @@ using (var selectors = new DeferredEditorSelectors(_ => { }))
     var closingStudio = new Studio.Scripts.StudioCommon(); closingStudio.OnDestroy(); selectors.Dispose();
     Check(scenePending.characterList.LoadCalls == 0, "scene destruction drops pending native references without constructing unused rows");
 }
-Console.WriteLine($"RESULT {passed} passed; {failed} failed; production source + installed metadata, no Unity invocation.");
+SelectorPolicyChecks.Run(Check);
+string pluginPath = args.Length > 1 ? args[1] : Path.Combine(repositoryRoot, "Plugin", "bin", "Release", "netcoreapp6.0", "Azurite.dll");
+SelectorWiringChecks.Run(pluginPath, Check);
+Console.WriteLine($"RESULT {passed} passed; {failed} failed; production source + C host/plugin metadata, no Unity invocation.");
 return failed == 0 ? 0 : 1;

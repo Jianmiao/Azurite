@@ -84,6 +84,7 @@ public sealed partial class Plugin : BasePlugin
 	private ConfigEntry<bool> _rowReuseEnabled;
 
 	private ConfigEntry<bool> _virtualizationEnabled;
+	private ConfigEntry<bool> _deferredSelectorsEnabled;
 	private DialogueVirtualization? _virtualization;
 	private DeferredEditorSelectors? _deferredSelectors;
 	private BackgroundGalleryLoadCulling? _backgroundGalleryCulling;
@@ -284,6 +285,7 @@ public sealed partial class Plugin : BasePlugin
 		_ambientCharacterPreview = base.Config.Bind("Preview", "LimitAmbientCharacterRendering", false, "Experimental editor-only cadence for verified Spine idle/blink animation. Keeps logical animation updates and event timing; input, actions, unknown dynamics and export use normal rendering.");
 		_ambientCharacterFps = base.Config.Bind("Preview", "AmbientCharacterFps", 60.0, "Rendered editor animation rate while idle, 30..120. Does not slow logical animation time or apply to export.");
 		_virtualizationEnabled = base.Config.Bind("Large Projects", "VirtualizeDialogueList", false, "Experimental verified-host dialogue list virtualization. Maintain a bounded visible row pool; restore the native list before unsupported editor actions and export. Requires matching AA native implementation.");
+		_deferredSelectorsEnabled = DeferredSelectorPolicy.Bind(base.Config);
 		_progressiveEditorLoading = base.Config.Bind("Large Projects", "ProgressiveEditorLoading", false, "Experimental verified-host editor loading. Unlocks structure, dialogue editing, and character/emotion selector entry while project assets continue loading; resource-dependent synchronization, environment selectors, preview and export remain gated until ready.");
 		_backgroundGalleryLoadCulling = base.Config.Bind("Large Projects", "BackgroundGalleryLoadCulling", true, "Avoid redundant thumbnail load callbacks and bound new gallery requests. Native clipping, unloading, search and ordering remain intact.");
 		_previewScale = base.Config.Bind("Preview", "RenderScale", 1f, "Optional experimental global URP quality reduction for embedded editor preview only. 1 preserves native quality. Restored before export.");
@@ -391,7 +393,8 @@ public sealed partial class Plugin : BasePlugin
 			if (num && _host.Profile.EditorPatches && !_host.Profile.LegacyExporter)
 			{
 				_deferredSelectors = new DeferredEditorSelectors(message => base.Log.LogInfo(message));
-				if (!_deferredSelectors.Install())
+				if (!DeferredSelectorPolicy.Install(_deferredSelectors, num, _host.Profile,
+					_deferredSelectorsEnabled.Value, _enabled.Value, _disabledForSession, _host.Probe(), _exportSuspended))
 				{
 					_deferredSelectors.Dispose();
 					_deferredSelectors = null;
@@ -544,6 +547,7 @@ public sealed partial class Plugin : BasePlugin
 
 	private void Tick(double now)
 	{
+		DeferredSelectorPolicy.Pause(_deferredSelectors);
 #if AZURITE_AUTHORING_SOURCE
 		if (!TickCardPackAuthoring()) return;
 #endif
@@ -616,6 +620,8 @@ public sealed partial class Plugin : BasePlugin
 			RefreshNativeLabels();
 		}
 		HostCompatibilitySnapshot hostCompatibilitySnapshot = _host.Probe();
+		DeferredSelectorPolicy.Apply(_deferredSelectors, _deferredSelectorsEnabled.Value, _enabled.Value,
+			_disabledForSession, _host.Profile, hostCompatibilitySnapshot, _exportSuspended);
 		// Progressive loading is editor-only and does not wait for AAVideoExport to
 		// bind. Structure/dialogue operations unlock at the editor shell; the host
 		// resource probe keeps preview-dependent work conservative until preload is
@@ -928,6 +934,7 @@ public sealed partial class Plugin : BasePlugin
 	private bool YieldToExporter()
 	{
 		if (_host == null || (!_host.PublicRenderingBlocked && !(_exportSuspended && _host.HasPublicRenderControl))) return false;
+		DeferredSelectorPolicy.Pause(_deferredSelectors);
 		_mappingAllowed = _previewAllowed = _previewCadenceAllowed = _characterMeshAllowed = false;
 		_requestedCpuFps = 0;
 		_mode = RenderMode.Protected;
@@ -939,6 +946,7 @@ public sealed partial class Plugin : BasePlugin
 	{
 		// Block writers before restoring, including callbacks caused by restores.
 		_exportSuspended = true;
+		DeferredSelectorPolicy.Pause(_deferredSelectors);
 #if AZURITE_AUTHORING_SOURCE
 		SuspendCardPackAuthoring();
 #endif
