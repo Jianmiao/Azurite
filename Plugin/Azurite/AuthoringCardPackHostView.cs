@@ -80,7 +80,9 @@ internal sealed class AuthoringCardPackHostView : IDisposable
             _root.transform.localPosition = new Vector3(origin.x, origin.y, 0);
             _root.transform.localScale = Vector3.one;
             _root.SetActive(false);
-            Background(_root, "Background", 0, 0, Width, Height, _background);
+            var background = Background(_root, "Background", 0, 0, Width, Height, _background);
+            background.depth = _depth - 1; // Full-surface hit target stays behind every interactive widget.
+            NGUITools.AddWidgetCollider(background.gameObject);
             _mode = Label(_root, "Mode", 16, 8, 728, 34, "五类内置示例（所有台词可编辑，待预览验证）");
             string[] names = { "Transition", "Combat", "Action", "Language", "Sound", "Example" };
             string[] captions = { "转场", "战斗", "动作", "语言", "音效", "五类示例" };
@@ -133,6 +135,8 @@ internal sealed class AuthoringCardPackHostView : IDisposable
         }
         catch { DisposeNow(); throw; }
     }
+
+    internal void InvalidatePreview() { RequireThread(); _panel?.InvalidateDraft(); }
 
     internal void Update(bool enabled)
     {
@@ -396,3 +400,4 @@ internal sealed class AuthoringCardPackHostView : IDisposable
         _root = null;
     }
 }
+

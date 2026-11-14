@@ -5,7 +5,7 @@ using Studio.Scripts;
 using Studio.Scripts.Nodes;
 using UnityEngine;
 
-static class Program
+static partial class Program
 {
     static void Check(bool value,string message){if(!value)throw new Exception(message);}
     static void Reject(Action action,string message){try{action();}catch(InvalidOperationException){return;}catch(ArgumentException){return;}throw new Exception(message);}
@@ -20,7 +20,7 @@ static class Program
         {
             GameObject.All.Clear();GameObject.Added=0;GameObject.FailOnAdd=-1;GameObject.Destroyed=0;EventDelegate.Depth=0;
             AuthoringEditorSession.ThrowOnCurrentRead=false;AuthoringEditorSession.CurrentReads=0;
-            AuthoringCardPackHostView.Instances.Clear();AuthoringCardPackHostView.FailConstruction=false;
+            AuthoringCardPackHostBatchToolbar.Instances.Clear();AuthoringCardPackHostView.Instances.Clear();AuthoringCardPackHostView.FailConstruction=false;
             AuthoringCardPackHostSelection.Instances.Clear();AuthoringCardPackHostSelection.FailInstall=false;RootBoundaryHost.Instances.Clear();
             Surface=new(){name="NativeSurface"};Panel=Surface.AddComponent<UIPanel>();Studio=new();StudioCommon.instance=Studio;
             Session=new(){studio=Studio};AuthoringEditorSession.Current=Session;Inspector=MakeInspector();
@@ -62,5 +62,7 @@ static class Program
         ("terminal cleanup is idempotent without reopening gates",()=>With(f=>{var view=f.Open();f.Root.DisposeAtSafePoint();int reads=f.OwnershipReads+f.ContextReads;f.Root.AbandonForShutdown();Check(f.Root.IsDisposed&&view.Disposes==1&&f.OwnershipReads+f.ContextReads==reads,"repeat cleanup reopened gates or repeated ownership disposal");})),
         ("constructor does not manufacture an editor thread",()=>{int thread=Environment.CurrentManagedThreadId;Task.Run(()=>Reject(()=>new AuthoringCardPackHostRoot(thread,()=>true,()=>true,_=>{}),"wrong construction thread accepted")).GetAwaiter().GetResult();})
     };
-    static int Main(){int failed=0;foreach(var c in Cases)try{c.Test();Console.WriteLine("PASS "+c.Name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+c.Name+": "+e.Message);}Console.WriteLine($"RESULT {Cases.Length-failed} passed / {failed} failed");return failed==0?0:1;}
+    static int Main(){int failed=0;foreach(var c in Cases.Concat(BatchCases))try{c.Test();Console.WriteLine("PASS "+c.Name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+c.Name+": "+e.Message);}Console.WriteLine($"RESULT {Cases.Length+BatchCases.Length-failed} passed / {failed} failed");return failed==0?0:1;}
 }
+
+

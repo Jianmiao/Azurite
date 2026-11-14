@@ -48,16 +48,21 @@ public sealed class CardPackV2Workflow
     private readonly object _gate = new();
     private Pending? _pending;
     private bool _busy;
-    private bool _recoveryRequired;
+    private readonly AuthoringClientSession _clientSession;
 
-    public CardPackV2Workflow(ICardPackV2Host host) => _host = host ?? throw new ArgumentNullException(nameof(host));
-    public bool RecoveryRequired { get { lock (_gate) return _recoveryRequired; } }
+    public CardPackV2Workflow(ICardPackV2Host host, AuthoringClientSession? session = null)
+    {
+        _host = host ?? throw new ArgumentNullException(nameof(host));
+        _clientSession = session ?? new();
+        _clientSession.Starting += sender => { if (!ReferenceEquals(sender, this)) _pending = null; };
+    }
+    public bool RecoveryRequired { get { lock (_gate) return _clientSession.RecoveryRequired; } }
 
     /// <summary>Read-only preview. JSON and locale are immutable copies; even unused variant edits require a new preview.</summary>
     public CardPackV2WorkflowResult Preview(CardPackV2Draft draft) => Run(() =>
     {
         _pending = null;
-        if (_recoveryRequired) return Failure("RECOVERY_REQUIRED", "上次提交结果未确认；请先检查并恢复编辑状态。");
+        if (_clientSession.RecoveryRequired) return Failure("RECOVERY_REQUIRED", "上次提交结果未确认；请先检查并恢复编辑状态。");
         CardPackV2 pack;
         try { pack = CardPackV2Json.Deserialize(draft?.Json!); }
         catch (FormatException error) { return Failure("PACK_INVALID", error.Message); }
@@ -77,7 +82,7 @@ public sealed class CardPackV2Workflow
     /// </summary>
     public CardPackV2WorkflowResult Confirm(Guid token, CardPackV2Draft draft) => Run(() =>
     {
-        if (_recoveryRequired) return Failure("RECOVERY_REQUIRED", "上次提交结果未确认；请先检查并恢复编辑状态。");
+        if (_clientSession.RecoveryRequired) return Failure("RECOVERY_REQUIRED", "上次提交结果未确认；请先检查并恢复编辑状态。");
         var pending = _pending;
         if (pending == null || token != pending.Preview.ConfirmationToken)
             return Failure("PREVIEW_REQUIRED", "确认已失效，请重新预览。");
@@ -113,19 +118,19 @@ public sealed class CardPackV2Workflow
     public CardPackV2WorkflowResult Cancel() => Run(() =>
     {
         _pending = null;
-        if (_recoveryRequired) return Failure("RECOVERY_REQUIRED", "仅取消预览；之前提交的结果仍待确认，请检查并恢复编辑状态。");
+        if (_clientSession.RecoveryRequired) return Failure("RECOVERY_REQUIRED", "仅取消预览；之前提交的结果仍待确认，请检查并恢复编辑状态。");
         return new(true, "CANCELLED", "已取消预览，未提交。");
-    });
+    }, false);
 
     /// <summary>Explicit host recovery only. Does not recreate a preview or replay any operation.</summary>
     public CardPackV2WorkflowResult Recover() => Run(() =>
     {
-        if (!_recoveryRequired) return new(true, "NO_RECOVERY_NEEDED", "无需恢复。");
+        if (!_clientSession.RecoveryRequired) return new(true, "NO_RECOVERY_NEEDED", "无需恢复。");
         CardPackV2RecoveryResult? result;
         try { result = _host.Recover(); }
         catch (Exception error) { return Failure("RECOVERY_FAILED", error.GetType().Name + ": " + error.Message); }
         if (result?.Recovered != true) return Failure("RECOVERY_FAILED", result?.Message ?? "宿主未确认恢复结果。");
-        _recoveryRequired = false;
+        _clientSession.ConfirmRecovery();
         _pending = null;
         return new(true, "RECOVERED", result.Message + " 后续新操作须重新预览并确认。");
     });
@@ -145,7 +150,7 @@ public sealed class CardPackV2Workflow
         catch (CardPackRecoveryRequiredException error)
         {
             _pending = null;
-            _recoveryRequired = true;
+            _clientSession.ObserveRecoveryRequired();
             return Failure("RECOVERY_REQUIRED", error.Message);
         }
         catch (Exception error) { return Failure("CAPTURE_FAILED", error.GetType().Name + ": " + error.Message); }
@@ -153,18 +158,24 @@ public sealed class CardPackV2Workflow
 
     private CardPackV2WorkflowResult Unknown(string message)
     {
-        _recoveryRequired = true;
+        _clientSession.ObserveRecoveryRequired();
         return Failure("OUTCOME_UNKNOWN", "提交结果未确认；不会自动重试或宣称已回滚。" + message);
     }
 
-    private CardPackV2WorkflowResult Run(Func<CardPackV2WorkflowResult> action)
+    private CardPackV2WorkflowResult Run(Func<CardPackV2WorkflowResult> action, bool interaction = true)
     {
         lock (_gate)
         {
             if (_busy) return Failure("WORKFLOW_BUSY", "当前操作尚未结束。");
             _busy = true;
-            try { return action(); }
-            finally { _busy = false; }
+            bool began = false;
+            var result = Failure("WORKFLOW_FAILED", "操作未完成，请重新预览。");
+            try
+            {
+                if (interaction && !(began = _clientSession.Begin(this))) return Failure("WORKFLOW_BUSY", "另一个客户端仍在操作。");
+                return result = action();
+            }
+            finally { _busy = false; if (began) _clientSession.End(this, result); }
         }
     }
 
@@ -207,3 +218,4 @@ public sealed class CardPackV2Workflow
         return text.ToString();
     }
 }
+

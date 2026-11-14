@@ -22,6 +22,7 @@ internal sealed class AuthoringCardPackHostRoot
     {
         internal bool SameOwner(Surface other) => Inspector == other.Inspector && Panel.Pointer == other.Panel.Pointer && Font.Pointer == other.Font.Pointer;
     }
+    private sealed record PresentationStamp(string Revision, string Catalog, string Node, IntPtr Anchor, int Slot, long Selection, long Epoch, bool Context);
     private sealed class Bundle
     {
         internal SessionKey Key = null!;
@@ -29,6 +30,11 @@ internal sealed class AuthoringCardPackHostRoot
         internal AuthoringCardPackHostDraft Draft = null!;
         internal ICardPackV2Host Host = null!;
         internal CardPackV2Workflow Workflow = null!;
+        internal AuthoringBatchWorkflow Batch = null!;
+        internal AuthoringClientSession Clients = null!;
+        internal IAuthoringHostPresentation Presentation = null!;
+        internal AuthoringCardPackHostResourcePicker Offstage = null!;
+        internal PresentationStamp? Stamp;
     }
 
     private readonly int _editorThreadId;
@@ -40,6 +46,13 @@ internal sealed class AuthoringCardPackHostRoot
     private Surface? _surface;
     private AuthoringCardPackHostSelection? _selection;
     private AuthoringCardPackHostView? _view;
+    private AuthoringCardPackHostBatchToolbar? _batchView;
+    private GameObject? _batchLauncher;
+    private UIButton? _batchToggle;
+    private UILabel? _batchToggleLabel;
+    private Action? _batchToggleManaged;
+    private EventDelegate.Callback? _batchToggleNative;
+    private bool _requestedBatchOpen;
     private GameObject? _launcher, _placement;
     private UIButton? _toggle;
     private UILabel? _toggleLabel;
@@ -83,7 +96,7 @@ internal sealed class AuthoringCardPackHostRoot
             var scope = ReadScope();
             if (scope == null)
             {
-                _active?.Workflow.Cancel();
+                CancelActive();
                 _selection?.Update(false);
                 RetireSurface(reportFormLoss: true);
                 _surface = null;
@@ -93,17 +106,17 @@ internal sealed class AuthoringCardPackHostRoot
             bool sessionChanged = _active?.Key != scope.Key;
             if (sessionChanged)
             {
-                _active?.Workflow.Cancel();
+                CancelActive();
                 _selection?.Update(false);
                 RetireSurface(reportFormLoss: true);
                 _surface = null;
                 _active = GetBundle(scope.Key);
-                _requestedOpen = false;
+                _requestedOpen = false; _requestedBatchOpen = false;
             }
             if (_activeSessionPointer != scope.SessionPointer)
             {
-                _active!.Workflow.Cancel();
-                _view?.Update(false);
+                CancelActive();
+                _view?.Update(false); _batchView?.Update(false);
                 _activeSessionPointer = scope.SessionPointer;
             }
 
@@ -119,7 +132,7 @@ internal sealed class AuthoringCardPackHostRoot
             }
             if (_surface != null && !_surface.SameOwner(surface))
             {
-                _active!.Workflow.Cancel();
+                CancelActive();
                 RetireSurface(reportFormLoss: true);
             }
             _surface = surface;
@@ -130,35 +143,45 @@ internal sealed class AuthoringCardPackHostRoot
             if (context) EnsureSelection();
             _selection?.Update(context && _selection.IsInstalled);
 
+            ObservePresentation(context);
+
             bool canPresent = _selection?.IsInstalled == true && CanOwnHost();
             _launcher!.SetActive(true);
             _toggle!.isEnabled = canPresent;
+            _batchLauncher!.SetActive(true); _batchToggle!.isEnabled = canPresent;
+            _batchToggleLabel!.text = _active!.Batch.RecoveryRequired ? "批量·待恢复" : _requestedBatchOpen ? "关闭批量" : "批量编辑";
             _toggleLabel!.text = _active!.Workflow.RecoveryRequired ? "卡包·待恢复" : _requestedOpen ? "关闭卡包" : "卡包";
             if (_requestedOpen && canPresent && _view == null)
             {
                 try
                 {
-                    _placement = NGUITools.AddChild(surface.Panel.gameObject);
-                    _placement.name = "AzuriteCardPackPlacement";
+                    EnsurePlacement(surface);
                     Place(surface);
                     var owner = _active!;
-                    _view = new(_editorThreadId, _placement.transform, surface.Font, new Vector2(0, 0),
+                    _view = new(_editorThreadId, _placement!.transform, surface.Font, new Vector2(0, 0),
                         () => CanContextFor(owner.Key), owner.Workflow, owner.Transition, owner.Sound, owner.Draft);
                 }
                 catch
                 {
-                    if (_placement != null) UnityEngine.Object.Destroy(_placement);
-                    _placement = null;
-                    _requestedOpen = false;
+                    RetireSurface(reportFormLoss: true);
+                    _requestedOpen = false; _requestedBatchOpen = false;
                     throw;
                 }
             }
+            if (_requestedBatchOpen && canPresent && _batchView == null)
+            {
+                EnsurePlacement(surface);
+                var owner = _active!;
+                _batchView = new(_editorThreadId, _placement!.transform, surface.Font, new Vector2(0, 0),
+                    () => CanContextFor(owner.Key), owner.Batch, owner.Offstage);
+            }
             _view?.Update(_requestedOpen && canPresent);
+            _batchView?.Update(_requestedBatchOpen && canPresent);
             if (context && !_selectionFaulted) _lastDiagnostic = null;
         }
         catch (Exception error)
         {
-            _active?.Workflow.Cancel();
+            CancelActive();
             try { HidePresentation(); }
             catch (Exception cleanupError)
             {
@@ -182,12 +205,53 @@ internal sealed class AuthoringCardPackHostRoot
         RequireThread();
         if (_disposed || _cleanupFailure != null) return;
         if (open && !CanOwnHost()) return;
+        if (open) { _requestedBatchOpen = false; CancelActive(); }
         _requestedOpen = open;
         if (!open)
         {
-            _active?.Workflow.Cancel();
+            CancelActive();
             _pendingInvalidation = true;
         }
+    }
+
+    internal void RequestBatchOpen(bool open)
+    {
+        RequireThread();
+        if (_disposed || _cleanupFailure != null || open && !CanOwnHost()) return;
+        if (open) _requestedOpen = false;
+        _requestedBatchOpen = open;
+        CancelActive();
+        if (!open) _pendingInvalidation = true;
+    }
+
+    private void CancelActive()
+    {
+        _active?.Workflow.Cancel(); _active?.Batch.Cancel();
+        _view?.InvalidatePreview(); _batchView?.InvalidatePreview();
+    }
+    private void EnsurePlacement(Surface surface)
+    {
+        if (_placement != null) return;
+        _placement = NGUITools.AddChild(surface.Panel.gameObject);
+        _placement.name = "AzuriteCardPackPlacement";
+        Place(surface);
+    }
+    private PresentationStamp ReadStamp(Bundle owner, bool context)
+    {
+        var session = AuthoringEditorSession.Current ?? throw new InvalidOperationException("Current session is unavailable.");
+        var inspector = ScriptNodeInspector.instance ?? throw new InvalidOperationException("Inspector is unavailable.");
+        var status = owner.Presentation.ReadPresentationStatus(owner.Key.EditSession);
+        if (status.RecoveryRequired) owner.Clients.ObserveRecoveryRequired();
+        return new(session.Revision, AuthoringResourceCatalog.CatalogVersion, inspector.scriptNode.guid.ToString(),
+            inspector.selectedScriptItem?.Pointer ?? IntPtr.Zero, inspector.selectedSlotNum,
+            _selection?.PresentationRevision ?? -1, status.SubmissionVersion, context && !status.Busy);
+    }
+    private void ObservePresentation(bool context)
+    {
+        var owner = _active!;
+        var fresh = ReadStamp(owner, context);
+        if (owner.Stamp != null && owner.Stamp != fresh) CancelActive();
+        owner.Stamp = fresh;
     }
 
     internal void SuspendForExport()
@@ -196,7 +260,7 @@ internal sealed class AuthoringCardPackHostRoot
         if (_disposed) return;
         _exportSuspended = true;
         _pendingInvalidation = true;
-        _active?.Workflow.Cancel();
+        CancelActive();
     }
 
     internal void ResumeAfterExport()
@@ -239,7 +303,31 @@ internal sealed class AuthoringCardPackHostRoot
                     throw new InvalidOperationException("Native selected rows are not synchronized with the current Inspector.");
                 return rows;
             });
-        bundle.Workflow = new(bundle.Host);
+        bundle.Presentation = bundle.Host as IAuthoringHostPresentation ?? throw new InvalidOperationException("Shared Host lacks presentation evidence.");
+        var batchHost = bundle.Host as IAuthoringBatchHost ?? throw new InvalidOperationException("Shared Host lacks batch actions.");
+        bundle.Clients = new();
+        bundle.Workflow = new(bundle.Host, bundle.Clients);
+        bundle.Batch = new(batchHost, bundle.Clients);
+        bundle.Offstage = new(_editorThreadId, gate, "offstage", CardResourceKind.Character);
+        bundle.Clients.Starting += client =>
+        {
+            if (!ReferenceEquals(_active, bundle)) return;
+            if (ReferenceEquals(client, bundle.Workflow)) _batchView?.InvalidatePreview();
+            else _view?.InvalidatePreview();
+        };
+        bundle.Clients.RecoveryChanged += () => { if (ReferenceEquals(_active, bundle)) CancelActive(); };
+        bundle.Clients.Completed += (_, result) =>
+        {
+            if (!ReferenceEquals(_active, bundle) || _disposed) return;
+            // A successful capture may refresh the native revision itself. Record
+            // that observed stamp without issuing a second Capture on the next tick.
+            try
+            {
+                bundle.Stamp = ReadStamp(bundle, CanContextFor(bundle.Key));
+                if (!bundle.Stamp.Context) CancelActive();
+            }
+            catch { bundle.Stamp = null; CancelActive(); }
+        };
         bundle.Draft = new(_editorThreadId, gate, Choices, "transition", "sound");
         _sessions.Add(key, bundle);
         return bundle;
@@ -312,6 +400,7 @@ internal sealed class AuthoringCardPackHostRoot
     {
         if (_selection?.IsInstalled == true || _selectionFaulted) return;
         var selection = new AuthoringCardPackHostSelection(_editorThreadId, CanSharedContext, Diagnostic);
+        selection.SetOwnedInputGuard(OwnsAuthoringInput);
         if (!selection.Install())
         {
             selection.Dispose();
@@ -322,10 +411,26 @@ internal sealed class AuthoringCardPackHostRoot
         _selection = selection;
     }
 
+    private bool OwnsAuthoringInput(GameObject? hovered)
+    {
+        if (hovered == null || !hovered.activeInHierarchy) return false;
+        // Exact retained objects, never names or a blanket UIButton exclusion:
+        // dialogue rows can themselves be buttons. Hidden/retired views do not
+        // own a pointer, and native row/drag/scroll siblings remain available.
+        for (Transform? node = hovered.transform; node != null; node = node.parent)
+        {
+            IntPtr pointer = node.gameObject.Pointer;
+            if (_placement != null && pointer == _placement.Pointer ||
+                _launcher != null && pointer == _launcher.Pointer ||
+                _batchLauncher != null && pointer == _batchLauncher.Pointer) return true;
+        }
+        return false;
+    }
+
     private void EnsureLauncher(Surface surface)
     {
-        if (_launcher != null) return;
-        try { CreateLauncher(surface); }
+        if (_launcher != null && _batchLauncher != null) return;
+        try { CreateLauncher(surface); CreateBatchLauncher(surface); }
         catch { RetireLauncher(); throw; }
     }
 
@@ -361,9 +466,42 @@ internal sealed class AuthoringCardPackHostRoot
         NGUITools.AddWidgetCollider(_launcher);
     }
 
+    private void CreateBatchLauncher(Surface surface)
+    {
+        _batchLauncher = NGUITools.AddChild(surface.Panel.gameObject);
+        _batchLauncher.name = "AzuriteBatchLauncher";
+        _batchLauncher.transform.localScale = Vector3.one;
+        var background = _batchLauncher.AddComponent<UITexture>();
+        background.mainTexture = Texture2D.whiteTexture; background.pivot = UIWidget.Pivot.TopLeft;
+        background.width = 112; background.height = 32; background.depth = surface.Font.depth + 5;
+        bool lightText = surface.Font.color.r + surface.Font.color.g + surface.Font.color.b > 1.5f;
+        background.color = lightText ? new Color(.18f, .21f, .26f, 1) : new Color(.82f, .85f, .90f, 1);
+        _batchToggle = _batchLauncher.AddComponent<UIButton>(); _batchToggle.tweenTarget = _batchLauncher; _batchToggle.defaultColor = background.color;
+        var labelObject = NGUITools.AddChild(_batchLauncher); labelObject.name = "AzuriteBatchLauncherLabel";
+        labelObject.transform.localPosition = new Vector3(6, -4, 0); labelObject.transform.localScale = Vector3.one;
+        _batchToggleLabel = labelObject.AddComponent<UILabel>();
+        if (surface.Font.bitmapFont != null) _batchToggleLabel.bitmapFont = surface.Font.bitmapFont; else _batchToggleLabel.trueTypeFont = surface.Font.trueTypeFont;
+        _batchToggleLabel.fontSize = surface.Font.fontSize; _batchToggleLabel.fontStyle = surface.Font.fontStyle; _batchToggleLabel.spacingY = surface.Font.spacingY;
+        _batchToggleLabel.color = surface.Font.color; _batchToggleLabel.depth = surface.Font.depth + 6; _batchToggleLabel.pivot = UIWidget.Pivot.TopLeft;
+        _batchToggleLabel.alignment = NGUIText.Alignment.Left; _batchToggleLabel.width = 100; _batchToggleLabel.height = 24;
+        _batchToggleLabel.maxLineCount = 1; _batchToggleLabel.overflowMethod = UILabel.Overflow.ClampContent; _batchToggleLabel.supportEncoding = false; _batchToggleLabel.text = "批量编辑";
+        if (_batchToggle.onClick == null || _batchToggle.onClick.Count != 0) throw new InvalidOperationException("Launcher must be a dedicated empty native button.");
+        _batchToggleManaged = () =>
+        {
+            RequireThread();
+            _callbackDepth++;
+            try { RequestBatchOpen(!_requestedBatchOpen); } finally { _callbackDepth--; }
+        };
+        _batchToggleNative = DelegateSupport.ConvertDelegate<EventDelegate.Callback>(_batchToggleManaged)
+            ?? throw new InvalidOperationException("Cannot bind the owned card-pack launcher.");
+        EventDelegate.Add(_batchToggle.onClick, _batchToggleNative);
+        NGUITools.AddWidgetCollider(_batchLauncher);
+    }
+
     private void Place(Surface surface)
     {
         if (_launcher != null) _launcher.transform.localPosition = new Vector3(surface.Right - 124, surface.Top - 8, 0);
+        if (_batchLauncher != null) _batchLauncher.transform.localPosition = new Vector3(surface.Right - 244, surface.Top - 8, 0);
         if (_placement != null)
         {
             _placement.transform.localPosition = new Vector3(surface.Left + (surface.Right - surface.Left - ViewWidth * surface.Scale) * .5f, surface.Top - 48, 0);
@@ -373,18 +511,20 @@ internal sealed class AuthoringCardPackHostRoot
 
     private void HidePresentation()
     {
-        _active?.Workflow.Cancel();
+        CancelActive();
         _selection?.Update(false);
-        try { _view?.Update(false); }
+        try { _view?.Update(false); _batchView?.Update(false); }
         catch { RetireSurface(reportFormLoss: true); }
         if (_launcher != null) _launcher.SetActive(false);
+        if (_batchLauncher != null) _batchLauncher.SetActive(false);
     }
 
     private void RetireSurface(bool reportFormLoss)
     {
-        bool hadForm = _view != null;
+        bool hadForm = _view != null || _batchView != null;
         _surfaceReady = false;
         if (_view != null) { _view.Dispose(); _view = null; }
+        if (_batchView != null) { _batchView.Dispose(); _batchView = null; }
         if (_placement != null) UnityEngine.Object.Destroy(_placement);
         _placement = null;
         RetireLauncher();
@@ -393,6 +533,10 @@ internal sealed class AuthoringCardPackHostRoot
 
     private void RetireLauncher()
     {
+        if (_batchToggle != null && _batchToggleNative != null) EventDelegate.Remove(_batchToggle.onClick, _batchToggleNative);
+        _batchToggleManaged = null; _batchToggleNative = null; _batchToggle = null; _batchToggleLabel = null;
+        if (_batchLauncher != null) UnityEngine.Object.Destroy(_batchLauncher);
+        _batchLauncher = null;
         if (_toggle != null && _toggleNative != null) EventDelegate.Remove(_toggle.onClick, _toggleNative);
         _toggleManaged = null; _toggleNative = null; _toggle = null; _toggleLabel = null;
         if (_launcher != null) UnityEngine.Object.Destroy(_launcher);
@@ -408,8 +552,8 @@ internal sealed class AuthoringCardPackHostRoot
         if (_disposed) return;
         if (_updating || _callbackDepth != 0) throw new InvalidOperationException("Root disposal requires a safe owner-thread lifecycle point after UI callbacks.");
         if (_cleanupFailure != null) throw new InvalidOperationException("Previous owned cleanup failed; release is not verified.", _cleanupFailure);
-        _enabled = false; _exportSuspended = true; _requestedOpen = false;
-        foreach (var bundle in _sessions.Values) bundle.Workflow.Cancel();
+        _enabled = false; _exportSuspended = true; _requestedOpen = false; _requestedBatchOpen = false;
+        foreach (var bundle in _sessions.Values) { bundle.Workflow.Cancel(); bundle.Batch.Cancel(); }
         // Terminal cleanup deliberately does not call gates, ReadScope, Update,
         // Current, resources or a host recovery method: the Editor may be gone.
         var errors = new List<Exception>();
@@ -436,3 +580,4 @@ internal sealed class AuthoringCardPackHostRoot
         try { _log(message); } catch { /* diagnostics cannot authorize or bypass owner cleanup */ }
     }
 }
+

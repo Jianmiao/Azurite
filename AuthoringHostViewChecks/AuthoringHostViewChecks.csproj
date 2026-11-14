@@ -7,6 +7,11 @@
     <Compile Include="../Plugin/Azurite/AuthoringCardPackHostDraft.cs" Link="Production/Draft.cs" />
     <Compile Include="../Plugin/Azurite/AuthoringCardPackPanel.cs" Link="Production/Panel.cs" />
     <Compile Include="../Plugin/Azurite/AuthoringCardPackHostView.cs" Link="Production/View.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostBatchToolbar.cs" Link="Production/BatchToolbar.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostRoot.cs" Link="Production/Root.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostSelection.cs" Link="Production/Selection.cs" />
     <Content Include="../AuthoringHostContentChecks/NativeSchemaResponse.json" Link="NativeSchemaResponse.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
+
+

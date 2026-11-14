@@ -3,5 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="../Core/Azurite.Core.csproj" />
     <Compile Include="../Plugin/Azurite/AuthoringCardPackHostRoot.cs" Link="Production/Root.cs" />
+    <Compile Include="../AuthoringHostViewChecks/BatchBoundaryHost.cs" Link="BatchBoundaryHost.cs" />
   </ItemGroup>
 </Project>
+

@@ -82,6 +82,8 @@ internal sealed class AuthoringCardPackHostResourcePicker
             Require(String(resolved, "resource_id") == resourceId && String(resolved, "kind") == kind &&
                 String(resolved, "catalog_version") == before.CatalogVersion && Boolean(resolved, "available"),
                 "Native Resolve did not verify this available resource, kind and catalog version.");
+            if (_kind == CardResourceKind.Character)
+                Require(Boolean(resolved.GetProperty("capabilities"), "offstage"), "Selected character does not support offstage dialogue.");
             Require(SynchronizeContext() == before, "Project/session/catalog changed during resource resolution.");
             _choice = new(_resourceKey, resourceId!, _kind);
             Notify("SelectionChanged");
@@ -197,7 +199,7 @@ internal sealed class AuthoringCardPackHostResourcePicker
     }
     private static string NativeKind(CardResourceKind kind) => kind switch
     {
-        CardResourceKind.Transition => "transition", CardResourceKind.Sound => "sound",
+        CardResourceKind.Transition => "transition", CardResourceKind.Sound => "sound", CardResourceKind.Character => "character",
         _ => throw new InvalidOperationException("This picker selects scene transition or sound resources; stage occupants remain native selections.")
     };
     private static bool LogicalKey(string value) => !string.IsNullOrWhiteSpace(value) && value != "." && value != ".." &&
@@ -227,3 +229,4 @@ internal sealed class AuthoringCardPackHostResourcePicker
     }
     private static void Require([DoesNotReturnIf(false)] bool value, string message) { if (!value) throw new InvalidOperationException(message); }
 }
+

@@ -25,6 +25,9 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
     private readonly Action<string>? _log;
     private readonly int _editorThreadId;
     private readonly Func<bool> _authoringAllowed;
+    private Func<GameObject?, bool>? _ownedInputGuard;
+    private bool _ownedPointerGesture;
+    private int _ownedPointerReleaseFrame = -1;
     private readonly BoxSelectionModel _model = new();
     private readonly List<ScriptListItem> _nativeRows = new();
     private readonly List<BoxSelectionRow> _rows = new();
@@ -58,6 +61,35 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
     internal bool IsInstalled => _installed && !_disposed;
     internal IReadOnlyList<string> SelectedRowIds => _model.SelectedRowIds;
     internal bool IsDragging => _model.IsDragging;
+    // Presentation-only observation, after Update or the existing invalidation
+    // hooks. This never authorizes a capture/commit or projects the entire list.
+    internal long PresentationRevision => OnEditorThread && IsInstalled ? _model.SelectionRevision : -1;
+
+    internal void SetOwnedInputGuard(Func<GameObject?, bool> guard)
+    {
+        if (!OnEditorThread || _disposed || _installed)
+            throw new InvalidOperationException("Owned UI input must be bound before installing selection hooks on the editor thread.");
+        _ownedInputGuard = guard ?? throw new ArgumentNullException(nameof(guard));
+    }
+
+    private bool IsOwnedInputHovered()
+    {
+        try { return _ownedInputGuard?.Invoke(UICamera.hoveredObject) == true; }
+        catch { return true; } // Failed ownership inspection cannot authorize list input.
+    }
+    private bool OwnedInputOwnsPointer() => _ownedPointerGesture || _ownedPointerReleaseFrame == Time.frameCount || IsOwnedInputHovered();
+
+    private void ObserveOwnedPointer()
+    {
+        if (Input.GetMouseButtonDown(0) && IsOwnedInputHovered()) _ownedPointerGesture = true;
+        // Keep the whole UI-origin gesture, including an up/click delivered after
+        // the pointer has left the panel. Do not capture unrelated list gestures.
+        if (_ownedPointerGesture && (Input.GetMouseButtonUp(0) || !Input.GetMouseButton(0) && !Input.GetMouseButtonDown(0)))
+        {
+            _ownedPointerGesture = false;
+            _ownedPointerReleaseFrame = Time.frameCount;
+        }
+    }
     // Host reads this just before capture/commit, so it must reconcile current
     // identity even when Update has not run since a native list replacement.
     internal long SelectionRevision
@@ -198,7 +230,8 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
 
         try
         {
-            bool pointerActive = Input.GetMouseButtonDown(0) || Input.GetMouseButton(0) || _gestureStarted;
+            ObserveOwnedPointer();
+            bool pointerActive = !OwnedInputOwnsPointer() && (Input.GetMouseButtonDown(0) || Input.GetMouseButton(0) || _gestureStarted);
             ScriptNodeInspector inspector = SynchronizeRows(pointerActive);
             _allowed = true;
             HandlePointer(inspector);
@@ -248,6 +281,7 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
 
     private void HandlePointer(ScriptNodeInspector inspector)
     {
+        if (OwnedInputOwnsPointer()) { CancelGesture(); return; }
         if (_lastGestureEndFrame == Time.frameCount && !_gestureStarted)
             return;
         if (NativeInputOwnsPointer() ||
@@ -291,6 +325,7 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
 
     private BoxSelectionPointerTarget HitTarget(ScriptNodeInspector inspector, BoxSelectionPoint point)
     {
+        if (OwnedInputOwnsPointer()) return BoxSelectionPointerTarget.OutsideDialogueList;
         if (!TryGetViewportRect(out Rect viewport) || !viewport.Contains(new Vector2(point.X, point.Y)))
             return BoxSelectionPointerTarget.OutsideDialogueList;
 
@@ -414,6 +449,7 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
     {
         AuthoringCardPackHostSelection? active = _active;
         if (active == null || !active._allowed || !active.Qualified() || __instance == null || __instance.inspector == null || __instance.inspector.Pointer != active._inspectorPointer) return true;
+        if (active.OwnedInputOwnsPointer()) { active.CancelGesture(); return false; }
         if (NativeInputOwnsPointer() || (UICamera.isDragging && !active._model.IsDragging)) return true;
         try
         {
@@ -465,6 +501,7 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
     {
         AuthoringCardPackHostSelection? active = _active;
         if (active == null || !active._allowed || !active.Qualified() || __instance == null || __instance.inspector == null || __instance.inspector.Pointer != active._inspectorPointer || CurrentModifiers() != BoxSelectionModifiers.None) return;
+        if (active.OwnedInputOwnsPointer()) return;
         if (NativeInputOwnsPointer()) return;
         if (active._lastGestureEndFrame == Time.frameCount || active._nativeClickConsumedFrame == Time.frameCount)
         {
@@ -489,6 +526,7 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
     {
         AuthoringCardPackHostSelection? active = _active;
         if (active == null || !active.OnEditorThread || __instance == null || __instance.inspector == null || __instance.inspector.Pointer != active._inspectorPointer) return;
+        if (active.OwnedInputOwnsPointer()) { active.CancelGesture(); return; }
         active._model.Clear();
         active._gestureStarted = false;
         active._suppressNativeClick = false;
@@ -499,6 +537,7 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
     {
         AuthoringCardPackHostSelection? active = _active;
         if (active == null || !active.Qualified() || !active._allowed || !active._gestureStarted || __instance == null || !Input.GetMouseButton(0)) return true;
+        if (active.OwnedInputOwnsPointer()) { active.CancelGesture(); return true; }
         try
         {
             ScriptNodeInspector inspector = active.SynchronizeRows();
@@ -586,6 +625,8 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
     private void ResetForHostChange()
     {
         _allowed = false;
+        _ownedPointerGesture = false;
+        _ownedPointerReleaseFrame = -1;
         CancelGesture();
         _model.Refresh();
         _nativeRows.Clear();
@@ -709,6 +750,7 @@ internal sealed class AuthoringCardPackHostSelection : IDisposable
         if (!OnEditorThread) throw new InvalidOperationException("Selection hooks must be disposed on their editor thread.");
         _disposed = true;
         ResetForHostChange();
+        _ownedInputGuard = null;
         if (_active == this) _active = null;
         if (_installed) { try { _harmony.UnpatchSelf(); } catch { } }
         _installed = false;

@@ -47,3 +47,11 @@ public interface IAuthoringBatchHost
     CardPackV2CommitResult CommitDuplicate(AuthoringBatchDuplicateHostPreview preview);
     CardPackV2RecoveryResult Recover();
 }
+
+/// <summary>Read-only presentation evidence; never an authorization or recovery operation.</summary>
+public sealed record AuthoringHostPresentationStatus(long SubmissionVersion, bool RecoveryRequired, bool Busy);
+public interface IAuthoringHostPresentation
+{
+    AuthoringHostPresentationStatus ReadPresentationStatus(string editSession);
+    string ReadSpeakerEvidence(AuthoringBatchSpeakerHostPreview preview);
+}

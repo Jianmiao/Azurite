@@ -18,7 +18,7 @@ namespace Azurite;
 /// editor-thread ID, live export/compatibility guard, selection revision, and a real
 /// native-inheritance/catalog projection. No default or synthetic projection exists.
 /// </summary>
-internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthoringBatchHost
+internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthoringBatchHost, IAuthoringHostPresentation
 {
     private sealed record HistoryItem(IntPtr Pointer, IntPtr Previous, IntPtr Next);
     private sealed record State(CardPackContextIdentity Identity, long SelectionRevision,
@@ -66,6 +66,23 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         _captureContent = captureContent ?? throw new ArgumentNullException(nameof(captureContent));
         _invalidateSelection = invalidateSelection ?? throw new ArgumentNullException(nameof(invalidateSelection));
         _readBatchRows = readBatchRows;
+    }
+
+    public AuthoringHostPresentationStatus ReadPresentationStatus(string editSession)
+    {
+        Require(Environment.CurrentManagedThreadId == _editorThreadId, "Presentation status requires the owner thread.");
+        Require(!string.IsNullOrWhiteSpace(editSession), "A real session key is required.");
+        return new(SubmissionVersion(editSession), Uncertainty.ContainsKey(editSession), _nativeBoundaryBusy != 0);
+    }
+
+    public string ReadSpeakerEvidence(AuthoringBatchSpeakerHostPreview preview)
+    {
+        Require(Environment.CurrentManagedThreadId == _editorThreadId && _nativeBoundaryBusy == 0, "Speaker evidence requires an idle owner thread.");
+        var captured = _capturedSpeaker;
+        Require(captured != null && ReferenceEquals(captured.Preview, preview) &&
+            preview.SubmissionVersion == SubmissionVersion(preview.Identity.EditSession) &&
+            !Uncertainty.ContainsKey(preview.Identity.EditSession), "Speaker preview is not current and owned.");
+        return captured!.Targets;
     }
 
     public CardPackV2Snapshot Capture(string? selectedLocale)
@@ -491,3 +508,4 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         return native;
     }
 }
+

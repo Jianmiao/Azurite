@@ -8,7 +8,7 @@ namespace UnityEngine
     public class GameObject
     {
         public static List<GameObject> All=new();public static int Added,FailOnAdd=-1,Destroyed;public string name="";public bool activeInHierarchy=true,IsDestroyed;public int layer;
-        public Transform transform;readonly Dictionary<Type,object> components=new();
+        static long nextPointer;public IntPtr Pointer=(IntPtr)Interlocked.Increment(ref nextPointer);public Transform transform;readonly Dictionary<Type,object> components=new();
         public GameObject(){transform=new(this);All.Add(this);}
         public T AddComponent<T>() where T:NativeObject,new(){if(++Added==FailOnAdd)throw new InvalidOperationException("fixture component creation failure");var c=new T{gameObject=this};components[typeof(T)]=c;return c;}
         public T? GetComponent<T>() where T:class=>components.GetValueOrDefault(typeof(T)) as T;
@@ -131,3 +131,4 @@ namespace AzureArchive.Automation
         }
     }
 }
+

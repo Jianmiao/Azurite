@@ -7,7 +7,7 @@ using Studio.Scripts;
 using Studio.Scripts.Nodes;
 using UnityEngine;
 
-static class Program
+static partial class Program
 {
     static string Schema="";
     static void Check(bool value,string message){if(!value)throw new Exception(message);}
@@ -20,6 +20,7 @@ static class Program
     {
         internal bool Allowed=true;internal readonly GameObject Parent;internal readonly UILabel Typography;
         internal readonly AuthoringCardPackHostResourcePicker Transition,Sound;internal readonly AuthoringCardPackHostDraft Draft;internal readonly Host Host;internal readonly CardPackV2Workflow Workflow;
+        internal readonly AuthoringClientSession Clients = new();
         internal AuthoringCardPackHostView? View;
         internal Fixture()
         {
@@ -39,7 +40,7 @@ static class Program
             }
             Parent=new GameObject{name="NativeParent"};Parent.AddComponent<UIPanel>();Typography=Parent.AddComponent<UILabel>();Typography.trueTypeFont=new Font();Typography.fontSize=16;Typography.color=Color.white;
             Transition=new(Environment.CurrentManagedThreadId,()=>Allowed,"transition",CardResourceKind.Transition);Sound=new(Environment.CurrentManagedThreadId,()=>Allowed,"sound",CardResourceKind.Sound);
-            Draft=new(Environment.CurrentManagedThreadId,()=>Allowed,Choices,"transition","sound");Host=new(this);Workflow=new(Host);
+            Draft=new(Environment.CurrentManagedThreadId,()=>Allowed,Choices,"transition","sound");Host=new(this);Workflow=new(Host,Clients);
         }
         internal IReadOnlyList<AuthoringCardPackResourceChoice> Choices()=>new[]{Transition.ReadChoice(),Sound.ReadChoice()}.Where(x=>x!=null).Cast<AuthoringCardPackResourceChoice>().ToArray();
         internal void Create(){View=new(Environment.CurrentManagedThreadId,Parent.transform,Typography,new Vector2(0,0),()=>Allowed,Workflow,Transition,Sound,Draft);View.Update(true);}
@@ -89,7 +90,13 @@ static class Program
     static int Main()
     {
         var bytes=File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory,"NativeSchemaResponse.json"));Check(Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant()=="b97d7bb5da9a86738a7d43eec79e5b26547bccb50d68400d92891741258f978d","schema fixture changed");Schema=JsonDocument.Parse(bytes).RootElement.GetProperty("data").GetRawText();int failed=0;
-        foreach(var c in Cases)try{c.Test();Console.WriteLine("PASS "+c.Name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+c.Name+": "+e.Message);}
-        Console.WriteLine($"RESULT {Cases.Length-failed} passed / {failed} failed");return failed==0?0:1;
+        foreach(var c in Cases.Concat(BatchCases).Concat(RootToolbarCases).Concat(SelectionSurfaceCases))try{c.Test();Console.WriteLine("PASS "+c.Name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+c.Name+": "+e.Message);}
+        File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"focused-result.json"),JsonSerializer.Serialize(new { scope="Actual Root, actual selection adapter and both production views; explicit native/Host boundary doubles", checks=SelectionMeasurements, failed }, new JsonSerializerOptions { WriteIndented=true }));
+        Console.WriteLine($"RESULT {Cases.Length+BatchCases.Length+RootToolbarCases.Length+SelectionSurfaceCases.Length-failed} passed / {failed} failed");return failed==0?0:1;
     }
 }
+
+
+
+
+
