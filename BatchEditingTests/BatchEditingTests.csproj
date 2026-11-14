@@ -9,5 +9,7 @@
   <ItemGroup>
     <Compile Include="../Core/Azurite.Core/DialogueBatchEditing.cs" Link="Production/DialogueBatchEditing.cs" />
     <Compile Include="../Core/Azurite.Core/AuthoringBatchPlan.cs" Link="Production/AuthoringBatchPlan.cs" />
+    <Compile Include="../Core/Azurite.Core/AuthoringBatchNativePlan.cs" Link="Production/AuthoringBatchNativePlan.cs" />
+    <None Include="../AuthoringHostContentChecks/NativeSchemaResponse.json" Link="NativeSchemaResponse.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

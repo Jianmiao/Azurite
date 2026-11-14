@@ -78,4 +78,6 @@ EnforcesOperationAndLineBounds();
 ResolvesOnlyAltNumberShortcuts();
 GateBlocksTextInputsAndInactiveEditor();
 Console.WriteLine("BatchEditingTests: 5/5 passed");
-return SelectionSnapshotTests.Run();
+int snapshots = SelectionSnapshotTests.Run();
+int nativeText = NativeSetTextTests.Run();
+return snapshots == 0 && nativeText == 0 ? 0 : 1;
