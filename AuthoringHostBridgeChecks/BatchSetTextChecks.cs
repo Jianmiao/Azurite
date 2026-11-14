@@ -169,13 +169,13 @@ static partial class Program
         });
         Test("batch 500 operations call shared Apply once and preserve all IDs", () => {
             var native=AuthoringEditorSession.Current!;var data=(ScriptNodeData)native.studio.Project.nodes[0];
-            data.Scripts=Enumerable.Range(0,500).Select(i=>new ScriptData{LineId=i==0?"opaque-anchor":"row-"+i,text="old"}).ToList();Fixture.Rebind();Fixture.BatchIndices=Enumerable.Range(0,500).ToArray();
+            data.Scripts=new(Enumerable.Range(0,500).Select(i=>new ScriptData{LineId=i==0?"opaque-anchor":"row-"+i,text="old"}));Fixture.Rebind();Fixture.BatchIndices=Enumerable.Range(0,500).ToArray();
             var host=Host();var preview=host.CaptureSetText("changed");var result=host.CommitSetText(preview);
             Check(result.Disposition==CardPackV2CommitDisposition.Applied && native.Applies==1 && data.Scripts.Count==500 && OperationManager.history.Count==2,result.Message);
         });
         Test("batch 501 changed native rows reject before Check or Apply", () => {
             var native=AuthoringEditorSession.Current!;var data=(ScriptNodeData)native.studio.Project.nodes[0];
-            data.Scripts=Enumerable.Range(0,501).Select(i=>new ScriptData{LineId=i==0?"opaque-anchor":"row-"+i,text="old"}).ToList();Fixture.Rebind();Fixture.BatchIndices=Enumerable.Range(0,501).ToArray();
+            data.Scripts=new(Enumerable.Range(0,501).Select(i=>new ScriptData{LineId=i==0?"opaque-anchor":"row-"+i,text="old"}));Fixture.Rebind();Fixture.BatchIndices=Enumerable.Range(0,501).ToArray();
             Reject(()=>Host().CaptureSetText("changed"),"oversize host capture admitted");Check(native.Checks==0 && native.Applies==0,"501 entered native transaction");
         });
     }

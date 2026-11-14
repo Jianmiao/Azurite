@@ -25,7 +25,7 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         IntPtr Session, IntPtr Studio, string Fingerprint, string FileVersion, string? SavedFingerprint, bool Dirty,
         int SaveDelta, int CompileDelta, bool LinkNext, HistoryItem[] History, HistoryItem[] Future, string[] Lines, ProjectData Project);
     private sealed record Captured(State State, string? Locale, string Content, long SubmissionVersion);
-    private sealed record Submission(CardPackNativePlan? Cards, AuthoringBatchHostPreview? Text, AuthoringBatchSpeakerHostPreview? Speaker, string? ExpectedFingerprint);
+    private sealed record Submission(CardPackNativePlan? Cards, AuthoringBatchHostPreview? Text, AuthoringBatchSpeakerHostPreview? Speaker, AuthoringBatchDeleteHostPreview? Delete, string? ExpectedFingerprint);
     private sealed class Uncertain
     {
         internal readonly State Before;
@@ -89,16 +89,16 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         => Submit(plan, null, null, selectionRevision);
 
     // Both operation families enter exactly this owner, Check/Apply and uncertainty lifecycle.
-    private CardPackV2CommitResult Submit(CardPackNativePlan? cards, AuthoringBatchHostPreview? text, AuthoringBatchSpeakerHostPreview? speaker, long selectionRevision)
+    private CardPackV2CommitResult Submit(CardPackNativePlan? cards, AuthoringBatchHostPreview? text, AuthoringBatchSpeakerHostPreview? speaker, long selectionRevision, AuthoringBatchDeleteHostPreview? deletion = null)
     {
         bool entered = false, applyEntered = false, refreshAttempted = false;
         Uncertain? pending = null;
         try
         {
             EnterBoundary(); entered = true;
-            var captured = _captured; var batch = _capturedBatch; var speakerCapture = _capturedSpeaker;
+            var captured = _captured; var batch = _capturedBatch; var speakerCapture = _capturedSpeaker; var deleteCapture = _capturedDelete;
             var attempt = RevokeOwnedPreviews();
-            Require((cards != null ? 1 : 0) + (text != null ? 1 : 0) + (speaker != null ? 1 : 0) == 1, "Exactly one supported submission kind is required.");
+            Require((cards != null ? 1 : 0) + (text != null ? 1 : 0) + (speaker != null ? 1 : 0) + (deletion != null ? 1 : 0) == 1, "Exactly one supported submission kind is required.");
             State capturedState;
             long capturedVersion;
             if (cards != null)
@@ -111,16 +111,21 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
                 Require(batch != null && ReferenceEquals(batch.Preview, text), "A fresh SetText capture from this owner is required.");
                 capturedState = batch!.State; capturedVersion = batch.Preview.SubmissionVersion;
             }
-            else
+            else if (speaker != null)
             {
                 Require(speakerCapture != null && ReferenceEquals(speakerCapture.Preview, speaker), "A fresh speaker capture from this owner is required.");
                 capturedState = speakerCapture!.State; capturedVersion = speakerCapture.Preview.SubmissionVersion;
+            }
+            else
+            {
+                Require(deleteCapture != null && ReferenceEquals(deleteCapture.Preview, deletion), "A fresh deletion capture from this owner is required.");
+                capturedState = deleteCapture!.State; capturedVersion = deleteCapture.Preview.SubmissionVersion;
             }
             Require(capturedState.Identity.EditSession == attempt.Session && capturedVersion == attempt.Version,
                 "Another client consumed or revoked this session's previews.");
             var before = ReadState(true, out var session);
             Require(!Uncertainty.ContainsKey(before.Identity.EditSession), "RECOVERY_REQUIRED: previous Apply is unresolved.");
-            Require((cards?.Identity ?? text?.Identity ?? speaker!.Identity) == before.Identity && SameState(capturedState, before) && before.SelectionRevision == selectionRevision,
+            Require((cards?.Identity ?? text?.Identity ?? speaker?.Identity ?? deletion!.Identity) == before.Identity && SameState(capturedState, before) && before.SelectionRevision == selectionRevision,
                 "Native identity, selection, project or history changed before commit.");
             JArray operations;
             Submission submission;
@@ -129,26 +134,31 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
                 var content = CaptureContent(before.Identity, captured!.Locale);
                 Require(string.Equals(captured.Content, JsonSerializer.Serialize(content), StringComparison.Ordinal), "Native inherited stage or catalog capabilities changed.");
                 operations = PrepareOperations(cards);
-                submission = new(cards, null, null, null);
+                submission = new(cards, null, null, null, null);
             }
             else if (text != null)
             {
                 operations = PrepareSetText(before, session, batch!);
-                submission = new(null, text, null, batch!.ExpectedFingerprint);
+                submission = new(null, text, null, null, batch!.ExpectedFingerprint);
+            }
+            else if (speaker != null)
+            {
+                operations = PrepareSpeaker(before, session, speakerCapture!);
+                submission = new(null, null, speaker, null, speakerCapture!.ExpectedFingerprint);
             }
             else
             {
-                operations = PrepareSpeaker(before, session, speakerCapture!);
-                submission = new(null, null, speaker, speakerCapture!.ExpectedFingerprint);
+                operations = PrepareDelete(before, session, deleteCapture!);
+                submission = new(null, null, null, deletion, deleteCapture!.ExpectedFingerprint);
             }
             Require(SameState(before, ReadState(false, out session)), "Native state changed during final content/resource validation.");
             // Current.Apply does NOT perform Check internally. Keep both guards true.
             session.Check(before.Identity.EditSession, before.Identity.Revision, true, true);
             var checkedState = ReadState(false, out var checkedSession);
             Require(SameState(before, checkedState), "Native owner or selection changed inside Check.");
-            if (text != null || speaker != null)
+            if (text != null || speaker != null || deletion != null)
             {
-                var expectedSelection = text?.Plan.Selection ?? speaker!.Plan.Selection;
+                var expectedSelection = text?.Plan.Selection ?? speaker?.Plan.Selection ?? deletion!.Plan.Selection;
                 Require(AuthoringBatchPlanner.Matches(expectedSelection, ReadBatchSelection(checkedState)), "Selected batch rows changed inside Check.");
                 if (speaker != null)
                     Require(ReadSpeakerTargets(checkedState, expectedSelection, speaker.Plan.TargetSlot) == speakerCapture!.Targets,
@@ -160,13 +170,14 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
             applyEntered = true;
             var receipt = checkedSession.Apply(operations, before.Identity.CatalogVersion);
             pending.NativeReturnedReceipt = receipt != null;
-            var afterNative = ReadState(true, out _, requireWriteEligibility: false);
+            string? deleteScope = submission.Delete?.Identity.NodeId;
+            var afterNative = ReadState(true, out _, requireWriteEligibility: false, deletionNodeId: deleteScope);
             Require(receipt != null, "Native Apply returned no receipt.");
             Require(IsApplied(before, afterNative, submission), "Native result/model/history do not prove one complete snapshot commit.");
             pending.ConfirmedAfter = afterNative;
             refreshAttempted = true;
             _invalidateSelection(afterNative.Identity.NodeId, Array.AsReadOnly(afterNative.Lines));
-            Require(SameState(afterNative, ReadState(false, out _, requireWriteEligibility: false), compareSelectionRevision: false), "Native state changed while rebuilding selection caches.");
+            Require(SameState(afterNative, ReadState(false, out _, requireWriteEligibility: false, deletionNodeId: deleteScope), compareSelectionRevision: false), "Native state changed while rebuilding selection caches.");
             Uncertainty.Remove(before.Identity.EditSession);
             return new(CardPackV2CommitDisposition.Applied, "原生提交完成，已核对一个快照历史单元及重新取得的行身份。");
         }
@@ -184,7 +195,7 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
                 {
                     // Observe/rebind after native failure too; never retry Apply or clear
                     // uncertainty merely because the next capture happens to succeed.
-                    try { var observed = RefreshSelectionState(); if (pending != null) pending.Diagnostic += " | observed revision=" + observed.Identity.Revision; }
+                    try { var observed = RefreshSelectionState(pending?.Plan.Delete?.Identity.NodeId); if (pending != null) pending.Diagnostic += " | observed revision=" + observed.Identity.Revision; }
                     catch (Exception error) { if (pending != null) pending.Diagnostic += " | refresh failed: " + error.Message; }
                 }
                 ExitBoundary();
@@ -199,13 +210,14 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         {
             EnterBoundary(); entered = true;
             var attempt = RevokeOwnedPreviews();
-            var current = ReadState(true, out var session);
+            var current = ReadState(true, out var session, recovering: true);
             if (current.Identity.EditSession != attempt.Session) AdvanceSubmissionVersion(current.Identity.EditSession);
             if (!Uncertainty.TryGetValue(current.Identity.EditSession, out var fault))
                 return new(true, "当前原生会话没有待确认提交；需要重新预览。");
+            string? deleteScope = fault.Plan.Delete?.Identity.NodeId;
             session.Check(current.Identity.EditSession, current.Identity.Revision, true, true);
-            Require(SameState(current, ReadState(false, out _)), "Native state changed during recovery Check.");
-            current = RefreshSelectionState();
+            Require(SameState(current, ReadState(false, out _, deletionNodeId: deleteScope, recovering: true)), "Native state changed during recovery Check.");
+            current = RefreshSelectionState(deleteScope);
             bool restored = IsRestored(fault.Before, current);
             // A snapshot history entry can precede a later native failure. Without
             // a completed Apply return we cannot prove its remaining bookkeeping.
@@ -225,7 +237,7 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         Require(Interlocked.CompareExchange(ref _nativeBoundaryBusy, 1, 0) == 0, "Native card-pack boundary is already active.");
     }
     private static void ExitBoundary() => Volatile.Write(ref _nativeBoundaryBusy, 0);
-    private void ClearCaptures() { _captured = null; _capturedBatch = null; _capturedSpeaker = null; }
+    private void ClearCaptures() { _captured = null; _capturedBatch = null; _capturedSpeaker = null; _capturedDelete = null; }
     private (string? Session, long Version) RevokeOwnedPreviews()
     {
         ClearCaptures();
@@ -251,7 +263,7 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         return context!;
     }
 
-    private State ReadState(bool refresh, out AuthoringEditorSession session, bool requireWriteEligibility = true)
+    private State ReadState(bool refresh, out AuthoringEditorSession session, bool requireWriteEligibility = true, string? deletionNodeId = null, bool recovering = false)
     {
         // Eligibility must hold before Check/Apply, but a successfully completed
         // edit may itself schedule auto-save or close the mutation gate. Read-only
@@ -291,17 +303,41 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
             lines[i] = node.scripts[i].LineId;
             Require(!string.IsNullOrWhiteSpace(lines[i]) && seen.Add(lines[i]) && lines[i] == matching[0].Scripts[i].LineId, "Live/snapshot line identity mapping is invalid.");
         }
+        // A deleted anchor must not hide the existing session fault from another client.
+        // This is an exception signal, never permission to capture/submit without a selection.
+        if (requireWriteEligibility && !recovering && deletionNodeId == null && Uncertainty.ContainsKey(session.EditSession))
+            throw new CardPackRecoveryRequiredException("This native session has an unresolved Apply; explicit recovery is required.");
+        if (recovering && deletionNodeId == null && Uncertainty.TryGetValue(session.EditSession, out var pendingDelete) && pendingDelete.Plan.Delete != null)
+            deletionNodeId = pendingDelete.Before.Identity.NodeId;
+        bool observingDelete = deletionNodeId != null;
+        if (observingDelete) Require(nodeId == deletionNodeId, "Deletion result observation requires the original native node.");
         var row = inspector.selectedScriptItem;
-        Require(row != null && row.selected && row.isActiveAndEnabled && row.gameObject.activeInHierarchy && row.inspector?.Pointer == inspector.Pointer && row.scriptNode?.Pointer == node.Pointer && row.index >= 0 && row.index < lines.Length,
-            "An explicit currently selected anchor row is required.");
         var cache = inspector.scriptNodeListItemsCache;
-        Require(cache != null && row!.index < cache.Count && cache[row.index]?.Pointer == row.Pointer, "Selected row cache is stale.");
+        string? anchor = null;
+        if (row != null && row.selected)
+        {
+            Require(row.isActiveAndEnabled && row.gameObject.activeInHierarchy && row.inspector?.Pointer == inspector.Pointer && row.scriptNode?.Pointer == node.Pointer && row.index >= 0 && row.index < lines.Length,
+                "The active anchor row is stale.");
+            Require(cache != null && row.index < cache.Count && cache[row.index]?.Pointer == row.Pointer, "Selected row cache is stale.");
+            anchor = lines[row.index];
+        }
+        else Require(observingDelete, "An explicit currently selected anchor row is required.");
+        if (observingDelete)
+        {
+            Require(cache != null && cache.Count == lines.Length, "Deletion result cache does not match remaining rows.");
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var item = cache![i];
+                Require(item != null && item.index == i && item.inspector?.Pointer == inspector.Pointer && item.scriptNode?.Pointer == node.Pointer &&
+                    (!item.selected || anchor != null && item.Pointer == row!.Pointer), "Deletion result cache identity/selection is stale.");
+            }
+        }
         long revision = _selectionRevision();
         Require(revision >= 0, "Selection revision is unavailable.");
         string catalog = AuthoringResourceCatalog.CatalogVersion;
         Require(!string.IsNullOrWhiteSpace(session.EditSession) && !string.IsNullOrWhiteSpace(session.Revision) && !string.IsNullOrWhiteSpace(catalog), "Opaque native session/revision/catalog identities are missing.");
         int slot = inspector.selectedSlotNum;
-        var identity = new CardPackContextIdentity(session.ProjectId, session.EditSession, session.Revision, catalog, nodeId, lines[row!.index], slot is >= 1 and <= 5 ? slot : null);
+        var identity = new CardPackContextIdentity(session.ProjectId, session.EditSession, session.Revision, catalog, nodeId, anchor, slot is >= 1 and <= 5 ? slot : null);
         var state = new State(identity, revision, session.Pointer, studio.Pointer, fingerprint, session.FileVersion, session.savedFingerprint, session.Dirty,
             OperationManager.saveDelta, OperationManager.compileDelta, OperationManager.needToLinkWithPrev,
             ReadStack(OperationManager.history), ReadStack(OperationManager.future), lines, project);
@@ -309,11 +345,11 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         return state;
     }
 
-    private State RefreshSelectionState()
+    private State RefreshSelectionState(string? deletionNodeId = null)
     {
-        var state = ReadState(true, out _, requireWriteEligibility: false);
+        var state = ReadState(true, out _, requireWriteEligibility: false, deletionNodeId: deletionNodeId);
         _invalidateSelection(state.Identity.NodeId, Array.AsReadOnly(state.Lines));
-        var fresh = ReadState(false, out _, requireWriteEligibility: false);
+        var fresh = ReadState(false, out _, requireWriteEligibility: false, deletionNodeId: deletionNodeId);
         Require(SameState(state, fresh, compareSelectionRevision: false), "Native state changed while rebuilding selection caches.");
         return fresh;
     }
@@ -348,7 +384,8 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         => IsSingleHistory(before, current) && (submission.Cards != null
             ? IsInserted(before, current, submission.Cards)
             : submission.Text != null ? IsSetTextApplied(before, current, submission.Text.Plan, submission.ExpectedFingerprint!)
-            : submission.Speaker != null && IsSpeakerApplied(before, current, submission.Speaker.Plan, submission.ExpectedFingerprint!));
+            : submission.Speaker != null ? IsSpeakerApplied(before, current, submission.Speaker.Plan, submission.ExpectedFingerprint!)
+            : submission.Delete != null && IsDeleteApplied(before, current, submission.Delete.Plan, submission.ExpectedFingerprint!));
 
     private static bool IsSingleHistory(State before, State current)
     {

@@ -144,7 +144,7 @@ static partial class Program
             Check(host.CommitSpeaker(preview).Disposition==CardPackV2CommitDisposition.Applied && AuthoringEditorSession.Current.Applies==1,"speaker outer shared transaction failed");
         });
         Test("speaker batch500 and 1024-selection no-ops stay atomic while501 rejects", () => {
-            var node=SpeakerNode();node.Scripts=Enumerable.Range(0,1024).Select(i=>new ScriptData{LineId=i==0?"opaque-anchor":"row-"+i,text="keep",speakerSlotNum=i<500?2:3}).ToList();PrepareSpeakerRows();Fixture.BatchIndices=Enumerable.Range(0,1024).ToArray();var host=Host();var preview=host.CaptureSpeaker(3);
+            var node=SpeakerNode();node.Scripts=new(Enumerable.Range(0,1024).Select(i=>new ScriptData{LineId=i==0?"opaque-anchor":"row-"+i,text="keep",speakerSlotNum=i<500?2:3}));PrepareSpeakerRows();Fixture.BatchIndices=Enumerable.Range(0,1024).ToArray();var host=Host();var preview=host.CaptureSpeaker(3);
             Check(preview.Plan.OperationCount==500 && host.CommitSpeaker(preview).Disposition==CardPackV2CommitDisposition.Applied && AuthoringEditorSession.Current!.Applies==1,"changed-row count or atomic boundary wrong");
             foreach(var row in node.Scripts.Take(501))row.speakerSlotNum=2;Fixture.Rebind();Reject(()=>host.CaptureSpeaker(3),"501 speaker operations admitted");Check(AuthoringEditorSession.Current!.Applies==1,"501 rejection wrote a prefix");
         });
