@@ -34,8 +34,8 @@ internal sealed class CatalogNativeBindings
         var deploy=Path.Combine(install,InstallationAuthority.AdapterSubdirectory);
         foreach(var item in new[]{
             (typeof(CatalogEntryHost).Assembly,hostHash),(typeof(CatalogReadiness).Assembly,coreHash),
-            (typeof(AdapterCoordinator).Assembly,"2606a2c3ddbb9087e70c82bb5a16c776ae9c0c590e9b156fa1506e76abdb8264"),
-            (typeof(NativeAdapterHost).Assembly,"9031e8ccc5945635dab48a2d8bcbc8a140304b32a9caf01608d7cd05e716eea7"),
+            (typeof(AdapterCoordinator).Assembly,"c492fcc53f915b3cce361391772e08a186ac203e54aa61ff762606a8268bb53b"),
+            (typeof(NativeAdapterHost).Assembly,"501893e88775505ee570588556591e5b0b5d0c49bd6fb497d573f3d0ba7a2f80"),
             (typeof(NormalSettingsLifecycle).Assembly,BindingCatalog.NormalPolicyHash),(typeof(RunPaths).Assembly,BindingCatalog.LegacyPolicyHash)})
         {var path=Path.Combine(deploy,item.Item1.GetName().Name+".dll");if(!RunPaths.Same(path,item.Item1.Location))throw new InvalidOperationException("Catalog observer dependency load location differs.");Pin(path,item.Item2);}
         foreach(var relative in new[]{"GameAssembly.dll","UnityPlayer.dll","AzureArchive_Data/il2cpp_data/Metadata/global-metadata.dat","BepInEx/interop/Assembly-CSharp.dll","BepInEx/interop/UnityEngine.CoreModule.dll","BepInEx/core/0Harmony.dll","BepInEx/core/Il2CppInterop.Runtime.dll","BepInEx/core/Il2CppInterop.HarmonySupport.dll"})Pin(Path.Combine(install,relative.Replace('/',Path.DirectorySeparatorChar)),HostContract.Files[relative]);
