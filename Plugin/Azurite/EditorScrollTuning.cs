@@ -60,6 +60,8 @@ internal sealed class EditorScrollTuning : IDisposable
 
 	private bool _failed;
 
+	private bool _restoreSucceeded = true;
+
 	public EditorScrollTuning(Action<string>? log = null)
 	{
 		_log = log;
@@ -228,6 +230,7 @@ internal sealed class EditorScrollTuning : IDisposable
 			catch (Exception ex)
 			{
 				_failed = true;
+				_restoreSucceeded = false;
 				Restore();
 				_log?.Invoke("Editor wheel tuning stopped: " + ex.GetType().Name + ".");
 			}
@@ -335,47 +338,60 @@ internal sealed class EditorScrollTuning : IDisposable
 
 	public void Restore()
 	{
+		TryRestore();
+	}
+
+	internal bool TryRestore()
+	{
 		if (!_engaged)
 		{
-			return;
+			return _restoreSucceeded;
 		}
 		_engaged = false;
 		_nextProbe = 0.0;
 		foreach (Lease value in _views.Values)
 		{
-			Release(value);
+			_restoreSucceeded &= Release(value);
 		}
+		return _restoreSucceeded;
 	}
 
-	private void Release(Lease lease)
+	private bool Release(Lease lease)
 	{
 		if (!lease.Owned)
 		{
-			return;
+			return true;
 		}
 		try
 		{
+			bool restored = true;
 			if (lease.View != null)
 			{
 				if (lease.View.scrollWheelFactor != lease.LastWritten)
 				{
 					Relinquish(lease);
-					return;
+					return false;
 				}
 				lease.View.scrollWheelFactor = lease.Original;
+				restored = lease.View.scrollWheelFactor == lease.Original;
 			}
 			lease.Owned = false;
+			_restoreSucceeded &= restored;
+			return restored;
 		}
 		catch (Exception ex)
 		{
+			_restoreSucceeded = false;
 			lease.Owned = false;
 			lease.Blocked = true;
 			_log?.Invoke($"Editor wheel restore stopped for {lease.Scope}: {ex.GetType().Name}.");
+			return false;
 		}
 	}
 
 	private void Relinquish(Lease lease)
 	{
+		_restoreSucceeded = false;
 		lease.Owned = false;
 		lease.Blocked = true;
 		_log?.Invoke("Editor wheel tuning yielded for " + lease.Scope + ": another writer changed the factor.");
@@ -383,13 +399,19 @@ internal sealed class EditorScrollTuning : IDisposable
 
 	public void Dispose()
 	{
+		TryDispose();
+	}
+
+	internal bool TryDispose()
+	{
 		if (!_disposed)
 		{
-			Restore();
+			TryRestore();
 			_disposed = true;
 			_views.Clear();
 			_seen.Clear();
 			_retired.Clear();
 		}
+		return _restoreSucceeded;
 	}
 }

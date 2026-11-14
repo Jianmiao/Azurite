@@ -592,22 +592,11 @@ public sealed partial class Plugin : BasePlugin
 			}
 			if (_wasEnabled)
 			{
-				if (_plainText != null)
-				{
-					_plainText.Enabled = false;
-				}
-				_layoutCache?.Suspend();
-				_panelWork?.Restore();
-				_rowReuse?.Suspend();
-				_virtualization?.Suspend();
-				_characterMeshes?.Suspend();
-				_fps?.Dispose();
-				_fps = null;
-				_scroll?.Restore();
-				RestoreRendering();
-				Wake();
-				RefreshNativeLabels();
-				_wasEnabled = false;
+#if AZURITE_AUTHORING_SOURCE
+				RunCardPackRenderingCleanup(DisableConfiguredRendering, "adaptive rendering disabled", renderingOnly: true);
+#else
+				DisableConfiguredRendering();
+#endif
 			}
 			_mappingAllowed = false;
 			_usingRepaint = false;
@@ -756,7 +745,7 @@ public sealed partial class Plugin : BasePlugin
 		}
 		else if (!_intervalLease.TryApply(renderDecision.Interval))
 		{
-			DisableForSession("render interval changed externally; ownership released");
+			DisableForIntervalFailure("render interval update failed");
 		}
 	}
 
@@ -798,7 +787,8 @@ public sealed partial class Plugin : BasePlugin
 						RenderIntervalLease? intervalLease = _intervalLease;
 						if (intervalLease != null && !intervalLease.TryApply(cadencePlan.IdleInterval))
 						{
-							DisableForSession("render interval changed during visual wake");
+							DisableForIntervalFailure("render interval visual wake failed");
+							return;
 						}
 					}
 					_reason = visualCadencePlan.Reason;
@@ -885,6 +875,32 @@ public sealed partial class Plugin : BasePlugin
 		_reason = "scroll input, viewport motion or settle hold";
 	}
 
+	private bool DisableConfiguredRendering()
+	{
+		if (_plainText != null) _plainText.Enabled = false;
+		_layoutCache?.Suspend();
+		_panelWork?.Restore();
+		_rowReuse?.Suspend();
+		_virtualization?.Suspend();
+		_characterMeshes?.Suspend();
+#if AZURITE_AUTHORING_SOURCE
+		bool controllersRestored = ReleaseCardPackPerformanceControllers(disposeScroll: false);
+#else
+		_fps?.Dispose();
+		_fps = null;
+		_scroll?.Restore();
+#endif
+		bool restored = RestoreRendering();
+		Wake();
+		RefreshNativeLabels();
+		_wasEnabled = false;
+#if AZURITE_AUTHORING_SOURCE
+		return controllersRestored && restored;
+#else
+		return restored;
+#endif
+	}
+
 	private bool RestoreRendering()
 	{
 		_characterMeshAllowed = false;
@@ -894,6 +910,11 @@ public sealed partial class Plugin : BasePlugin
 		bool num = _previewCadence?.Restore() ?? true;
 		bool flag = _previewTarget?.Restore() ?? true;
 		bool flag2 = _intervalLease?.Restore() ?? true;
+#if AZURITE_AUTHORING_SOURCE
+		// A proven external conflict already released this lease without writing
+		// the foreign value. Other blocked causes are never treated as restored.
+		flag2 = flag2 || IsReleasedCardPackIntervalConflict();
+#endif
 		bool flag3 = _scaleLease?.Restore() ?? true;
 		bool bloomRestored = _editorBloom?.Restore() ?? true;
 		_previewTextures.Clear();
@@ -1175,17 +1196,41 @@ public sealed partial class Plugin : BasePlugin
 		}
 	}
 
-	private void DisableForSession(string reason)
+	private void DisableForIntervalFailure(string reason)
+	{
+#if AZURITE_AUTHORING_SOURCE
+		DisableForSession(reason + "; classification=" + (_intervalLease?.Failure.ToString() ?? "unavailable"), renderingOnly: IsReleasedCardPackIntervalConflict());
+#else
+		DisableForSession(reason);
+#endif
+	}
+
+	private void DisableForSession(string reason, bool renderingOnly = false)
+	{
+#if AZURITE_AUTHORING_SOURCE
+		// Run even when rendering is already disabled: a later safety failure
+		// must still close authoring and cannot be swallowed by the render latch.
+		RunCardPackRenderingCleanup(() => ReleaseDisabledRendering(reason), reason, renderingOnly);
+#else
+		ReleaseDisabledRendering(reason);
+#endif
+	}
+
+	private bool ReleaseDisabledRendering(string reason)
 	{
 		if (!_disabledForSession)
 		{
 			_disabledForSession = true;
 			_mappingAllowed = false;
-			RestoreRendering();
+			bool restored = RestoreRendering();
+#if AZURITE_AUTHORING_SOURCE
+			bool controllersRestored = ReleaseCardPackPerformanceControllers(disposeScroll: true);
+#else
 			_fps?.Dispose();
 			_fps = null;
 			_scroll?.Dispose();
 			_scroll = null;
+#endif
 			_scrollActivity?.Dispose();
 			_scrollActivity = null;
 			_operations?.Dispose();
@@ -1226,7 +1271,13 @@ public sealed partial class Plugin : BasePlugin
 			_repaint = null;
 			RefreshNativeLabels();
 			base.Log.LogWarning("Azurite scheduling disabled for this session: " + reason);
+#if AZURITE_AUTHORING_SOURCE
+			return restored && controllersRestored;
+#else
+			return restored;
+#endif
 		}
+		return true;
 	}
 
 	public override bool Unload()

@@ -23,6 +23,9 @@ namespace Azurite
         internal ProgressiveEditorLoading? _progressiveLoading;
         internal DialogueMutationCoordinator? _mutation;
         internal bool _disabledForSession, _exportSuspended;
+        internal Azurite.Core.RenderIntervalLease? _intervalLease;
+        internal FpsController? _fps;
+        internal EditorScrollTuning? _scroll;
         private static double Now=>10;
     }
     internal sealed class AzuriteDriver { internal Action? GuiTick; }

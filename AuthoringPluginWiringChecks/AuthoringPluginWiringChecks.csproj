@@ -9,5 +9,10 @@
     <Compile Include="../Plugin/Azurite/Plugin.Authoring.cs" Link="Production/Plugin.Authoring.cs" Condition="Exists('../Plugin/Azurite/Plugin.Authoring.cs')" />
     <Compile Include="../Plugin/Azurite/HostProfile.cs" Link="Production/HostProfile.cs" />
     <Compile Include="../Plugin/Azurite/HostCompatibilitySnapshot.cs" Link="Production/HostCompatibilitySnapshot.cs" />
+    <Compile Include="../Core/Azurite.Core/RenderIntervalLease.cs" Link="Production/RenderIntervalLease.cs" />
+    <Compile Include="../Core/Azurite.Core/FpsPlan.cs" Link="Production/FpsPlan.cs" />
+    <Compile Include="../Plugin/Azurite/FpsController.cs" Link="Production/FpsController.cs" />
+    <Compile Include="../Plugin/Azurite/DisplayRatePolicy.cs" Link="Production/DisplayRatePolicy.cs" />
+    <Compile Include="../Plugin/Azurite/EditorScrollTuning.cs" Link="Production/EditorScrollTuning.cs" />
   </ItemGroup>
 </Project>

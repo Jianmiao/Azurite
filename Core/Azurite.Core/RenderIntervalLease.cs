@@ -2,6 +2,8 @@ using System;
 
 namespace Azurite.Core;
 
+public enum RenderIntervalFailure { None, OwnershipConflict, NativeAccessFailure, VerificationMismatch }
+
 public sealed class RenderIntervalLease
 {
 	private readonly Func<int> _read;
@@ -17,6 +19,9 @@ public sealed class RenderIntervalLease
 	public bool IsBlocked => _blocked;
 
 	public bool IsOwned => _owned;
+
+	/// <summary>The first blocking failure; retries never erase its cause.</summary>
+	public RenderIntervalFailure Failure { get; private set; }
 
 	public int? LastWrittenInterval
 	{
@@ -49,14 +54,14 @@ public sealed class RenderIntervalLease
 		}
 		catch
 		{
-			Block();
+			Block(RenderIntervalFailure.NativeAccessFailure);
 			return false;
 		}
 		if (!_owned)
 		{
 			if (num != 1)
 			{
-				Block();
+				Block(RenderIntervalFailure.OwnershipConflict);
 				return false;
 			}
 			if (!WriteAndVerify(interval))
@@ -69,7 +74,7 @@ public sealed class RenderIntervalLease
 		}
 		if (num != _lastWritten)
 		{
-			Block();
+			Block(RenderIntervalFailure.OwnershipConflict);
 			return false;
 		}
 		if (interval == _lastWritten)
@@ -101,12 +106,12 @@ public sealed class RenderIntervalLease
 		}
 		catch
 		{
-			Block();
+			Block(RenderIntervalFailure.NativeAccessFailure);
 			return false;
 		}
 		if (num != _lastWritten)
 		{
-			Block();
+			Block(RenderIntervalFailure.OwnershipConflict);
 			return false;
 		}
 		if (!WriteAndVerify(1))
@@ -124,20 +129,21 @@ public sealed class RenderIntervalLease
 			_write(interval);
 			if (_read() != interval)
 			{
-				Block();
+				Block(RenderIntervalFailure.VerificationMismatch);
 				return false;
 			}
 			return true;
 		}
 		catch
 		{
-			Block();
+			Block(RenderIntervalFailure.NativeAccessFailure);
 			return false;
 		}
 	}
 
-	private void Block()
+	private void Block(RenderIntervalFailure failure)
 	{
+		if (!_blocked) Failure = failure;
 		_blocked = true;
 		_owned = false;
 	}

@@ -51,6 +51,8 @@ internal sealed class FpsController : System.IDisposable
 
 	private bool _disposed;
 
+	private bool _disposeSucceeded = true;
+
 	private bool _failed;
 
 	private bool _blocked;
@@ -581,8 +583,9 @@ internal sealed class FpsController : System.IDisposable
 		_blocked = true;
 	}
 
-	private void Unsubscribe()
+	private bool Unsubscribe()
 	{
+		bool succeeded = true;
 		if (_settings != null && _subscribed)
 		{
 			try
@@ -591,29 +594,41 @@ internal sealed class FpsController : System.IDisposable
 			}
 			catch
 			{
+				succeeded = false;
 			}
 		}
 		_subscribed = false;
 		_settings = null;
 		_settingsPointer = System.IntPtr.Zero;
 		Interlocked.Exchange(ref _eventTier, int.MinValue);
+		_disposeSucceeded &= succeeded;
+		return succeeded;
 	}
 
 	public void Dispose()
 	{
+		TryDispose();
+	}
+
+	internal bool TryDispose()
+	{
 		if (_disposed)
 		{
-			return;
+			return _disposeSucceeded;
 		}
 		_disposed = true;
-		Unsubscribe();
+		bool unsubscribed = Unsubscribe();
+		_disposeSucceeded &= unsubscribed && !_failed && !_blocked;
 		try
 		{
-			RestoreIdleFrameRate();
-			ReleaseOwned();
+			bool idleRestored = RestoreIdleFrameRate();
+			bool hadOwnership = _owned;
+			bool released = ReleaseOwned();
+			_disposeSucceeded &= idleRestored && (!hadOwnership || released);
 		}
 		catch (System.Exception ex)
 		{
+			_disposeSucceeded = false;
 			_owned = false;
 			ManualLogSource log = _log;
 			bool isEnabled;
@@ -628,5 +643,6 @@ internal sealed class FpsController : System.IDisposable
 		}
 		System.GC.KeepAlive(_nativeHandler);
 		System.GC.KeepAlive(_managedHandler);
+		return _disposeSucceeded;
 	}
 }

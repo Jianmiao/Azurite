@@ -1,6 +1,7 @@
 #if AZURITE_AUTHORING_SOURCE
 using System;
 using System.Threading;
+using Azurite.Core;
 using BepInEx.Configuration;
 
 namespace Azurite;
@@ -12,6 +13,7 @@ public sealed partial class Plugin
     private ConfigEntry<bool>? _cardPacksEnabled;
     private AuthoringCardPackHostRoot? _cardPackRoot;
     private int _cardEditorThread, _cardExportHold, _cardStopping, _cardTerminal, _cardFaulted;
+    private int _cardRenderingTransition;
     private bool _cardRootSuspended, _cardSafeTick;
 
     private void BindCardPackAuthoring()
@@ -63,8 +65,38 @@ public sealed partial class Plugin
     private bool CardPackLocalAllowed() =>
         _cardEditorThread != 0 && Environment.CurrentManagedThreadId == Volatile.Read(ref _cardEditorThread) &&
         Volatile.Read(ref _cardStopping) == 0 && Volatile.Read(ref _cardFaulted) == 0 &&
-        Volatile.Read(ref _cardExportHold) == 0 && !_exportSuspended && !_disabledForSession &&
-        _enabled?.Value == true && _cardPacksEnabled?.Value == true;
+        Volatile.Read(ref _cardExportHold) == 0 && Volatile.Read(ref _cardRenderingTransition) == 0 && !_exportSuspended &&
+        _cardPacksEnabled?.Value == true;
+
+    private bool IsReleasedCardPackIntervalConflict() => _intervalLease != null &&
+        _intervalLease.IsBlocked && !_intervalLease.IsOwned && _intervalLease.Failure == RenderIntervalFailure.OwnershipConflict;
+
+    private bool ReleaseCardPackPerformanceControllers(bool disposeScroll)
+    {
+        // Capture the real result before dropping the reference. Neither disposed
+        // objects nor a later null field are evidence that cleanup succeeded.
+        bool fpsRestored = _fps?.TryDispose() ?? true;
+        _fps = null;
+        bool scrollRestored = disposeScroll ? _scroll?.TryDispose() ?? true : _scroll?.TryRestore() ?? true;
+        if (disposeScroll) _scroll = null;
+        return fpsRestored && scrollRestored;
+    }
+
+    // Rendering-only exit is an explicit call-site decision. Every cleanup runs
+    // under a temporary hold; an unclassified failure remains an authoring fault.
+    private bool RunCardPackRenderingCleanup(Func<bool> cleanup, string reason, bool renderingOnly)
+    {
+        Interlocked.Increment(ref _cardRenderingTransition);
+        try
+        {
+            if (!renderingOnly) CardPackFault(new InvalidOperationException("Session safety stop: " + reason));
+            bool restored = cleanup();
+            if (!restored) CardPackFault(new InvalidOperationException("Rendering cleanup is unverified: " + reason));
+            return restored;
+        }
+        catch (Exception error) { CardPackFault(error); throw; }
+        finally { Interlocked.Decrement(ref _cardRenderingTransition); }
+    }
 
     private bool CardPackOwnershipAllowed()
     {
