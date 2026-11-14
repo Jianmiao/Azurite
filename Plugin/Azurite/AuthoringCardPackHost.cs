@@ -18,37 +18,45 @@ namespace Azurite;
 /// editor-thread ID, live export/compatibility guard, selection revision, and a real
 /// native-inheritance/catalog projection. No default or synthetic projection exists.
 /// </summary>
-internal sealed class AuthoringCardPackHost : ICardPackV2Host
+internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthoringBatchHost
 {
     private sealed record HistoryItem(IntPtr Pointer, IntPtr Previous, IntPtr Next);
     private sealed record State(CardPackContextIdentity Identity, long SelectionRevision,
         IntPtr Session, IntPtr Studio, string Fingerprint, string FileVersion, string? SavedFingerprint, bool Dirty,
-        int SaveDelta, int CompileDelta, bool LinkNext, HistoryItem[] History, HistoryItem[] Future, string[] Lines);
-    private sealed record Captured(State State, string? Locale, string Content);
+        int SaveDelta, int CompileDelta, bool LinkNext, HistoryItem[] History, HistoryItem[] Future, string[] Lines, ProjectData Project);
+    private sealed record Captured(State State, string? Locale, string Content, long SubmissionVersion);
+    private sealed record Submission(CardPackNativePlan? Cards, AuthoringBatchHostPreview? Text, string? ExpectedFingerprint);
     private sealed class Uncertain
     {
         internal readonly State Before;
-        internal readonly CardPackNativePlan Plan;
+        internal readonly Submission Plan;
         internal bool NativeReturnedReceipt;
         internal State? ConfirmedAfter;
         internal string Diagnostic = "Native Apply entered; outcome not yet verified.";
-        internal Uncertain(State before, CardPackNativePlan plan) { Before = before; Plan = plan; }
+        internal Uncertain(State before, Submission plan) { Before = before; Plan = plan; }
     }
     // Session ownership outlives any individual host/workflow/panel instance.
     // Entries are removed only by a verified success or explicit verified recovery.
     private static readonly Dictionary<string, Uncertain> Uncertainty = new(StringComparer.Ordinal);
+    // Preview epochs belong to this same session owner; they do not authorize Apply or recover faults.
+    private static readonly Dictionary<string, long> SubmissionVersions = new(StringComparer.Ordinal);
     private static int _nativeBoundaryBusy;
     private readonly int _editorThreadId;
     private readonly Func<bool> _authoringAllowed;
     private readonly Func<long> _selectionRevision;
     private readonly Func<CardPackContextIdentity, string?, CardPackCompilationContext> _captureContent;
     private readonly Action<string, IReadOnlyList<string>> _invalidateSelection;
+    private readonly Func<IReadOnlyList<ScriptListItem>>? _readBatchRows;
     private Captured? _captured;
+    // Retained after local captures are consumed, for managed-only revocation
+    // when a later explicit attempt fails before qualified ReadState completes.
+    private string? _lastQualifiedSession;
 
     internal AuthoringCardPackHost(int editorThreadId, Func<bool> authoringAllowed,
         Func<long> selectionRevision,
         Func<CardPackContextIdentity, string?, CardPackCompilationContext> captureContent,
-        Action<string, IReadOnlyList<string>> invalidateSelection)
+        Action<string, IReadOnlyList<string>> invalidateSelection,
+        Func<IReadOnlyList<ScriptListItem>>? readBatchRows = null)
     {
         if (editorThreadId <= 0) throw new ArgumentOutOfRangeException(nameof(editorThreadId));
         _editorThreadId = editorThreadId;
@@ -56,6 +64,7 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         _selectionRevision = selectionRevision ?? throw new ArgumentNullException(nameof(selectionRevision));
         _captureContent = captureContent ?? throw new ArgumentNullException(nameof(captureContent));
         _invalidateSelection = invalidateSelection ?? throw new ArgumentNullException(nameof(invalidateSelection));
+        _readBatchRows = readBatchRows;
     }
 
     public CardPackV2Snapshot Capture(string? selectedLocale)
@@ -63,47 +72,83 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         EnterBoundary();
         try
         {
-            _captured = null;
+            ClearCaptures();
             var state = ReadState(true, out _);
             if (Uncertainty.ContainsKey(state.Identity.EditSession)) throw new CardPackRecoveryRequiredException("This native session has an unresolved Apply; explicit recovery is required.");
             var content = CaptureContent(state.Identity, selectedLocale);
             var current = ReadState(false, out _);
             Require(SameState(state, current), "Native state changed while capturing card content.");
-            _captured = new(state, selectedLocale, JsonSerializer.Serialize(content));
-            return new(content, state.SelectionRevision);
+            long version = SubmissionVersion(state.Identity.EditSession);
+            _captured = new(state, selectedLocale, JsonSerializer.Serialize(content), version);
+            return new(content, state.SelectionRevision, version);
         }
         finally { ExitBoundary(); }
     }
 
     public CardPackV2CommitResult Commit(CardPackNativePlan plan, long selectionRevision)
+        => Submit(plan, null, selectionRevision);
+
+    // Both operation families enter exactly this owner, Check/Apply and uncertainty lifecycle.
+    private CardPackV2CommitResult Submit(CardPackNativePlan? cards, AuthoringBatchHostPreview? text, long selectionRevision)
     {
         bool entered = false, applyEntered = false, refreshAttempted = false;
         Uncertain? pending = null;
         try
         {
             EnterBoundary(); entered = true;
-            var captured = _captured; _captured = null;
-            Require(captured != null, "A fresh host Capture is required for each commit attempt.");
+            var captured = _captured; var batch = _capturedBatch;
+            var attempt = RevokeOwnedPreviews();
+            Require((cards != null) != (text != null), "Exactly one supported submission kind is required.");
+            State capturedState;
+            long capturedVersion;
+            if (cards != null)
+            {
+                Require(captured != null, "A fresh host Capture is required for each commit attempt.");
+                capturedState = captured!.State; capturedVersion = captured.SubmissionVersion;
+            }
+            else
+            {
+                Require(batch != null && ReferenceEquals(batch.Preview, text), "A fresh SetText capture from this owner is required.");
+                capturedState = batch!.State; capturedVersion = batch.Preview.SubmissionVersion;
+            }
+            Require(capturedState.Identity.EditSession == attempt.Session && capturedVersion == attempt.Version,
+                "Another client consumed or revoked this session's previews.");
             var before = ReadState(true, out var session);
             Require(!Uncertainty.ContainsKey(before.Identity.EditSession), "RECOVERY_REQUIRED: previous Apply is unresolved.");
-            Require(plan != null && plan.Identity == before.Identity && SameState(captured!.State, before) && before.SelectionRevision == selectionRevision,
+            Require((cards?.Identity ?? text!.Identity) == before.Identity && SameState(capturedState, before) && before.SelectionRevision == selectionRevision,
                 "Native identity, selection, project or history changed before commit.");
-            var content = CaptureContent(before.Identity, captured!.Locale);
-            Require(string.Equals(captured.Content, JsonSerializer.Serialize(content), StringComparison.Ordinal), "Native inherited stage or catalog capabilities changed.");
-            var operations = PrepareOperations(plan!);
+            JArray operations;
+            Submission submission;
+            if (cards != null)
+            {
+                var content = CaptureContent(before.Identity, captured!.Locale);
+                Require(string.Equals(captured.Content, JsonSerializer.Serialize(content), StringComparison.Ordinal), "Native inherited stage or catalog capabilities changed.");
+                operations = PrepareOperations(cards);
+                submission = new(cards, null, null);
+            }
+            else
+            {
+                operations = PrepareSetText(before, session, batch!);
+                submission = new(null, text, batch!.ExpectedFingerprint);
+            }
             Require(SameState(before, ReadState(false, out session)), "Native state changed during final content/resource validation.");
             // Current.Apply does NOT perform Check internally. Keep both guards true.
-            session.Check(plan!.Identity.EditSession, plan.Identity.Revision, true, true);
+            session.Check(before.Identity.EditSession, before.Identity.Revision, true, true);
             var checkedState = ReadState(false, out var checkedSession);
             Require(SameState(before, checkedState), "Native owner or selection changed inside Check.");
-            pending = new(before, plan);
+            if (text != null)
+            {
+                Require(AuthoringBatchPlanner.Matches(text.Plan.Selection, ReadBatchSelection(checkedState)), "Selected batch rows changed inside Check.");
+                Require(SameState(before, ReadState(false, out checkedSession)), "Native owner changed while rechecking selected rows.");
+            }
+            pending = new(before, submission);
             Uncertainty.Add(before.Identity.EditSession, pending);
             applyEntered = true;
-            var receipt = checkedSession.Apply(operations, plan.Identity.CatalogVersion);
+            var receipt = checkedSession.Apply(operations, before.Identity.CatalogVersion);
             pending.NativeReturnedReceipt = receipt != null;
             var afterNative = ReadState(true, out _, requireWriteEligibility: false);
             Require(receipt != null, "Native Apply returned no receipt.");
-            Require(IsSingleApplied(before, afterNative, plan), "Native result/model/history do not prove one complete snapshot commit.");
+            Require(IsApplied(before, afterNative, submission), "Native result/model/history do not prove one complete snapshot commit.");
             pending.ConfirmedAfter = afterNative;
             refreshAttempted = true;
             _invalidateSelection(afterNative.Identity.NodeId, Array.AsReadOnly(afterNative.Lines));
@@ -138,8 +183,10 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         bool entered = false;
         try
         {
-            EnterBoundary(); entered = true; _captured = null;
+            EnterBoundary(); entered = true;
+            var attempt = RevokeOwnedPreviews();
             var current = ReadState(true, out var session);
+            if (current.Identity.EditSession != attempt.Session) AdvanceSubmissionVersion(current.Identity.EditSession);
             if (!Uncertainty.TryGetValue(current.Identity.EditSession, out var fault))
                 return new(true, "当前原生会话没有待确认提交；需要重新预览。");
             session.Check(current.Identity.EditSession, current.Identity.Revision, true, true);
@@ -149,7 +196,7 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
             // A snapshot history entry can precede a later native failure. Without
             // a completed Apply return we cannot prove its remaining bookkeeping.
             bool applied = !restored && fault.NativeReturnedReceipt && fault.ConfirmedAfter != null &&
-                SameState(fault.ConfirmedAfter, current, compareSelectionRevision: false) && IsSingleApplied(fault.Before, current, fault.Plan);
+                SameState(fault.ConfirmedAfter, current, compareSelectionRevision: false) && IsApplied(fault.Before, current, fault.Plan);
             if (!restored && !applied) return new(false, "无法证明原状态已恢复或完整提交的模型/历史一致；继续保留锁定。" + fault.Diagnostic);
             Uncertainty.Remove(current.Identity.EditSession);
             return new(true, restored ? "已核对原模型指纹、完整历史与脏状态未变，并重建选择缓存。" : "已核对原生前后快照及单次历史，确认此前已提交；不会重试。");
@@ -164,6 +211,20 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         Require(Interlocked.CompareExchange(ref _nativeBoundaryBusy, 1, 0) == 0, "Native card-pack boundary is already active.");
     }
     private static void ExitBoundary() => Volatile.Write(ref _nativeBoundaryBusy, 0);
+    private void ClearCaptures() { _captured = null; _capturedBatch = null; }
+    private (string? Session, long Version) RevokeOwnedPreviews()
+    {
+        ClearCaptures();
+        // Called only after EnterBoundary. Never read native Current or trust a
+        // supplied preview to invent/reassign an unqualified revocation scope.
+        string? session = _lastQualifiedSession;
+        if (session == null) return (null, 0);
+        long previous = SubmissionVersion(session);
+        AdvanceSubmissionVersion(session);
+        return (session, previous);
+    }
+    private static long SubmissionVersion(string session) => SubmissionVersions.TryGetValue(session, out long version) ? version : 0;
+    private static void AdvanceSubmissionVersion(string session) => SubmissionVersions[session] = checked(SubmissionVersion(session) + 1);
     private static void Require([DoesNotReturnIf(false)] bool value, string message) { if (!value) throw new InvalidOperationException(message); }
 
     private CardPackCompilationContext CaptureContent(CardPackContextIdentity identity, string? locale)
@@ -227,9 +288,11 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         Require(!string.IsNullOrWhiteSpace(session.EditSession) && !string.IsNullOrWhiteSpace(session.Revision) && !string.IsNullOrWhiteSpace(catalog), "Opaque native session/revision/catalog identities are missing.");
         int slot = inspector.selectedSlotNum;
         var identity = new CardPackContextIdentity(session.ProjectId, session.EditSession, session.Revision, catalog, nodeId, lines[row!.index], slot is >= 1 and <= 5 ? slot : null);
-        return new(identity, revision, session.Pointer, studio.Pointer, fingerprint, session.FileVersion, session.savedFingerprint, session.Dirty,
+        var state = new State(identity, revision, session.Pointer, studio.Pointer, fingerprint, session.FileVersion, session.savedFingerprint, session.Dirty,
             OperationManager.saveDelta, OperationManager.compileDelta, OperationManager.needToLinkWithPrev,
-            ReadStack(OperationManager.history), ReadStack(OperationManager.future), lines);
+            ReadStack(OperationManager.history), ReadStack(OperationManager.future), lines, project);
+        if (requireWriteEligibility) _lastQualifiedSession = state.Identity.EditSession;
+        return state;
     }
 
     private State RefreshSelectionState()
@@ -267,7 +330,12 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         before.Dirty == current.Dirty && before.SaveDelta == current.SaveDelta && before.CompileDelta == current.CompileDelta && before.LinkNext == current.LinkNext &&
         before.History.SequenceEqual(current.History) && before.Future.SequenceEqual(current.Future) && before.Lines.SequenceEqual(current.Lines);
 
-    private static bool IsSingleApplied(State before, State current, CardPackNativePlan plan)
+    private static bool IsApplied(State before, State current, Submission submission)
+        => IsSingleHistory(before, current) && (submission.Cards != null
+            ? IsInserted(before, current, submission.Cards)
+            : submission.Text != null && IsSetTextApplied(before, current, submission.Text.Plan, submission.ExpectedFingerprint!));
+
+    private static bool IsSingleHistory(State before, State current)
     {
         if (!SameOwner(before,current) || before.Fingerprint == current.Fingerprint || before.Identity.Revision == current.Identity.Revision ||
             current.History.Length != before.History.Length + 1 || current.Future.Length != 0 ||
@@ -277,6 +345,17 @@ internal sealed class AuthoringCardPackHost : ICardPackV2Host
         if (top == null || top.session?.Pointer != current.Session || top.before == null || top.after == null ||
             AuthoringEditorSession.Fingerprint(top.before) != before.Fingerprint || AuthoringEditorSession.Fingerprint(top.after) != current.Fingerprint)
             return false;
+        return !current.LinkNext && current.SaveDelta == DeltaAfterIsolatedWrite(before.SaveDelta) &&
+            current.CompileDelta == (top.IsMajor ? DeltaAfterIsolatedWrite(before.CompileDelta) : before.CompileDelta);
+    }
+
+    // Pinned native WriteHistory, new/uncombined branch: negative deltas become
+    // 0x1bf52; nonnegative counters use a 32-bit increment. This only verifies;
+    // native history remains the sole writer. Compile changes only for IsMajor.
+    private static int DeltaAfterIsolatedWrite(int before) => before < 0 ? 114514 : unchecked(before + 1);
+
+    private static bool IsInserted(State before, State current, CardPackNativePlan plan)
+    {
         int anchor = Array.IndexOf(before.Lines, plan.Identity.AnchorLineId);
         if (anchor < 0 || current.Lines.Length != before.Lines.Length + plan.OperationCount) return false;
         for (int i = 0; i < before.Lines.Length; i++)

@@ -14,7 +14,8 @@ static partial class Program
     static void Test(string name, Action action) { Fixture.Reset(); selectionRevision = 7; allowed = true; resourceId = "fixture:transition"; invalidate = null; try { action(); passed++; Console.WriteLine("PASS " + name); } catch (Exception e) { failed++; Console.WriteLine("FAIL " + name + ": " + e.Message); } }
     static AuthoringCardPackHost Host(int? thread = null) => new(thread ?? Environment.CurrentManagedThreadId, () => allowed, () => selectionRevision,
         (id, locale) => new(id, JsonDocument.Parse("[]").RootElement.Clone(), true, new[] { new CardResourceBinding("fade", resourceId, CardResourceKind.Transition, true, false, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>()) }, CardNativeCapability.LineInsert | CardNativeCapability.SceneTransition, locale),
-        (node, ids) => { Check(node == ScriptNodeInspector.instance!.scriptNode.guid.ToString() && ids.Contains("opaque-anchor"), "selection refresh did not use current persistent IDs"); invalidate?.Invoke(); });
+        (node, ids) => { Check(node == ScriptNodeInspector.instance!.scriptNode.guid.ToString() && ids.Contains("opaque-anchor"), "selection refresh did not use current persistent IDs"); invalidate?.Invoke(); },
+        () => ScriptNodeInspector.instance!.scriptNodeListItemsCache.Where(row => Fixture.BatchIndices.Contains(row.index)).ToArray());
     static CardPackNativePlan Plan(AuthoringCardPackHost host, int count = 1)
     {
         var context = host.Capture("zh-CN").Context;
@@ -22,6 +23,14 @@ static partial class Program
     }
     static int Main(string[] args)
     {
+        if(args.SequenceEqual(new[]{"--attempt-revocation"}))
+        {
+            AttemptRevocation();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        }
+        if(args.SequenceEqual(new[]{"--batch-settext"}))
+        {
+            BatchSetText();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        }
         if(args.SequenceEqual(new[]{"--recovery-ui"}))
         {
             RecoveryUi();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
@@ -157,6 +166,6 @@ static partial class Program
             Check(host.Commit(plan,7).Disposition==CardPackV2CommitDisposition.Applied,"new writes being blocked after Apply prevented readonly completion proof");
             Reject(()=>Host().Capture("zh-CN"),"closed write guard was bypassed for a new preview");
         });
-        RecoveryUi();ResourceAvailability();PanelInvalidation();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        RecoveryUi();ResourceAvailability();PanelInvalidation();BatchSetText();AttemptRevocation();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
     }
 }

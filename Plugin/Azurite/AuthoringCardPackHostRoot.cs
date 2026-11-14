@@ -230,6 +230,14 @@ internal sealed class AuthoringCardPackHostRoot
                 // native-result check in gate(); retain the real installed owner.
                 var current = _selection ?? throw new InvalidOperationException("Selection owner is unavailable for native-result verification.");
                 current.InvalidateNativeResult(node, lines);
+            },
+            () =>
+            {
+                if (!gate()) throw new InvalidOperationException("The batch selection is not in the current qualified session.");
+                var current = _selection ?? throw new InvalidOperationException("Selection owner is unavailable.");
+                if (!current.TryGetSelectedRows(out var inspector, out var rows) || inspector?.Pointer != ScriptNodeInspector.instance?.Pointer)
+                    throw new InvalidOperationException("Native selected rows are not synchronized with the current Inspector.");
+                return rows;
             });
         bundle.Workflow = new(bundle.Host);
         bundle.Draft = new(_editorThreadId, gate, Choices, "transition", "sound");

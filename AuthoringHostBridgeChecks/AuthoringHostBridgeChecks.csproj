@@ -6,6 +6,7 @@
   <ItemGroup>
     <ProjectReference Include="../Core/Azurite.Core.csproj" />
     <Compile Include="../Plugin/Azurite/AuthoringCardPackHost.cs" Link="Production/AuthoringCardPackHost.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHost.Batch.cs" Link="Production/AuthoringCardPackHost.Batch.cs" />
     <Compile Include="../Plugin/Azurite/AuthoringCardPackPanel.cs" Link="Production/AuthoringCardPackPanel.cs" />
   </ItemGroup>
 </Project>

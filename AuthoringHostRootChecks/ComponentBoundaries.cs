@@ -29,6 +29,7 @@ internal sealed class AuthoringCardPackHostSelection:IDisposable
     internal void Update(bool enabled){Updates++;Enabled=enabled&&allowed();}
     internal void OnGUI(){if(Enabled&&allowed())Draws++;}
     internal void InvalidateNativeResult(string id,IReadOnlyList<string> lines){if(!IsInstalled)throw new InvalidOperationException("selection not installed");}
+    internal bool TryGetSelectedRows(out ScriptNodeInspector inspector,out IReadOnlyList<ScriptListItem> rows){inspector=ScriptNodeInspector.instance!;rows=inspector.scriptNodeListItemsCache;return IsInstalled;}
     public void Dispose(){Disposes++;IsInstalled=false;Enabled=false;}
 }
 internal sealed class AuthoringCardPackHostView:IDisposable
@@ -45,12 +46,14 @@ internal sealed class AuthoringCardPackHostView:IDisposable
 internal static class AuthoringCardPackHostComposition
 {
     internal static ICardPackV2Host Create(int thread,Func<bool> gate,Func<long> selection,
-        Func<IReadOnlyList<AuthoringCardPackResourceChoice>> choices,Action<string,IReadOnlyList<string>> invalidate)
-        =>new RootBoundaryHost(gate,selection);
+        Func<IReadOnlyList<AuthoringCardPackResourceChoice>> choices,Action<string,IReadOnlyList<string>> invalidate,
+        Func<IReadOnlyList<ScriptListItem>>? readBatchRows=null)
+        =>new RootBoundaryHost(gate,selection){ReadBatchRows=readBatchRows};
 }
 internal sealed class RootBoundaryHost:ICardPackV2Host
 {
     internal static List<RootBoundaryHost> Instances=new();internal readonly Func<bool> Gate;readonly Func<long> selection;
+    internal Func<IReadOnlyList<ScriptListItem>>? ReadBatchRows;
     internal bool Faulted;internal int Captures,Commits,Recovers;
     internal RootBoundaryHost(Func<bool> gate,Func<long> selection){Gate=gate;this.selection=selection;Instances.Add(this);}
     public CardPackV2Snapshot Capture(string? locale)

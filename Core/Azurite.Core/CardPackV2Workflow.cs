@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Azurite.Core;
 
 public sealed record CardPackV2Draft(string Json, string? SelectedLocale);
-public sealed record CardPackV2Snapshot(CardPackCompilationContext Context, long SelectionRevision);
+public sealed record CardPackV2Snapshot(CardPackCompilationContext Context, long SelectionRevision, long SubmissionVersion = 0);
 public enum CardPackV2CommitDisposition { RejectedBeforeMutation, Applied, OutcomeUnknown }
 public sealed record CardPackV2CommitResult(CardPackV2CommitDisposition Disposition, string Message);
 public sealed record CardPackV2RecoveryResult(bool Recovered, string Message);
@@ -87,6 +87,8 @@ public sealed class CardPackV2Workflow
         if (capture != null) return capture;
         if (fresh!.SelectionRevision != pending.Snapshot.SelectionRevision)
             return Failure("STALE_SELECTION", "选择已改变，请重新预览。");
+        if (fresh.SubmissionVersion != pending.Snapshot.SubmissionVersion)
+            return Failure("STALE_SUBMISSION", "同一会话发生了其他提交或恢复尝试，请重新预览。");
         // Recompile against fresh resolved resources and inherited stage, never reuse a
         // mutable preview input. The compiler also compares every native identity field.
         var compiled = CardPackV2Compiler.TryCompile(CardPackV2Json.Deserialize(draft.Json), fresh.Context, pending.Plan.Identity);

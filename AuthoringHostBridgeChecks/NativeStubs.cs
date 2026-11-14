@@ -14,14 +14,19 @@ namespace UnityEngine
 }
 public static class UICamera { public static bool inputHasFocus, isDragging; }
 public class UIInput { public static UIInput? current, selection; public static string mLastIME = ""; }
-public class Script : NativeObject { public string LineId = "", text = ""; }
-public class ScriptData : NativeObject { public string LineId = "", text = ""; }
+public class Script : NativeObject { public string LineId = "", text = ""; public int speakerSlotNum; }
+public class ScriptData : NativeObject
+{
+    public string LineId = "", text = "", voice = "voice", bgFriendlyName = "background", additionalPrompt = "prompt", StageJson = "[{\"curve\":{\"extension\":2}}]";
+    public int speakerSlotNum = 2; public long selectionGroup = 42;
+    public ScriptData Clone() => new() { LineId=LineId,text=text,voice=voice,bgFriendlyName=bgFriendlyName,additionalPrompt=additionalPrompt,StageJson=StageJson,speakerSlotNum=speakerSlotNum,selectionGroup=selectionGroup };
+}
 public class NodeData : NativeObject { public Guid Guid; }
 public class ScriptNodeData : NodeData { public List<ScriptData> Scripts = new(); }
 public class ProjectData : NativeObject
 {
-    public string ProjectId = "fixture-project"; public List<NodeData> nodes = new();
-    public ProjectData Clone() => new() { ProjectId = ProjectId, nodes = nodes.Select(n => (NodeData)new ScriptNodeData { Guid = n.Guid, Scripts = ((ScriptNodeData)n).Scripts.Select(x => new ScriptData { LineId = x.LineId, text = x.text }).ToList() }).ToList() };
+    public string ProjectId = "fixture-project", ProjectName = "full-project-residue"; public List<NodeData> nodes = new();
+    public ProjectData Clone() => new() { ProjectId = ProjectId, ProjectName = ProjectName, nodes = nodes.Select(n => (NodeData)new ScriptNodeData { Guid = n.Guid, Scripts = ((ScriptNodeData)n).Scripts.Select(x => x.Clone()).ToList() }).ToList() };
 }
 namespace Il2CppSystem.Collections.Generic { public class Stack<T> : System.Collections.Generic.Stack<T> { } }
 namespace Newtonsoft.Json.Linq
@@ -62,7 +67,7 @@ namespace Studio.Scripts
 }
 namespace Studio.Scripts.OperationManagement
 {
-    public class Operation : NativeObject { public Operation? linkedPrev, linkedNext; }
+    public class Operation : NativeObject { public Operation? linkedPrev, linkedNext; public bool IsMajor = true; }
     public static class OperationManager
     {
         public static Il2CppSystem.Collections.Generic.Stack<Operation> history = new(), future = new();
@@ -74,6 +79,13 @@ namespace AzureArchive.Automation
     using Studio.Scripts;
     using Studio.Scripts.OperationManagement;
     using Newtonsoft.Json.Linq;
+    // Explicit native boundary double. Tests exercise real Host calls and result proof;
+    // these data operations do not claim that actual native cloning/Apply has run.
+    public static class ProjectFileStore
+    {
+        public static Func<ProjectData, ProjectData>? CloneOverride;
+        public static ProjectData Clone(ProjectData value) => CloneOverride?.Invoke(value) ?? value.Clone();
+    }
     public static class AuthoringResourceCatalog
     {
         public static string CatalogVersion = "fixture-catalog";
@@ -93,12 +105,13 @@ namespace AzureArchive.Automation
         public string savedFingerprint = "saved-baseline";
         public bool IsApplying, SaveInProgress, disposed; public bool Dirty => OperationManager.saveDelta != 0;
         public ProjectData Snapshot = null!; public bool FreezeSnapshot;
-        public Action? OnCheck, OnApply; public bool ThrowBeforeApply, ThrowAfterHistory, PartialMutation, NullReceipt;
+        public Action? OnCheck, OnApply, OnAfterApply; public bool ThrowBeforeApply, ThrowAfterHistory, PartialMutation, NullReceipt;
+        public string? LastOperations;
         public int Checks, Applies; public string? CheckedSession, CheckedRevision; public bool CheckedInput, CheckedResources;
         public List<string> Events = new();
         public ProjectData Capture() => studio.CaptureProject();
         public void Refresh(bool checkResources) { if (!checkResources) throw new Exception("resources must be refreshed"); if (!FreezeSnapshot) Snapshot = studio.CaptureProject(); }
-        public static string Fingerprint(ProjectData project) => JsonSerializer.Serialize(new { project.ProjectId, nodes = project.nodes.Select(n => new { n.Guid, lines = ((ScriptNodeData)n).Scripts.Select(x => new { x.LineId, x.text }) }) });
+        public static string Fingerprint(ProjectData project) => JsonSerializer.Serialize(new { project.ProjectId, project.ProjectName, nodes = project.nodes.Select(n => new { n.Guid, lines = ((ScriptNodeData)n).Scripts.Select(x => new { x.LineId, x.text,x.voice,x.bgFriendlyName,x.additionalPrompt,x.StageJson,x.speakerSlotNum,x.selectionGroup }) }) });
         public void Check(string session, string expectedRevision, bool inputGuard, bool checkResources)
         {
             Checks++; Events.Add("Check"); CheckedSession = session; CheckedRevision = expectedRevision; CheckedInput = inputGuard; CheckedResources = checkResources;
@@ -107,17 +120,27 @@ namespace AzureArchive.Automation
         }
         public JObject? Apply(JArray operations, string catalogVersion)
         {
-            Applies++; Events.Add("Apply"); OnApply?.Invoke();
+            Applies++; Events.Add("Apply"); LastOperations=operations.Raw; OnApply?.Invoke();
             if (ThrowBeforeApply) throw new Exception("native failed before mutation");
             if (catalogVersion != AuthoringResourceCatalog.CatalogVersion) throw new Exception("wrong catalog argument");
             var before = studio.Project.Clone(); var node = (ScriptNodeData)studio.Project.nodes[0];
             using var json = JsonDocument.Parse(operations.Raw); int insertion = 1;
-            foreach (var op in json.RootElement.EnumerateArray()) node.Scripts.Insert(insertion++, new() { LineId = "native-created:" + Guid.NewGuid(), text = op.GetProperty("line").GetProperty("text").GetString()! });
-            Revision = "r2"; Snapshot = studio.Project.Clone(); Fixture.Rebind();
+            foreach (var op in json.RootElement.EnumerateArray())
+            {
+                if(op.GetProperty("op").GetString()=="line.update")
+                    node.Scripts.Single(line=>line.LineId==op.GetProperty("line").GetProperty("id").GetString()).text=op.GetProperty("set").GetProperty("text").GetString()!;
+                else node.Scripts.Insert(insertion++, new() { LineId = "native-created:" + Guid.NewGuid(), text = op.GetProperty("line").GetProperty("text").GetString()! });
+            }
+            Revision = "r" + (Applies + 1); Snapshot = studio.Project.Clone(); Fixture.Rebind();
             if (PartialMutation) throw new Exception("native restore failed before history");
-            OperationManager.history.Push(new ProjectSnapshotOperation { session = this, before = before, after = studio.Project.Clone() });
-            OperationManager.future.Clear(); OperationManager.saveDelta++; OperationManager.compileDelta++; OperationManager.needToLinkWithPrev = false;
+            OperationManager.history.Push(new ProjectSnapshotOperation { session = this, before = before, after = studio.Project.Clone(), IsMajor=Fixture.NextIsMajor });
+            OperationManager.future.Clear();
+            // Literal native fixture behavior from pinned WriteHistory: new isolated, uncombined entry.
+            OperationManager.saveDelta=OperationManager.saveDelta<0?114514:unchecked(OperationManager.saveDelta+1);
+            if(Fixture.NextIsMajor)OperationManager.compileDelta=OperationManager.compileDelta<0?114514:unchecked(OperationManager.compileDelta+1);
+            OperationManager.needToLinkWithPrev = false;
             if (ThrowAfterHistory) throw new Exception("native failed after history");
+            OnAfterApply?.Invoke(); Snapshot=studio.Project.Clone(); Fixture.Rebind();
             return NullReceipt ? null : new JObject();
         }
         public class ProjectSnapshotOperation : Operation { public AuthoringEditorSession session = null!; public ProjectData before = null!, after = null!; }
@@ -125,8 +148,11 @@ namespace AzureArchive.Automation
 }
 public static class Fixture
 {
+    public static int[] BatchIndices = new[] { 0, 1 };
+    public static bool NextIsMajor = true;
     public static void Reset()
     {
+        BatchIndices=new[]{0,1}; NextIsMajor=true; AzureArchive.Automation.ProjectFileStore.CloneOverride=null;
         var node = new ScriptNodeData { Guid = Guid.NewGuid(), Scripts = new() { new() { LineId = "opaque-anchor", text = "before" }, new() { LineId = "opaque-tail", text = "tail" } } };
         var studio = new Studio.Scripts.StudioCommon { Project = new() { nodes = new() { node } } };
         Studio.Scripts.StudioCommon.instance = studio;
@@ -143,7 +169,7 @@ public static class Fixture
     public static void Rebind()
     {
         var data = (ScriptNodeData)Studio.Scripts.StudioCommon.instance!.Project.nodes[0];
-        var node = new Studio.Scripts.Nodes.ScriptNode { guid = data.Guid, scripts = data.Scripts.Select(x => new Script { LineId = x.LineId, text = x.text }).ToList() };
+        var node = new Studio.Scripts.Nodes.ScriptNode { guid = data.Guid, scripts = data.Scripts.Select(x => new Script { LineId = x.LineId, text = x.text, speakerSlotNum=x.speakerSlotNum }).ToList() };
         var inspector = new Studio.Scripts.ScriptNodeInspector { scriptNode = node };
         inspector.scriptNodeListItemsCache = node.scripts.Select((_, i) => new Studio.Scripts.ScriptListItem { index = i, scriptNode = node, inspector = inspector, selected = i == 0 }).ToList();
         inspector.selectedScriptItem = inspector.scriptNodeListItemsCache[0]; Studio.Scripts.ScriptNodeInspector.instance = inspector;
