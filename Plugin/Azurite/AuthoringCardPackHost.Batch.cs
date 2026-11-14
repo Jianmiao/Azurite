@@ -36,7 +36,7 @@ internal sealed partial class AuthoringCardPackHost
     }
 
     public CardPackV2CommitResult CommitSetText(AuthoringBatchHostPreview preview)
-        => Submit(null, preview, preview?.Plan?.Selection.Revision ?? -1);
+        => Submit(null, preview, null, preview?.Plan?.Selection.Revision ?? -1);
 
     private AuthoringBatchSelection ReadBatchSelection(State state)
     {

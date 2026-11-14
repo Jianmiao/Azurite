@@ -23,6 +23,10 @@ static partial class Program
     }
     static int Main(string[] args)
     {
+        if(args.SequenceEqual(new[]{"--speaker"}))
+        {
+            SpeakerBatch();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        }
         if(args.SequenceEqual(new[]{"--attempt-revocation"}))
         {
             AttemptRevocation();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
@@ -166,6 +170,6 @@ static partial class Program
             Check(host.Commit(plan,7).Disposition==CardPackV2CommitDisposition.Applied,"new writes being blocked after Apply prevented readonly completion proof");
             Reject(()=>Host().Capture("zh-CN"),"closed write guard was bypassed for a new preview");
         });
-        RecoveryUi();ResourceAvailability();PanelInvalidation();BatchSetText();AttemptRevocation();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
+        RecoveryUi();ResourceAvailability();PanelInvalidation();BatchSetText();AttemptRevocation();SpeakerBatch();Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");return failed==0?0:1;
     }
 }

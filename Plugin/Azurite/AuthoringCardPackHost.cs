@@ -25,7 +25,7 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         IntPtr Session, IntPtr Studio, string Fingerprint, string FileVersion, string? SavedFingerprint, bool Dirty,
         int SaveDelta, int CompileDelta, bool LinkNext, HistoryItem[] History, HistoryItem[] Future, string[] Lines, ProjectData Project);
     private sealed record Captured(State State, string? Locale, string Content, long SubmissionVersion);
-    private sealed record Submission(CardPackNativePlan? Cards, AuthoringBatchHostPreview? Text, string? ExpectedFingerprint);
+    private sealed record Submission(CardPackNativePlan? Cards, AuthoringBatchHostPreview? Text, AuthoringBatchSpeakerHostPreview? Speaker, string? ExpectedFingerprint);
     private sealed class Uncertain
     {
         internal readonly State Before;
@@ -86,19 +86,19 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
     }
 
     public CardPackV2CommitResult Commit(CardPackNativePlan plan, long selectionRevision)
-        => Submit(plan, null, selectionRevision);
+        => Submit(plan, null, null, selectionRevision);
 
     // Both operation families enter exactly this owner, Check/Apply and uncertainty lifecycle.
-    private CardPackV2CommitResult Submit(CardPackNativePlan? cards, AuthoringBatchHostPreview? text, long selectionRevision)
+    private CardPackV2CommitResult Submit(CardPackNativePlan? cards, AuthoringBatchHostPreview? text, AuthoringBatchSpeakerHostPreview? speaker, long selectionRevision)
     {
         bool entered = false, applyEntered = false, refreshAttempted = false;
         Uncertain? pending = null;
         try
         {
             EnterBoundary(); entered = true;
-            var captured = _captured; var batch = _capturedBatch;
+            var captured = _captured; var batch = _capturedBatch; var speakerCapture = _capturedSpeaker;
             var attempt = RevokeOwnedPreviews();
-            Require((cards != null) != (text != null), "Exactly one supported submission kind is required.");
+            Require((cards != null ? 1 : 0) + (text != null ? 1 : 0) + (speaker != null ? 1 : 0) == 1, "Exactly one supported submission kind is required.");
             State capturedState;
             long capturedVersion;
             if (cards != null)
@@ -106,16 +106,21 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
                 Require(captured != null, "A fresh host Capture is required for each commit attempt.");
                 capturedState = captured!.State; capturedVersion = captured.SubmissionVersion;
             }
-            else
+            else if (text != null)
             {
                 Require(batch != null && ReferenceEquals(batch.Preview, text), "A fresh SetText capture from this owner is required.");
                 capturedState = batch!.State; capturedVersion = batch.Preview.SubmissionVersion;
+            }
+            else
+            {
+                Require(speakerCapture != null && ReferenceEquals(speakerCapture.Preview, speaker), "A fresh speaker capture from this owner is required.");
+                capturedState = speakerCapture!.State; capturedVersion = speakerCapture.Preview.SubmissionVersion;
             }
             Require(capturedState.Identity.EditSession == attempt.Session && capturedVersion == attempt.Version,
                 "Another client consumed or revoked this session's previews.");
             var before = ReadState(true, out var session);
             Require(!Uncertainty.ContainsKey(before.Identity.EditSession), "RECOVERY_REQUIRED: previous Apply is unresolved.");
-            Require((cards?.Identity ?? text!.Identity) == before.Identity && SameState(capturedState, before) && before.SelectionRevision == selectionRevision,
+            Require((cards?.Identity ?? text?.Identity ?? speaker!.Identity) == before.Identity && SameState(capturedState, before) && before.SelectionRevision == selectionRevision,
                 "Native identity, selection, project or history changed before commit.");
             JArray operations;
             Submission submission;
@@ -124,21 +129,30 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
                 var content = CaptureContent(before.Identity, captured!.Locale);
                 Require(string.Equals(captured.Content, JsonSerializer.Serialize(content), StringComparison.Ordinal), "Native inherited stage or catalog capabilities changed.");
                 operations = PrepareOperations(cards);
-                submission = new(cards, null, null);
+                submission = new(cards, null, null, null);
+            }
+            else if (text != null)
+            {
+                operations = PrepareSetText(before, session, batch!);
+                submission = new(null, text, null, batch!.ExpectedFingerprint);
             }
             else
             {
-                operations = PrepareSetText(before, session, batch!);
-                submission = new(null, text, batch!.ExpectedFingerprint);
+                operations = PrepareSpeaker(before, session, speakerCapture!);
+                submission = new(null, null, speaker, speakerCapture!.ExpectedFingerprint);
             }
             Require(SameState(before, ReadState(false, out session)), "Native state changed during final content/resource validation.");
             // Current.Apply does NOT perform Check internally. Keep both guards true.
             session.Check(before.Identity.EditSession, before.Identity.Revision, true, true);
             var checkedState = ReadState(false, out var checkedSession);
             Require(SameState(before, checkedState), "Native owner or selection changed inside Check.");
-            if (text != null)
+            if (text != null || speaker != null)
             {
-                Require(AuthoringBatchPlanner.Matches(text.Plan.Selection, ReadBatchSelection(checkedState)), "Selected batch rows changed inside Check.");
+                var expectedSelection = text?.Plan.Selection ?? speaker!.Plan.Selection;
+                Require(AuthoringBatchPlanner.Matches(expectedSelection, ReadBatchSelection(checkedState)), "Selected batch rows changed inside Check.");
+                if (speaker != null)
+                    Require(ReadSpeakerTargets(checkedState, expectedSelection, speaker.Plan.TargetSlot) == speakerCapture!.Targets,
+                        "Speaker resources or target stage changed inside Check.");
                 Require(SameState(before, ReadState(false, out checkedSession)), "Native owner changed while rechecking selected rows.");
             }
             pending = new(before, submission);
@@ -211,7 +225,7 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         Require(Interlocked.CompareExchange(ref _nativeBoundaryBusy, 1, 0) == 0, "Native card-pack boundary is already active.");
     }
     private static void ExitBoundary() => Volatile.Write(ref _nativeBoundaryBusy, 0);
-    private void ClearCaptures() { _captured = null; _capturedBatch = null; }
+    private void ClearCaptures() { _captured = null; _capturedBatch = null; _capturedSpeaker = null; }
     private (string? Session, long Version) RevokeOwnedPreviews()
     {
         ClearCaptures();
@@ -333,7 +347,8 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
     private static bool IsApplied(State before, State current, Submission submission)
         => IsSingleHistory(before, current) && (submission.Cards != null
             ? IsInserted(before, current, submission.Cards)
-            : submission.Text != null && IsSetTextApplied(before, current, submission.Text.Plan, submission.ExpectedFingerprint!));
+            : submission.Text != null ? IsSetTextApplied(before, current, submission.Text.Plan, submission.ExpectedFingerprint!)
+            : submission.Speaker != null && IsSpeakerApplied(before, current, submission.Speaker.Plan, submission.ExpectedFingerprint!));
 
     private static bool IsSingleHistory(State before, State current)
     {
