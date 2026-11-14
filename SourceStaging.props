@@ -1,0 +1,23 @@
+<Project>
+  <!-- Canonical identities are emitted by the compiler only for this explicit
+       staging mode. This does not confer host/runtime release qualification. -->
+  <PropertyGroup Condition="'$(AzuriteCoreMode)' == 'SourceStaging'">
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <DefineConstants>$(DefineConstants);AZURITE_SOURCE_STAGING</DefineConstants>
+    <Version>1.0.40</Version>
+    <AssemblyVersion>1.0.40.0</AssemblyVersion>
+    <FileVersion>1.0.40.0</FileVersion>
+    <InformationalVersion>1.0.40-candidate.source-staging-1</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(AzuriteCoreMode)' == 'SourceStaging'">
+    <Compile Remove="Properties/AssemblyInfo.cs" />
+    <AssemblyMetadata Include="Azurite.CoreMode" Value="SourceStaging" />
+    <AssemblyMetadata Include="Azurite.SourceBuildId" Value="$(SourceStagingBuildId)" />
+    <AssemblyMetadata Include="Azurite.BuildSdkVersion" Value="$(NETCoreSdkVersion)" />
+  </ItemGroup>
+  <Target Name="ValidateSourceStagingIdentity" BeforeTargets="PrepareForBuild" Condition="'$(AzuriteCoreMode)' == 'SourceStaging'">
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(SourceStagingBuildId)', '^[a-f0-9]{32}$'))" Text="SourceStaging requires the producer-generated SourceStagingBuildId." />
+  </Target>
+</Project>

@@ -1,0 +1,7 @@
+{
+  "name": "Azurite",
+  "version_number": "1.0.40",
+  "website_url": "https://github.com/Jianmiao/Azurite",
+  "description": "蓝铜矿 Source staging 候选：同次源码构建的 Plugin/Core、authoring UI、批量操作和五类卡包；普通编辑器与原生发布资格待完成，不是可发行版本。",
+  "dependencies": []
+}

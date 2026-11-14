@@ -24,7 +24,11 @@ public sealed partial class Plugin : BasePlugin
 
 	public const string Version = "1.0.40";
 
+	#if AZURITE_SOURCE_STAGING
+	public const string CandidateBuild = "source-staging-1";
+#else
 	public const string CandidateBuild = "stable-baseline-1";
+#endif
 
 	private static Plugin? _current;
 

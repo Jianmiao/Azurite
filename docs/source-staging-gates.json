@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "mode": "SourceStaging",
+  "releaseEligible": false,
+  "runtimeAcceptance": "not-performed",
+  "qualificationVerifierImplemented": false,
+  "requiredNativeGates": [
+    "installed-pair-active-profile-host-recognition-load-and-resource-readback",
+    "ordinary-editor-native-input-and-selection",
+    "five-card-categories-and-all-enabled-batch-actions",
+    "single-apply-undo-redo-save-and-reopen",
+    "error-cancel-uncertain-ownership-and-recovery",
+    "AAVE-RenderControlV1-binding-start-cancel-complete-main-thread-FPS-VSync-restoration",
+    "whole-pair-install-upgrade-rollback-and-profile-config-restoration",
+    "claimed-performance-measurements"
+  ]
+}

@@ -5,7 +5,7 @@
     <!-- Experimental source-built identity cannot be mistaken for the stable
          Azurite assembly by the existing candidate/package validators. -->
     <AssemblyName Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">Azurite.AuthoringSource</AssemblyName>
-    <DefineConstants Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">$(DefineConstants);AZURITE_AUTHORING_SOURCE</DefineConstants>
+    <DefineConstants Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' or '$(AzuriteCoreMode)' == 'SourceStaging'">$(DefineConstants);AZURITE_AUTHORING_SOURCE</DefineConstants>
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <TargetFramework>netcoreapp6.0</TargetFramework>
     <Nullable>annotations</Nullable>
@@ -21,8 +21,8 @@
     <Compile Remove="Azurite/ProgressivePreloadEnumerator.cs" />
     <Compile Remove="Azurite/ProgressivePreloadBudget.cs" />
     <Compile Remove="Azurite/ProgressiveEditorGate.cs" />
-    <Compile Remove="Azurite/AuthoringCardPackPanel.cs" Condition="'$(AzuriteCoreMode)' != 'AuthoringSource'" />
-    <Compile Remove="Azurite/AuthoringCardPackHost*.cs" Condition="'$(AzuriteCoreMode)' != 'AuthoringSource'" />
+    <Compile Remove="Azurite/AuthoringCardPackPanel.cs" Condition="'$(AzuriteCoreMode)' != 'AuthoringSource' and '$(AzuriteCoreMode)' != 'SourceStaging'" />
+    <Compile Remove="Azurite/AuthoringCardPackHost*.cs" Condition="'$(AzuriteCoreMode)' != 'AuthoringSource' and '$(AzuriteCoreMode)' != 'SourceStaging'" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\Newtonsoft.Json.dll</HintPath></Reference>
@@ -60,7 +60,7 @@
     <Reference Include="Azurite.Core" Condition="'$(AzuriteCoreMode)' == 'Original'">
       <HintPath>..\references\Azurite.Core.dll</HintPath>
     </Reference>
-    <ProjectReference Include="../Core/Azurite.Core.csproj" Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'" Private="true" />
+    <ProjectReference Include="../Core/Azurite.Core.csproj" Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' or '$(AzuriteCoreMode)' == 'SourceStaging'" Private="true" />
     <Reference Include="BepInEx.Unity.IL2CPP" Private="false">
       <HintPath>$(AAInstallPath)\BepInEx\core\BepInEx.Unity.IL2CPP.dll</HintPath>
     </Reference>
@@ -71,11 +71,11 @@
       <HintPath>$(AAInstallPath)\BepInEx\interop\UnityEngine.InputLegacyModule.dll</HintPath>
     </Reference>
   </ItemGroup>
-  <Target Name="ValidateAzuriteBuildMode" BeforeTargets="PrepareForBuild;ResolveReferences">
-    <Error Condition="'$(AzuriteCoreMode)' != 'Original' and '$(AzuriteCoreMode)' != 'AuthoringSource'" Text="AzuriteCoreMode must be Original or AuthoringSource; no dependency fallback is allowed." />
-    <Error Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' and ('$(UseArtifactsOutput)' != 'true' or '$(ArtifactsPath)' == '')" Text="AuthoringSource requires --artifacts-path with a fresh independent output directory (SDK 8+). Use tools/Build-AuthoringSource.ps1." />
-    <Error Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' and '$(ArtifactsPath)' != '' and !$([System.IO.Path]::IsPathRooted('$(ArtifactsPath)'))" Text="AuthoringSource requires an absolute artifacts path." />
-    <Error Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' and '$(BuildProjectReferences)' == 'false'" Text="AuthoringSource must build its source Core; BuildProjectReferences=false cannot certify the pair." />
+  <Target Name="ValidateAzuriteBuildMode" BeforeTargets="PrepareForBuild;ResolveReferences" DependsOnTargets="ValidateSourceStagingIdentity">
+    <Error Condition="'$(AzuriteCoreMode)' != 'Original' and '$(AzuriteCoreMode)' != 'AuthoringSource' and '$(AzuriteCoreMode)' != 'SourceStaging'" Text="AzuriteCoreMode must be Original or AuthoringSource or SourceStaging; no dependency fallback is allowed." />
+    <Error Condition="('$(AzuriteCoreMode)' == 'AuthoringSource' or '$(AzuriteCoreMode)' == 'SourceStaging') and ('$(UseArtifactsOutput)' != 'true' or '$(ArtifactsPath)' == '')" Text="AuthoringSource requires --artifacts-path with a fresh independent output directory (SDK 8+). Use tools/Build-AuthoringSource.ps1." />
+    <Error Condition="('$(AzuriteCoreMode)' == 'AuthoringSource' or '$(AzuriteCoreMode)' == 'SourceStaging') and '$(ArtifactsPath)' != '' and !$([System.IO.Path]::IsPathRooted('$(ArtifactsPath)'))" Text="AuthoringSource requires an absolute artifacts path." />
+    <Error Condition="('$(AzuriteCoreMode)' == 'AuthoringSource' or '$(AzuriteCoreMode)' == 'SourceStaging') and '$(BuildProjectReferences)' == 'false'" Text="AuthoringSource must build its source Core; BuildProjectReferences=false cannot certify the pair." />
   </Target>
   <Target Name="RejectAuthoringPackaging" BeforeTargets="GenerateNuspec;Pack;PrepareForPublish;Publish" Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">
     <Error Text="AuthoringSource is an isolated experimental build, not a release package. A separately reviewed authoring packaging and runtime acceptance path is required." />
@@ -84,7 +84,11 @@
     <Error Condition="!Exists('$(AAInstallPath)/BepInEx/interop/Assembly-CSharp.dll')" Text="AAInstallPath must point to an AA installation with generated BepInEx IL2CPP interop assemblies." />
     <Error Condition="'$(AzuriteCoreMode)' == 'Original' and !Exists('$(MSBuildThisFileDirectory)../references/Azurite.Core.dll')" Text="The source bundle must include references/Azurite.Core.dll from the validated Azurite 0.7.0 package." />
   </Target>
-  <ItemGroup Condition="'$(AzuriteCoreMode)' == 'AuthoringSource'">
+  <ItemGroup Condition="'$(AzuriteCoreMode)' == 'AuthoringSource' or '$(AzuriteCoreMode)' == 'SourceStaging'">
     <Reference Include="UnityEngine.IMGUIModule" Private="false"><HintPath>$(AAInstallPath)\BepInEx\interop\UnityEngine.IMGUIModule.dll</HintPath></Reference>
   </ItemGroup>
+  <Import Project="../SourceStaging.props" />
+  <Target Name="RejectSourceStagingPackaging" BeforeTargets="GenerateNuspec;Pack;PrepareForPublish;Publish" Condition="'$(AzuriteCoreMode)' == 'SourceStaging'">
+    <Error Text="SourceStaging is not release qualified. Use Stage-SourceCandidate.ps1; native qualification remains mandatory." />
+  </Target>
 </Project>
