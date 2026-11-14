@@ -25,13 +25,13 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         IntPtr Session, IntPtr Studio, string Fingerprint, string FileVersion, string? SavedFingerprint, bool Dirty,
         int SaveDelta, int CompileDelta, bool LinkNext, HistoryItem[] History, HistoryItem[] Future, string[] Lines, ProjectData Project);
     private sealed record Captured(State State, string? Locale, string Content, long SubmissionVersion);
-    private sealed record Submission(CardPackNativePlan? Cards, AuthoringBatchHostPreview? Text, AuthoringBatchSpeakerHostPreview? Speaker, AuthoringBatchDeleteHostPreview? Delete, string? ExpectedFingerprint, CapturedMultiline? Multiline = null);
+    private sealed record Submission(CardPackNativePlan? Cards, AuthoringBatchHostPreview? Text, AuthoringBatchSpeakerHostPreview? Speaker, AuthoringBatchDeleteHostPreview? Delete, string? ExpectedFingerprint, CapturedMultiline? Multiline = null, CapturedDuplicate? Duplicate = null);
     private sealed class Uncertain
     {
         internal readonly State Before;
         internal readonly Submission Plan;
         internal bool NativeReturnedReceipt;
-        internal string? MultilineReceiptJson;
+        internal string? InsertionReceiptJson;
         internal State? ConfirmedAfter;
         internal string Diagnostic = "Native Apply entered; outcome not yet verified.";
         internal Uncertain(State before, Submission plan) { Before = before; Plan = plan; }
@@ -90,16 +90,16 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         => Submit(plan, null, null, selectionRevision);
 
     // Both operation families enter exactly this owner, Check/Apply and uncertainty lifecycle.
-    private CardPackV2CommitResult Submit(CardPackNativePlan? cards, AuthoringBatchHostPreview? text, AuthoringBatchSpeakerHostPreview? speaker, long selectionRevision, AuthoringBatchDeleteHostPreview? deletion = null, AuthoringBatchMultilineHostPreview? multiline = null)
+    private CardPackV2CommitResult Submit(CardPackNativePlan? cards, AuthoringBatchHostPreview? text, AuthoringBatchSpeakerHostPreview? speaker, long selectionRevision, AuthoringBatchDeleteHostPreview? deletion = null, AuthoringBatchMultilineHostPreview? multiline = null, AuthoringBatchDuplicateHostPreview? duplicate = null)
     {
         bool entered = false, applyEntered = false, refreshAttempted = false;
         Uncertain? pending = null;
         try
         {
             EnterBoundary(); entered = true;
-            var captured = _captured; var batch = _capturedBatch; var speakerCapture = _capturedSpeaker; var deleteCapture = _capturedDelete; var multilineCapture = _capturedMultiline;
+            var captured = _captured; var batch = _capturedBatch; var speakerCapture = _capturedSpeaker; var deleteCapture = _capturedDelete; var multilineCapture = _capturedMultiline; var duplicateCapture = _capturedDuplicate;
             var attempt = RevokeOwnedPreviews();
-            Require((cards != null ? 1 : 0) + (text != null ? 1 : 0) + (speaker != null ? 1 : 0) + (deletion != null ? 1 : 0) + (multiline != null ? 1 : 0) == 1, "Exactly one supported submission kind is required.");
+            Require((cards != null ? 1 : 0) + (text != null ? 1 : 0) + (speaker != null ? 1 : 0) + (deletion != null ? 1 : 0) + (multiline != null ? 1 : 0) + (duplicate != null ? 1 : 0) == 1, "Exactly one supported submission kind is required.");
             State capturedState;
             long capturedVersion;
             if (cards != null)
@@ -122,16 +122,21 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
                 Require(deleteCapture != null && ReferenceEquals(deleteCapture.Preview, deletion), "A fresh deletion capture from this owner is required.");
                 capturedState = deleteCapture!.State; capturedVersion = deleteCapture.Preview.SubmissionVersion;
             }
-            else
+            else if (multiline != null)
             {
                 Require(multilineCapture != null && ReferenceEquals(multilineCapture.Preview, multiline), "A fresh multiline capture from this owner is required.");
                 capturedState = multilineCapture!.State; capturedVersion = multilineCapture.Preview.SubmissionVersion;
+            }
+            else
+            {
+                Require(duplicateCapture != null && ReferenceEquals(duplicateCapture.Preview, duplicate), "A fresh duplicate capture from this owner is required.");
+                capturedState = duplicateCapture!.State; capturedVersion = duplicateCapture.Preview.SubmissionVersion;
             }
             Require(capturedState.Identity.EditSession == attempt.Session && capturedVersion == attempt.Version,
                 "Another client consumed or revoked this session's previews.");
             var before = ReadState(true, out var session);
             Require(!Uncertainty.ContainsKey(before.Identity.EditSession), "RECOVERY_REQUIRED: previous Apply is unresolved.");
-            Require((cards?.Identity ?? text?.Identity ?? speaker?.Identity ?? deletion?.Identity ?? multiline!.Identity) == before.Identity && SameState(capturedState, before) && before.SelectionRevision == selectionRevision,
+            Require((cards?.Identity ?? text?.Identity ?? speaker?.Identity ?? deletion?.Identity ?? multiline?.Identity ?? duplicate!.Identity) == before.Identity && SameState(capturedState, before) && before.SelectionRevision == selectionRevision,
                 "Native identity, selection, project or history changed before commit.");
             JArray operations;
             Submission submission;
@@ -157,24 +162,30 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
                 operations = PrepareDelete(before, session, deleteCapture!);
                 submission = new(null, null, null, deletion, deleteCapture!.ExpectedFingerprint);
             }
-            else
+            else if (multiline != null)
             {
                 operations = PrepareMultiline(before, session, multilineCapture!);
                 submission = new(null, null, null, null, multilineCapture!.Projection.Fingerprint, multilineCapture);
+            }
+            else
+            {
+                operations = PrepareDuplicate(before, session, duplicateCapture!);
+                submission = new(null, null, null, null, duplicateCapture!.Projection.Fingerprint, Duplicate: duplicateCapture);
             }
             Require(SameState(before, ReadState(false, out session)), "Native state changed during final content/resource validation.");
             // Current.Apply does NOT perform Check internally. Keep both guards true.
             session.Check(before.Identity.EditSession, before.Identity.Revision, true, true);
             var checkedState = ReadState(false, out var checkedSession);
             Require(SameState(before, checkedState), "Native owner or selection changed inside Check.");
-            if (text != null || speaker != null || deletion != null || multiline != null)
+            if (text != null || speaker != null || deletion != null || multiline != null || duplicate != null)
             {
-                var expectedSelection = text?.Plan.Selection ?? speaker?.Plan.Selection ?? deletion?.Plan.Selection ?? multiline!.Plan.Selection;
+                var expectedSelection = text?.Plan.Selection ?? speaker?.Plan.Selection ?? deletion?.Plan.Selection ?? multiline?.Plan.Selection ?? duplicate!.Plan.Selection;
                 Require(AuthoringBatchPlanner.Matches(expectedSelection, ReadBatchSelection(checkedState)), "Selected batch rows changed inside Check.");
                 if (speaker != null)
                     Require(ReadSpeakerTargets(checkedState, expectedSelection, speaker.Plan.TargetSlot) == speakerCapture!.Targets,
                         "Speaker resources or target stage changed inside Check.");
                 if (multiline != null) PrepareMultiline(checkedState, checkedSession, multilineCapture!);
+                if (duplicate != null) PrepareDuplicate(checkedState, checkedSession, duplicateCapture!);
                 Require(SameState(before, ReadState(false, out checkedSession)), "Native owner changed while rechecking selected rows.");
             }
             pending = new(before, submission);
@@ -182,11 +193,11 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
             applyEntered = true;
             var receipt = checkedSession.Apply(operations, before.Identity.CatalogVersion);
             pending.NativeReturnedReceipt = receipt != null;
-            if (multiline != null) pending.MultilineReceiptJson = receipt?.ToString();
+            if (multiline != null || duplicate != null) pending.InsertionReceiptJson = receipt?.ToString();
             string? deleteScope = submission.Delete?.Identity.NodeId;
             var afterNative = ReadState(true, out _, requireWriteEligibility: false, deletionNodeId: deleteScope);
             Require(receipt != null, "Native Apply returned no receipt.");
-            Require(IsApplied(before, afterNative, submission, pending.MultilineReceiptJson), "Native result/model/history do not prove one complete snapshot commit.");
+            Require(IsApplied(before, afterNative, submission, pending.InsertionReceiptJson), "Native result/model/history do not prove one complete snapshot commit.");
             pending.ConfirmedAfter = afterNative;
             refreshAttempted = true;
             _invalidateSelection(afterNative.Identity.NodeId, Array.AsReadOnly(afterNative.Lines));
@@ -235,7 +246,7 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
             // A snapshot history entry can precede a later native failure. Without
             // a completed Apply return we cannot prove its remaining bookkeeping.
             bool applied = !restored && fault.NativeReturnedReceipt && fault.ConfirmedAfter != null &&
-                SameState(fault.ConfirmedAfter, current, compareSelectionRevision: false) && IsApplied(fault.Before, current, fault.Plan, fault.MultilineReceiptJson);
+                SameState(fault.ConfirmedAfter, current, compareSelectionRevision: false) && IsApplied(fault.Before, current, fault.Plan, fault.InsertionReceiptJson);
             if (!restored && !applied) return new(false, "无法证明原状态已恢复或完整提交的模型/历史一致；继续保留锁定。" + fault.Diagnostic);
             Uncertainty.Remove(current.Identity.EditSession);
             return new(true, restored ? "已核对原模型指纹、完整历史与脏状态未变，并重建选择缓存。" : "已核对原生前后快照及单次历史，确认此前已提交；不会重试。");
@@ -250,7 +261,7 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         Require(Interlocked.CompareExchange(ref _nativeBoundaryBusy, 1, 0) == 0, "Native card-pack boundary is already active.");
     }
     private static void ExitBoundary() => Volatile.Write(ref _nativeBoundaryBusy, 0);
-    private void ClearCaptures() { _captured = null; _capturedBatch = null; _capturedSpeaker = null; _capturedDelete = null; _capturedMultiline = null; }
+    private void ClearCaptures() { _captured = null; _capturedBatch = null; _capturedSpeaker = null; _capturedDelete = null; _capturedMultiline = null; _capturedDuplicate = null; }
     private (string? Session, long Version) RevokeOwnedPreviews()
     {
         ClearCaptures();
@@ -393,13 +404,14 @@ internal sealed partial class AuthoringCardPackHost : ICardPackV2Host, IAuthorin
         before.Dirty == current.Dirty && before.SaveDelta == current.SaveDelta && before.CompileDelta == current.CompileDelta && before.LinkNext == current.LinkNext &&
         before.History.SequenceEqual(current.History) && before.Future.SequenceEqual(current.Future) && before.Lines.SequenceEqual(current.Lines);
 
-    private static bool IsApplied(State before, State current, Submission submission, string? multilineReceipt = null)
+    private static bool IsApplied(State before, State current, Submission submission, string? insertionReceipt = null)
         => IsSingleHistory(before, current) && (submission.Cards != null
             ? IsInserted(before, current, submission.Cards)
             : submission.Text != null ? IsSetTextApplied(before, current, submission.Text.Plan, submission.ExpectedFingerprint!)
             : submission.Speaker != null ? IsSpeakerApplied(before, current, submission.Speaker.Plan, submission.ExpectedFingerprint!)
             : submission.Delete != null ? IsDeleteApplied(before, current, submission.Delete.Plan, submission.ExpectedFingerprint!)
-            : submission.Multiline != null && IsMultilineApplied(before, current, submission.Multiline, multilineReceipt));
+            : submission.Multiline != null ? IsMultilineApplied(before, current, submission.Multiline, insertionReceipt)
+            : submission.Duplicate != null && IsDuplicateApplied(before, current, submission.Duplicate, insertionReceipt));
 
     private static bool IsSingleHistory(State before, State current)
     {

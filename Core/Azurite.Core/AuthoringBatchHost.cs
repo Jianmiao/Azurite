@@ -22,6 +22,16 @@ public sealed record AuthoringBatchMultilineHostPreview(AuthoringBatchMultilineP
     public string InheritanceNotice => "每个原锚点后独立插入全部输入行；按原生 previous 规则继承并清理退场角色、一次性动作等状态。新行身份及语音身份由实际提交生成，不复制原语音；预览中的别名不是持久行 ID。";
 }
 
+public sealed record AuthoringBatchDuplicateOptions(bool CopyVoice = true);
+
+public sealed record AuthoringBatchDuplicateHostPreview(AuthoringBatchDuplicatePlan Plan, CardPackContextIdentity Identity,
+    long SubmissionVersion, AuthoringBatchDuplicateOptions Options, string CopiedAndDerivedStateJson)
+{
+    public string CopyNotice => Options.CopyVoice
+        ? "每个所选原行后复制完整可表达内容，新建持久行 ID；有效已分配语音继续引用同一音频资源。原生只读起始位置按新前序重新派生，预览会列出变化。"
+        : "已明确选择复制时不带配音：只清除新复制行的语音，原行不变；其它可表达内容和资源完整复制，新建持久行 ID，并列出原生派生位置变化。";
+}
+
 /// <summary>Implemented by the same owner as ICardPackV2Host, sharing its boundary and unresolved-session recovery.</summary>
 public interface IAuthoringBatchHost
 {
@@ -33,5 +43,7 @@ public interface IAuthoringBatchHost
     CardPackV2CommitResult CommitDelete(AuthoringBatchDeleteHostPreview preview);
     AuthoringBatchMultilineHostPreview CaptureMultiline(string text, AuthoringBatchMultilineOptions? options = null);
     CardPackV2CommitResult CommitMultiline(AuthoringBatchMultilineHostPreview preview);
+    AuthoringBatchDuplicateHostPreview CaptureDuplicate(AuthoringBatchDuplicateOptions? options = null);
+    CardPackV2CommitResult CommitDuplicate(AuthoringBatchDuplicateHostPreview preview);
     CardPackV2RecoveryResult Recover();
 }

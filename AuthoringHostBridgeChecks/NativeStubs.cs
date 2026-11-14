@@ -39,7 +39,7 @@ public class Script : NativeObject
     }
     public class CharacterRecord
     {
-        public string? name,faceId,curve;public int startingPos,endingPos,displayOrder,emoticon,action,effect,appear,shapeOverride;
+        public string? name,faceId;public object? curve;public int startingPos,endingPos,displayOrder,emoticon,action,effect,appear,shapeOverride;
         // Pinned 0x7e5a50 constructor and independently decoded metadata literals: name="", face="00".
         public CharacterRecord() { name="";faceId="00";displayOrder=1;emoticon=-1; }
     }
@@ -61,7 +61,7 @@ public class ScriptData : NativeObject
     public static implicit operator Script(ScriptData data)=>new(){LineId=data.LineId,text=data.text,voice=data.voice,bgFriendlyName=data.bgFriendlyName,additionalPrompt=data.additionalPrompt,StageJson=data.StageJson,selectionGroup=data.selectionGroup,isDialogScript=data.isDialogScript,bgName=data.bgName,popup=data.popup,sound=data.sound,placeText=data.placeText,bgEffect=data.bgEffect,transition=data.transition,bgmId=data.bgmId,highlightedSlotNums=new(data.highlightedSlotNums),speakerSlotNum=data.speakerSlotNum,characters=new(data.characters.Select(c=>new Script.CharacterRecord{name=c.name,faceId=c.faceId,curve=c.curve,startingPos=c.startingPos,endingPos=c.endingPos,displayOrder=c.displayOrder,emoticon=c.emoticon,action=c.action,effect=c.effect,appear=c.appear,shapeOverride=c.shapeOverride}))};
     public class CharacterRecordData : NativeObject
     {
-        public string? name,faceId,curve;public int startingPos,endingPos,displayOrder=1,emoticon,action,effect,appear,shapeOverride;
+        public string? name,faceId;public object? curve;public int startingPos,endingPos,displayOrder=1,emoticon,action,effect,appear,shapeOverride;
         public CharacterRecordData() { }
         public CharacterRecordData(Script.CharacterRecord r){name=r.name;faceId=r.faceId;curve=r.curve;startingPos=r.startingPos;endingPos=r.endingPos;displayOrder=r.displayOrder;emoticon=r.emoticon;action=r.action;effect=r.effect;appear=r.appear;shapeOverride=r.shapeOverride;}
         public CharacterRecordData Clone()=>new(){name=name,faceId=faceId,curve=curve,startingPos=startingPos,endingPos=endingPos,displayOrder=displayOrder,emoticon=emoticon,action=action,effect=effect,appear=appear,shapeOverride=shapeOverride};
@@ -88,9 +88,19 @@ public class ProjectData : NativeObject
     public ProjectData Clone() => new() { ProjectId = ProjectId, ProjectName = ProjectName, PreviewHeader = PreviewHeader, PreviewTitle=PreviewTitle,PreviewBgName=PreviewBgName,nodes = nodes.Select(n=>n.Clone()).ToList() };
 }
 namespace Il2CppSystem.Collections.Generic { public class Stack<T> : System.Collections.Generic.Stack<T> { } }
+namespace Il2CppSystem
+{
+    public sealed class Func<T,R>
+    {
+        readonly System.Func<T,R> function;public Func(System.Func<T,R> function)=>this.function=function;
+        public R Invoke(T argument)=>function(argument);
+        public static implicit operator Func<T,R>(System.Func<T,R> function)=>new(function);
+    }
+}
 namespace Newtonsoft.Json.Linq
 {
-    public class JObject { public string Json = "{\"native_receipt\":true}"; public override string ToString() => Json; public static JObject Parse(string value){using var _=JsonDocument.Parse(value);return new(){Json=value};} }
+    public class JToken { public string Json = "{\"native_receipt\":true}";public override string ToString()=>Json; }
+    public class JObject : JToken { public static JObject Parse(string value){using var _=JsonDocument.Parse(value);return new(){Json=value};} }
     public class JArray
     {
         public string Raw = "[]"; public int Count => JsonDocument.Parse(Raw).RootElement.GetArrayLength();
@@ -162,13 +172,17 @@ namespace AzureArchive.Automation
     }
     public static class AuthoringLines
     {
+        public static readonly string[] Actions={"Idle","Greeting","FalldownL","FalldownR","Stiff","Shake","Jump","Hophop","Curve"};
+        public static readonly string[] Emoticons={"Angry","Chat","Dot","Exclaim","Heart","Music","Question","Respond","Shy","Surprise","Sweat","Twinkle","Upset","Think","Bulb","Sad","Sigh","Steam","Tear","Zzz"};
+        public static readonly string[] Appears={"None","AL","AR","A","DL","DR","D"};
+        public static Action<JsonElement>? OnCurveValidate;public static int CurvesValidated,FromResolutions;
         public static Action<ScriptData>? ExtraPatch,ExtraCreate;public static Func<ScriptData,string,string>? ReadOverride;public static int Reads,DetachedPatches,DetachedCreates;
         public static JObject SceneReference(string kind,string key)=>JObject.Parse(string.IsNullOrEmpty(key)||key=="0"?JsonSerializer.Serialize(new{action=kind is "background" or "bgm"?"inherit":"none"}):JsonSerializer.Serialize(new{action="set",resource_id="fixture:"+kind+":"+key}));
         public static JObject Read(ScriptData data,Guid node)
         {
             Reads++;string mode=!data.isDialogScript?"control":data.speakerSlotNum>0||!string.IsNullOrEmpty(data.characters[0].name)?"dialogue":"narration";
             object? speaker=mode!="dialogue"?null:data.speakerSlotNum>0?new{slot=data.speakerSlotNum}:new{offstage_resource_id="fixture:"+data.characters[0].name};
-            var stage=Enumerable.Range(1,5).Where(i=>!string.IsNullOrEmpty(data.characters[i].name)).Select(i=>new{slot=i,resource_id="fixture:"+data.characters[i].name,face_id=data.characters[i].faceId,starting_position=data.characters[i].startingPos,ending_position=data.characters[i].endingPos,display_order=data.characters[i].displayOrder,action=data.characters[i].action==0?"Idle":"Jump",emoticon=data.characters[i].emoticon<0?"None":"Angry",effect=data.characters[i].effect==0?"None":"Shot",appear=data.characters[i].appear==0?"None":data.characters[i].appear==6?"D":"A",shape_overrides=Array.Empty<string>(),curve=data.characters[i].curve});
+            var stage=Enumerable.Range(1,5).Where(i=>!string.IsNullOrEmpty(data.characters[i].name)).Select(i=>new{slot=i,resource_id="fixture:"+data.characters[i].name,face_id=data.characters[i].faceId,starting_position=data.characters[i].startingPos,ending_position=data.characters[i].endingPos,display_order=data.characters[i].displayOrder,action=Actions[data.characters[i].action],emoticon=data.characters[i].emoticon<0?"None":Emoticons[data.characters[i].emoticon],effect=data.characters[i].effect==0?"None":"Shot",appear=Appears[data.characters[i].appear],shape_overrides=new[]{"Sig","Black","Closeup"}.Where((_,bit)=>(data.characters[i].shapeOverride&(1<<bit))!=0).ToArray(),curve=data.characters[i].curve});
             object Ref(string kind,string key){using var d=JsonDocument.Parse(SceneReference(kind,key).Json);return d.RootElement.Clone();}
             string json=JsonSerializer.Serialize(new{line_id=data.LineId,node_id=node.ToString(),text=data.text,mode,speaker,stage,highlighted_slots=data.highlightedSlotNums,place=data.placeText,extra_script=data.additionalPrompt,scene=new{background=Ref("background",data.bgName.ToString()),background_effect=Ref("background_effect",data.bgEffect.ToString()),transition=Ref("transition",data.transition.ToString()),bgm=Ref("bgm",data.bgmId.ToString()),sound=Ref("sound",data.sound),popup=Ref("popup",data.popup),voice=Ref("voice",data.voice)}});
             return JObject.Parse(ReadOverride?.Invoke(data,json)??json);
@@ -176,17 +190,39 @@ namespace AzureArchive.Automation
         public static void Patch(ScriptData data,JObject set,JArray? clear,string version)
         {
             if(clear!=null||version!=AuthoringResourceCatalog.CatalogVersion)throw new Exception("wrong detached Patch arguments");
-            using var json=JsonDocument.Parse(set.Json);var root=json.RootElement;if(root.EnumerateObject().Any(p=>p.Name is not ("speaker" or "mode" or "text")))throw new Exception("unsupported fixture patch field");
+            using var json=JsonDocument.Parse(set.Json);var root=json.RootElement;if(root.EnumerateObject().Any(p=>p.Name is not ("speaker" or "mode" or "text" or "stage" or "scene" or "highlighted_slots" or "place" or "extra_script")))throw new Exception("unsupported fixture patch field");
+            if(root.TryGetProperty("stage",out var stage))
+            {
+                for(int slot=1;slot<=5;slot++)data.characters[slot]=new(new Script.CharacterRecord());
+                foreach(var actor in stage.EnumerateArray())
+                {
+                    int slot=actor.GetProperty("slot").GetInt32();using var resource=JsonDocument.Parse(AuthoringResourceCatalog.Resolve(actor.GetProperty("resource_id").GetString()!,"character",version,true).Json);
+                    if(!resource.RootElement.GetProperty("available").GetBoolean())throw new Exception("RESOURCE_UNAVAILABLE");
+                    var c=new ScriptData.CharacterRecordData(new Script.CharacterRecord()){name=resource.RootElement.GetProperty("native_key").GetString(),faceId=actor.GetProperty("face_id").GetString(),endingPos=actor.GetProperty("ending_position").GetInt32(),displayOrder=actor.GetProperty("display_order").GetInt32(),action=Array.IndexOf(Actions,actor.GetProperty("action").GetString()),emoticon=Array.IndexOf(Emoticons,actor.GetProperty("emoticon").GetString()),effect=actor.GetProperty("effect").GetString()=="Shot"?1:0,appear=Array.IndexOf(Appears,actor.GetProperty("appear").GetString())};
+                    foreach(var shape in actor.GetProperty("shape_overrides").EnumerateArray())c.shapeOverride|=shape.GetString() switch{"Sig"=>1,"Black"=>2,"Closeup"=>4,_=>throw new Exception("bad shape")};
+                    var curve=actor.GetProperty("curve");if(c.action==8){if(curve.ValueKind!=JsonValueKind.Object)throw new Exception("curve missing");CurvesValidated++;OnCurveValidate?.Invoke(curve);c.curve=curve.Clone();}else if(curve.ValueKind!=JsonValueKind.Null)throw new Exception("residual curve");
+                    data.characters[slot]=c;
+                }
+            }
+            if(root.TryGetProperty("highlighted_slots",out var highlights))data.highlightedSlotNums=new(highlights.EnumerateArray().Select(v=>v.GetInt32()));
             DetachedPatches++;data.characters[0]=new(new Script.CharacterRecord());var speaker=root.GetProperty("speaker");data.speakerSlotNum=0;
             if(speaker.ValueKind!=JsonValueKind.Null){if(speaker.TryGetProperty("slot",out var slot))data.speakerSlotNum=slot.GetInt32();else{using var resource=JsonDocument.Parse(AuthoringResourceCatalog.Resolve(speaker.GetProperty("offstage_resource_id").GetString()!,"character",version,true).Json);data.characters[0].name=resource.RootElement.GetProperty("native_key").GetString();}}
             if(root.TryGetProperty("text",out var text))data.text=text.GetString()!;
             if(root.TryGetProperty("mode",out var mode)){data.isDialogScript=mode.GetString()!="control";bool hasSpeaker=data.speakerSlotNum>0||!string.IsNullOrEmpty(data.characters[0].name);if(hasSpeaker!=(mode.GetString()=="dialogue"))throw new Exception("mode/speaker mismatch");}
+            if(root.TryGetProperty("place",out var place))data.placeText=place.GetString()!;
+            if(root.TryGetProperty("extra_script",out var extra))data.additionalPrompt=extra.GetString()!;
+            if(root.TryGetProperty("scene",out var scene))foreach(var field in scene.EnumerateObject())
+            {
+                string key="",name="";if(field.Value.GetProperty("action").GetString()=="set"){using var resolved=JsonDocument.Parse(AuthoringResourceCatalog.Resolve(field.Value.GetProperty("resource_id").GetString()!,field.Name,version,true).Json);if(!resolved.RootElement.GetProperty("available").GetBoolean())throw new Exception("RESOURCE_UNAVAILABLE");key=resolved.RootElement.GetProperty("native_key").GetString()!;if(resolved.RootElement.TryGetProperty("name",out var display))name=display.GetString()!;}
+                switch(field.Name){case "background":data.bgName=key==""?0:uint.Parse(key);data.bgFriendlyName=name;break;case "background_effect":data.bgEffect=key==""?0:uint.Parse(key);break;case "transition":data.transition=key==""?0:uint.Parse(key);break;case "bgm":data.bgmId=key==""?0:long.Parse(key);break;case "sound":data.sound=key;break;case "popup":data.popup=key;break;case "voice":data.voice=key;break;default:throw new Exception("unknown scene family");}
+            }
             ExtraPatch?.Invoke(data);
         }
-        public static ScriptData Create(JObject input,Script previous,object? resolve,string version)
+        public static ScriptData Create(JObject input,Script previous,Il2CppSystem.Func<JToken,ScriptData>? resolve,string version)
         {
             using var json=JsonDocument.Parse(input.Json);var root=json.RootElement;
-            if(root.GetProperty("inherit").GetString()!="previous"||resolve!=null||version!=AuthoringResourceCatalog.CatalogVersion)throw new Exception("wrong native Create arguments");
+            if(version!=AuthoringResourceCatalog.CatalogVersion)throw new Exception("wrong native Create catalog");
+            var inherit=root.GetProperty("inherit");if(inherit.ValueKind==JsonValueKind.Object){if(resolve==null)throw new Exception("from resolver required");FromResolutions++;previous=resolve.Invoke(JObject.Parse(inherit.GetProperty("from").GetRawText()));}else if(inherit.GetString()!="previous"||resolve!=null)throw new Exception("wrong native Create arguments");
             DetachedCreates++;var line=new ScriptData(new Script(previous,true));var patch=root.EnumerateObject().Where(p=>p.Name!="inherit").ToDictionary(p=>p.Name,p=>p.Value.Clone());Patch(line,JObject.Parse(JsonSerializer.Serialize(patch)),null,version);ExtraCreate?.Invoke(line);return line;
         }
     }
@@ -271,12 +307,13 @@ namespace AzureArchive.Automation
                     if(patch.TryGetProperty("text",out var text))line.text=text.GetString()!;
                     else {line.characters[0]=new(new Script.CharacterRecord());line.speakerSlotNum=patch.GetProperty("speaker").GetProperty("slot").GetInt32();}
                 }
-                else if(op.GetProperty("ref").GetString()!.StartsWith("multiline_",StringComparison.Ordinal))
+                else if(op.GetProperty("ref").GetString()!.StartsWith("multiline_",StringComparison.Ordinal)||op.GetProperty("ref").GetString()!.StartsWith("duplicate_",StringComparison.Ordinal))
                 {
                     var owner=studio.Project.nodes.OfType<ScriptNodeData>().Single(n=>n.Guid.ToString()==op.GetProperty("node").GetProperty("id").GetString());
                     var after=op.GetProperty("after_line");string afterId=after.TryGetProperty("id",out var id)?id.GetString()!:LastCreatedIds[after.GetProperty("ref").GetString()!];
                     int at=owner.Scripts.FindIndex(l=>l.LineId==afterId)+1;if(at<=0)throw new Exception("unknown insertion anchor");
-                    var created=AuthoringLines.Create(JObject.Parse(op.GetProperty("line").GetRawText()),AuthoringGraph.PreviousFor(studio.Project,owner,at)!,null,catalogVersion);
+                    Il2CppSystem.Func<JToken,ScriptData>? resolver=null;if(op.GetProperty("line").GetProperty("inherit").ValueKind==JsonValueKind.Object)resolver=new System.Func<JToken,ScriptData>(token=>{using var reference=JsonDocument.Parse(token.ToString());return studio.Project.nodes.OfType<ScriptNodeData>().SelectMany(n=>n.Scripts).Single(l=>l.LineId==reference.RootElement.GetProperty("id").GetString());});
+                    var created=AuthoringLines.Create(JObject.Parse(op.GetProperty("line").GetRawText()),AuthoringGraph.PreviousFor(studio.Project,owner,at)!,resolver,catalogVersion);
                     created.LineId=Guid.NewGuid().ToString("D");LastCreatedIds.Add(op.GetProperty("ref").GetString()!,created.LineId);owner.Scripts.Insert(at,created);
                 }
                 else node.Scripts.Insert(insertion++, new() { LineId = "native-created:" + Guid.NewGuid(), text = op.GetProperty("line").GetProperty("text").GetString()! });
@@ -311,6 +348,7 @@ public static class Fixture
         BatchIndices=new[]{0,1}; NextIsMajor=true; AzureArchive.Automation.ProjectFileStore.CloneOverride=null;
         AzureArchive.Automation.AuthoringLines.ExtraPatch=null;AzureArchive.Automation.AuthoringLines.ReadOverride=null;AzureArchive.Automation.AuthoringLines.Reads=AzureArchive.Automation.AuthoringLines.DetachedPatches=0;
         AzureArchive.Automation.AuthoringLines.ExtraCreate=null;AzureArchive.Automation.AuthoringLines.DetachedCreates=0;AzureArchive.Automation.AuthoringResourceCatalog.SceneResources.Clear();
+        AzureArchive.Automation.AuthoringLines.OnCurveValidate=null;AzureArchive.Automation.AuthoringLines.CurvesValidated=AzureArchive.Automation.AuthoringLines.FromResolutions=0;
         AzureArchive.Automation.AuthoringGraph.OnNormalize=null;AzureArchive.Automation.AuthoringGraph.OnRequireValid=null;AzureArchive.Automation.AuthoringGraph.Normalizes=AzureArchive.Automation.AuthoringGraph.Validations=0;PostAnchorIndex=ActiveNodeIndex=0;KeepDeselectedAnchorReference=StaleReferenceSelected=false;
         AzureArchive.Automation.AuthoringResourceCatalog.CharacterResources.Clear();AzureArchive.Automation.AuthoringResourceCatalog.AfterResolve=null;
         var node = new ScriptNodeData { Guid = Guid.NewGuid(), Scripts = new() { new() { LineId = "opaque-anchor", text = "before" }, new() { LineId = "opaque-tail", text = "tail" } } };

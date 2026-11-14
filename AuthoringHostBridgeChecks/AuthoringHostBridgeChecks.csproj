@@ -10,6 +10,8 @@
     <Compile Include="../Plugin/Azurite/AuthoringCardPackHost.Speaker.cs" Link="Production/AuthoringCardPackHost.Speaker.cs" />
     <Compile Include="../Plugin/Azurite/AuthoringCardPackHost.Delete.cs" Link="Production/AuthoringCardPackHost.Delete.cs" />
     <Compile Include="../Plugin/Azurite/AuthoringCardPackHost.Multiline.cs" Link="Production/AuthoringCardPackHost.Multiline.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHost.Duplicate.cs" Link="Production/AuthoringCardPackHost.Duplicate.cs" />
+    <Compile Include="../Plugin/Azurite/AuthoringCardPackHostCopyProjection.cs" Link="Production/AuthoringCardPackHostCopyProjection.cs" />
     <None Include="../AuthoringHostContentChecks/NativeSchemaResponse.json" Link="NativeSchemaResponse.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../Plugin/Azurite/AuthoringCardPackPanel.cs" Link="Production/AuthoringCardPackPanel.cs" />
   </ItemGroup>

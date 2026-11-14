@@ -104,12 +104,26 @@ public static class AuthoringBatchPlanner
     {
         if (selection is null) return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.NullSelection, "selection is required");
         if (selection.Rows.Count == 0) return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.EmptySelection, "selection is empty");
+        if (action == AuthoringBatchAction.Duplicate && selection.Rows.Count > MaxOperations)
+            return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.TooManyOperations, "operation limit exceeded before duplicate expansion");
         if (!ValidateRows(selection.Rows, out string reason)) return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.InvalidSelection, reason);
 
         if (action == AuthoringBatchAction.ChangeSpeaker && (speakerSlot < 1 || speakerSlot > 5))
             return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.InvalidSpeaker, "speaker slot must be 1..5");
         if ((action == AuthoringBatchAction.SetText || action == AuthoringBatchAction.AddMultiline) && string.IsNullOrEmpty(text))
             return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.EmptyText, "text is required");
+
+        if (action == AuthoringBatchAction.Duplicate)
+        {
+            try
+            {
+                for (int i = 0; i < selection.Rows.Count; i++) _ = checked(selection.Rows[i].Index + i + 1);
+            }
+            catch (OverflowException)
+            {
+                return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.TooManyOperations, "duplicate target index exceeds the supported range");
+            }
+        }
 
         if (action == AuthoringBatchAction.AddMultiline)
         {
