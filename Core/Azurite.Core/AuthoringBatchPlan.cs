@@ -111,6 +111,24 @@ public static class AuthoringBatchPlanner
         if ((action == AuthoringBatchAction.SetText || action == AuthoringBatchAction.AddMultiline) && string.IsNullOrEmpty(text))
             return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.EmptyText, "text is required");
 
+        if (action == AuthoringBatchAction.AddMultiline)
+        {
+            // Count the normalized line separators without allocating Split or
+            // the anchor-by-line Cartesian product. Preserve the logical limit.
+            if (!FitsMultilineLimit(text!, selection.Rows.Count, MaxOperations, out int count))
+                return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.TooManyOperations, "operation limit exceeded before multiline expansion");
+            int perAnchor = count / selection.Rows.Count;
+            try
+            {
+                for (int i = 0; i < selection.Rows.Count; i++)
+                    _ = checked(selection.Rows[i].Index + checked((i + 1) * perAnchor));
+            }
+            catch (OverflowException)
+            {
+                return AuthoringBatchPlanResult.Fail(AuthoringBatchFailure.TooManyOperations, "multiline target index exceeds the supported range");
+            }
+        }
+
         var edits = new List<AuthoringBatchEdit>();
         switch (action)
         {
@@ -183,6 +201,22 @@ public static class AuthoringBatchPlanner
     }
 
     private static string[] SplitLines(string value) => value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+
+    internal static bool FitsMultilineLimit(string text, int anchors, int limit, out int count)
+    {
+        count = 0;
+        if (anchors <= 0 || anchors > limit) return false;
+        int lines = 1;
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] is not ('\r' or '\n')) continue;
+            if (text[i] == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++;
+            lines = checked(lines + 1);
+            if (checked((long)anchors * lines) > limit) return false;
+        }
+        count = checked(anchors * lines);
+        return true;
+    }
 }
 
 public readonly record struct AuthoringHistoryLink(bool LinkedWithPrevious, bool LinkedWithNext)
