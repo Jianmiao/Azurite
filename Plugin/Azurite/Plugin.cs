@@ -390,6 +390,22 @@ public sealed partial class Plugin : BasePlugin
 				_mutation.Install();
 			}
 			bool nativePatches = num && _host.Profile.NativePatches;
+			if (num && _progressiveEditorLoading.Value && _host.Profile.ProgressiveEditorLoading)
+			{
+				_progressiveLoading = new ProgressiveEditorLoading(message => base.Log.LogInfo(message));
+				if (!_progressiveLoading.Install())
+				{
+					_progressiveLoading.Dispose();
+					_progressiveLoading = null;
+				}
+			}
+
+			if (num && _virtualizationEnabled.Value)
+			{
+				_virtualization = new DialogueVirtualization(message => base.Log.LogInfo(message));
+				_virtualization.Install();
+			}
+
 			if (num && _host.Profile.EditorPatches && !_host.Profile.LegacyExporter)
 			{
 				_deferredSelectors = new DeferredEditorSelectors(message => base.Log.LogInfo(message));
@@ -398,20 +414,6 @@ public sealed partial class Plugin : BasePlugin
 				{
 					_deferredSelectors.Dispose();
 					_deferredSelectors = null;
-				}
-				if (_virtualizationEnabled.Value)
-				{
-					_virtualization = new DialogueVirtualization(message => base.Log.LogInfo(message));
-					_virtualization.Install();
-				}
-				if (_progressiveEditorLoading.Value && _host.Profile.ProgressiveEditorLoading)
-				{
-					_progressiveLoading = new ProgressiveEditorLoading(message => base.Log.LogInfo(message));
-					if (!_progressiveLoading.Install())
-					{
-						_progressiveLoading.Dispose();
-						_progressiveLoading = null;
-					}
 				}
 				_backgroundGalleryCulling = new BackgroundGalleryLoadCulling(message => base.Log.LogInfo(message));
 				if (!_backgroundGalleryCulling.Install())

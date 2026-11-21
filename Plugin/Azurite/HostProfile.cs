@@ -13,8 +13,11 @@ internal sealed record HostProfile(string Name, bool Supported, bool NativePatch
     private static readonly HostProfile Fix = new("1.0.0-fix (safe idle surfaces and scrolling)", true, false, true, true, false, true, false, false, true);
     // AA 1.0.1 was checked against the installed generated APIs and native
     // scheduling handoff. Do not inherit the Fix editor state-machine patches.
-    private static readonly HostProfile Release101 = new("1.0.1 (render handoff, FPS and scrolling)", true, false, true, false, false, false, false, false, false);
-    internal bool EditorPatches => NativePatches || ProgressiveEditorLoading;
+    private static readonly HostProfile Release101 = new("1.0.1 (render handoff, FPS and scrolling)", true, false, true, false, false, false, false, false, true);
+    // EditorPatches gates the native-patch family only. The progressive editor
+    // loader is an independent opt-in and must not enable native patches that were
+    // never verified on this host.
+    internal bool EditorPatches => NativePatches;
     internal bool SingleSpeakerAuthoring => ReferenceEquals(this, Release101);
     // Known authoring ABI only. Source opt-in and fresh runtime/session gates
     // remain separate from this capability and from deep performance patches.
