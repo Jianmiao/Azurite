@@ -16,13 +16,13 @@ using UnityEngine.SceneManagement;
 
 namespace Azurite;
 
-[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "1.0.40")]
+[BepInPlugin("halocue.azurite", "Azurite · 蓝铜矿", "1.0.42")]
 [BepInProcess("AzureArchive.exe")]
 public sealed partial class Plugin : BasePlugin
 {
 	public const string Id = "halocue.azurite";
 
-	public const string Version = "1.0.40";
+	public const string Version = "1.0.42";
 
 	#if AZURITE_SOURCE_STAGING
 	public const string CandidateBuild = "source-staging-1";
